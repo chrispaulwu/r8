@@ -72,12 +72,14 @@ public class ExtractMarker {
       throws IOException, ResourceException {
     if (FileUtils.isVDexFile(file)) {
       PathOrigin vdexOrigin = new PathOrigin(file);
-      VDexFile vdexFile = new VDexFile(vdexOrigin, Files.newInputStream(file));
-      VDexFileReader reader = new VDexFileReader(vdexFile);
-      int index = 0;
-      for (byte[] bytes : reader.getDexFiles()) {
-        appBuilder.addDexProgramData(bytes, new VdexOrigin(vdexOrigin, index));
-        index++;
+      try (InputStream fileInputStream = Files.newInputStream(file)) {
+        VDexFile vdexFile = new VDexFile(vdexOrigin, fileInputStream);
+        VDexFileReader reader = new VDexFileReader(vdexFile);
+        int index = 0;
+        for (byte[] bytes : reader.getDexFiles()) {
+          appBuilder.addDexProgramData(bytes, new VdexOrigin(vdexOrigin, index));
+          index++;
+        }
       }
     } else {
       appBuilder.addProgramFiles(file);
