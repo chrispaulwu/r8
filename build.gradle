@@ -527,6 +527,7 @@ task R8(type: ShadowJar) {
     } else {
         from sourceSets.main.output
     }
+    exclude "META-INF/*.kotlin_module"
 }
 
 task D8(type: ShadowJar) {
