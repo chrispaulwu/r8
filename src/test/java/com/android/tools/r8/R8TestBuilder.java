@@ -110,6 +110,10 @@ public class R8TestBuilder
         graphConsumer);
   }
 
+  public Builder getBuilder() {
+    return builder;
+  }
+
   public R8TestBuilder addDataResources(List<DataEntryResource> resources) {
     resources.forEach(builder.getAppBuilder()::addDataResource);
     return self();

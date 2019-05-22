@@ -22,6 +22,8 @@ public interface TestDiagnosticMessages {
 
   public TestDiagnosticMessages assertOnlyWarnings();
 
+  public TestDiagnosticMessages assertOnlyErrors();
+
   public TestDiagnosticMessages assertInfosCount(int count);
 
   public TestDiagnosticMessages assertWarningsCount(int count);
