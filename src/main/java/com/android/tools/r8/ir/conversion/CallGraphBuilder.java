@@ -326,6 +326,10 @@ public class CallGraphBuilder {
         traverse(node);
       }
       int result = numberOfCycles;
+      if (Log.ENABLED) {
+        Log.info(getClass(), "# call graph cycles broken: %s", numberOfCycles);
+        Log.info(getClass(), "# max call graph depth: %s", maxDepth);
+      }
       reset();
       return result;
     }
@@ -335,6 +339,7 @@ public class CallGraphBuilder {
       assert stack.isEmpty();
       assert stackSet.isEmpty();
       marked.clear();
+      maxDepth = 0;
       numberOfCycles = 0;
     }
 
