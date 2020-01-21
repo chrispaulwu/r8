@@ -1929,7 +1929,7 @@ public class JarSourceCode implements SourceCode {
     int opcode = insn.getOpcode();
     switch (opcode) {
       case Opcodes.NOP:
-        // Intentionally left empty.
+        builder.addNop();
         break;
       case Opcodes.ACONST_NULL:
         builder.addNullConst(state.push(JarState.NULL_TYPE));
