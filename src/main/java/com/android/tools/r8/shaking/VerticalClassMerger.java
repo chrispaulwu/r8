@@ -416,7 +416,8 @@ public class VerticalClassMerger {
     }
     DexClass targetClass = appInfo.definitionFor(appInfo.getSingleSubtype(clazz.type));
     if ((clazz.hasClassInitializer() && targetClass.hasClassInitializer())
-        || targetClass.classInitializationMayHaveSideEffects(appInfo, type -> type == clazz.type)) {
+        || targetClass.classInitializationMayHaveSideEffects(
+            appInfo, type -> type == clazz.type, Sets.newIdentityHashSet())) {
       // TODO(herhut): Handle class initializers.
       if (Log.ENABLED) {
         AbortReason.STATIC_INITIALIZERS.printLogMessageForClass(clazz);

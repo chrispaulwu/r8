@@ -18,7 +18,9 @@ import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.InternalOptions.OutlineOptions;
 import com.google.common.base.Predicates;
+import com.google.common.collect.Sets;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class DexType extends DexReference implements PresortedComparable<DexType> {
@@ -46,23 +48,26 @@ public class DexType extends DexReference implements PresortedComparable<DexType
   }
 
   public boolean classInitializationMayHaveSideEffects(DexDefinitionSupplier definitions) {
-    return classInitializationMayHaveSideEffects(definitions, Predicates.alwaysFalse());
+    return classInitializationMayHaveSideEffects(
+        definitions, Predicates.alwaysFalse(), Sets.newIdentityHashSet());
   }
 
   public boolean classInitializationMayHaveSideEffects(
-      DexDefinitionSupplier definitions, Predicate<DexType> ignore) {
+      DexDefinitionSupplier definitions, Predicate<DexType> ignore, Set<DexType> seen) {
     DexClass clazz = definitions.definitionFor(this);
-    return clazz == null || clazz.classInitializationMayHaveSideEffects(definitions, ignore);
+    return clazz == null || clazz.classInitializationMayHaveSideEffects(definitions, ignore, seen);
   }
 
   public boolean initializationOfParentTypesMayHaveSideEffects(AppInfo appInfo) {
-    return initializationOfParentTypesMayHaveSideEffects(appInfo, Predicates.alwaysFalse());
+    return initializationOfParentTypesMayHaveSideEffects(
+        appInfo, Predicates.alwaysFalse(), Sets.newIdentityHashSet());
   }
 
   public boolean initializationOfParentTypesMayHaveSideEffects(
-      AppInfo appInfo, Predicate<DexType> ignore) {
+      AppInfo appInfo, Predicate<DexType> ignore, Set<DexType> seen) {
     DexClass clazz = appInfo.definitionFor(this);
-    return clazz == null || clazz.initializationOfParentTypesMayHaveSideEffects(appInfo, ignore);
+    return clazz == null
+        || clazz.initializationOfParentTypesMayHaveSideEffects(appInfo, ignore, seen);
   }
 
   public boolean isAlwaysNull(AppView<AppInfoWithLiveness> appView) {

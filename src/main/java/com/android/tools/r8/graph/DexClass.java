@@ -745,11 +745,15 @@ public abstract class DexClass extends DexDefinition {
   }
 
   public boolean classInitializationMayHaveSideEffects(DexDefinitionSupplier definitions) {
-    return classInitializationMayHaveSideEffects(definitions, Predicates.alwaysFalse());
+    return classInitializationMayHaveSideEffects(
+        definitions, Predicates.alwaysFalse(), Sets.newIdentityHashSet());
   }
 
   public boolean classInitializationMayHaveSideEffects(
-      DexDefinitionSupplier definitions, Predicate<DexType> ignore) {
+      DexDefinitionSupplier definitions, Predicate<DexType> ignore, Set<DexType> seen) {
+    if (!seen.add(type)) {
+      return false;
+    }
     if (ignore.test(type)
         || definitions.dexItemFactory().libraryTypesWithoutStaticInitialization.contains(type)) {
       return false;
@@ -760,7 +764,7 @@ public abstract class DexClass extends DexDefinition {
     if (defaultValuesForStaticFieldsMayTriggerAllocation()) {
       return true;
     }
-    return initializationOfParentTypesMayHaveSideEffects(definitions, ignore);
+    return initializationOfParentTypesMayHaveSideEffects(definitions, ignore, seen);
   }
 
   public Iterable<DexType> allImmediateSupertypes() {
@@ -773,17 +777,19 @@ public abstract class DexClass extends DexDefinition {
   }
 
   public boolean initializationOfParentTypesMayHaveSideEffects(DexDefinitionSupplier definitions) {
-    return initializationOfParentTypesMayHaveSideEffects(definitions, Predicates.alwaysFalse());
+    return initializationOfParentTypesMayHaveSideEffects(
+        definitions, Predicates.alwaysFalse(), Sets.newIdentityHashSet());
   }
 
   public boolean initializationOfParentTypesMayHaveSideEffects(
-      DexDefinitionSupplier definitions, Predicate<DexType> ignore) {
+      DexDefinitionSupplier definitions, Predicate<DexType> ignore, Set<DexType> seen) {
     for (DexType iface : interfaces.values) {
-      if (iface.classInitializationMayHaveSideEffects(definitions, ignore)) {
+      if (iface.classInitializationMayHaveSideEffects(definitions, ignore, seen)) {
         return true;
       }
     }
-    if (superType != null && superType.classInitializationMayHaveSideEffects(definitions, ignore)) {
+    if (superType != null
+        && superType.classInitializationMayHaveSideEffects(definitions, ignore, seen)) {
       return true;
     }
     return false;
