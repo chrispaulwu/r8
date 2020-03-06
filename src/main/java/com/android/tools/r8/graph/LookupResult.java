@@ -122,14 +122,12 @@ public abstract class LookupResult {
       if (isIncomplete() || methodTargets.size() + lambdaTargets.size() > 1) {
         return null;
       }
-      if (methodTargets.size() == 0 && lambdaTargets.size() == 0) {
-        return null;
-      }
       if (methodTargets.size() == 1) {
         return methodTargets.values().iterator().next();
-      } else {
+      } else if (lambdaTargets.size() == 1) {
         return lambdaTargets.get(0);
       }
+      return null;
     }
 
     public enum LookupResultCollectionState {
