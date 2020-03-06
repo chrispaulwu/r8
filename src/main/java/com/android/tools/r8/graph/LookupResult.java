@@ -122,6 +122,7 @@ public abstract class LookupResult {
       if (isIncomplete() || methodTargets.size() + lambdaTargets.size() > 1) {
         return null;
       }
+      // TODO(b/150932978): Check lambda targets implementation methods.
       if (methodTargets.size() == 1) {
         return methodTargets.values().iterator().next();
       } else if (lambdaTargets.size() == 1) {
