@@ -31,7 +31,7 @@ public class APIConversionFinalClassTest extends DesugaredLibraryTestBase {
 
   @Parameterized.Parameters(name = "{0}, shrinkDesugaredLibrary: {1}")
   public static List<Object[]> data() {
-    return buildParameters(getTestParameters().withDexRuntimesStartingFromIncluding(ToolHelper.DexVm.Version.V7_0_0).withApiLevelsEndingAtIncluding(AndroidApiLevel.M).build(), BooleanUtils.values());
+    return buildParameters(getTestParameters().withDexRuntimesStartingFromIncluding(ToolHelper.DexVm.Version.V8_1_0).withApiLevelsEndingAtExcluding(AndroidApiLevel.O).build(), BooleanUtils.values());
   }
 
   public APIConversionFinalClassTest(TestParameters parameters, boolean shrinkDesugaredLibrary) {
