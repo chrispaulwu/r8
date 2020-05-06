@@ -12,7 +12,7 @@ import java.util.List;
  * Android API level description
  */
 public enum AndroidApiLevel {
-  R(30),  // Speculative, this can change.
+  R(30),
   Q(29),
   P(28),
   O_MR1(27),
@@ -43,7 +43,7 @@ public enum AndroidApiLevel {
   B_1_1(2),
   B(1);
 
-  public static final AndroidApiLevel LATEST = Q;
+  public static final AndroidApiLevel LATEST = R;
 
   public static final int magicApiLevelUsedByAndroidPlatformBuild = 10000;
 
