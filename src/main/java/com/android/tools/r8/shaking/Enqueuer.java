@@ -1171,7 +1171,7 @@ public class Enqueuer {
     KeepReason reason = KeepReason.reachableFromLiveType(holder.type);
 
     for (DexType iface : holder.interfaces.values) {
-      markInterfaceTypeAsLiveViaInheritanceClause(iface, reason);
+      markInterfaceTypeAsLiveViaInheritanceClause(holder, iface, reason);
     }
 
     if (holder.superType != null) {
@@ -1250,14 +1250,26 @@ public class Enqueuer {
     }
   }
 
-  private void markInterfaceTypeAsLiveViaInheritanceClause(DexType type, KeepReason reason) {
+  private void markInterfaceTypeAsLiveViaInheritanceClause(
+      DexProgramClass implementer, DexType type, KeepReason reason) {
     if (appView.options().enableUnusedInterfaceRemoval && !mode.isTracingMainDex()) {
       DexProgramClass clazz = getProgramClassOrNull(type);
       if (clazz == null) {
         return;
       }
 
-      assert clazz.isInterface();
+      assert clazz.isInterface()
+          : implementer.isInterface()
+              ? ("Interface `"
+                  + implementer.type.toSourceString()
+                  + "` extends non-interface `"
+                  + type.toSourceString()
+                  + "`")
+              : ("Class `"
+                  + implementer.type.toSourceString()
+                  + "` implements non-interface `"
+                  + type.toSourceString()
+                  + "`");
 
       if (!clazz.interfaces.isEmpty()) {
         markTypeAsLive(type, reason);
