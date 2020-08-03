@@ -25,10 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-<<<<<<< HEAD
-=======
-import org.junit.Assume;
->>>>>>> 6a837db0b... Desugared lib: Fix getGenericTypes
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
