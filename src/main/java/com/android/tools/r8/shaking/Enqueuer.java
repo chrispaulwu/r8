@@ -517,7 +517,7 @@ public class Enqueuer {
     return clazz.lookupMethod(method);
   }
 
-  private DexClass definitionFor(DexType type) {
+  public DexClass definitionFor(DexType type) {
     DexClass clazz = appView.definitionFor(type);
     if (clazz == null) {
       reportMissingClass(type);
