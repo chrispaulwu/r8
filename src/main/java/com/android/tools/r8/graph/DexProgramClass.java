@@ -21,6 +21,7 @@ import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.utils.TraversalContinuation;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -226,6 +227,10 @@ public class DexProgramClass extends DexClass
                 predicate.test(method)
                     ? fn.apply(new ProgramMethod(this, method))
                     : TraversalContinuation.CONTINUE);
+  }
+
+  public Iterable<ProgramMethod> virtualProgramMethods() {
+    return Iterables.transform(virtualMethods(), method -> new ProgramMethod(this, method));
   }
 
   public Kind getOriginKind() {
