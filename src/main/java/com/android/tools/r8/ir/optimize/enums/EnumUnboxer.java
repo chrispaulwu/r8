@@ -48,6 +48,7 @@ import com.android.tools.r8.ir.code.Opcodes;
 import com.android.tools.r8.ir.code.Phi;
 import com.android.tools.r8.ir.code.Value;
 import com.android.tools.r8.ir.conversion.IRConverter;
+import com.android.tools.r8.ir.conversion.MethodConversionOptions.MutableMethodConversionOptions;
 import com.android.tools.r8.ir.conversion.PostMethodProcessor;
 import com.android.tools.r8.ir.optimize.Inliner.Constraint;
 import com.android.tools.r8.ir.optimize.enums.EnumInstanceFieldData.EnumInstanceFieldKnownData;
@@ -74,6 +75,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
+import org.jetbrains.annotations.NotNull;
 
 public class EnumUnboxer {
 
@@ -84,6 +86,9 @@ public class EnumUnboxer {
   private final EnumUnboxingCandidateInfoCollection enumUnboxingCandidatesInfo;
   private final ProgramPackageCollection enumsToUnboxWithPackageRequirement =
       ProgramPackageCollection.createEmpty();
+
+  private final ProgramMethodSet methodsDependingOnLibraryModelisation =
+      ProgramMethodSet.createConcurrent();
 
   private EnumUnboxingRewriter enumUnboxerRewriter;
 
@@ -110,6 +115,10 @@ public class EnumUnboxer {
     enumUnboxingCandidatesInfo.removeCandidate(enumClass.type);
   }
 
+  private void markMethodDependsOnLibraryModelisation(ProgramMethod method) {
+    methodsDependingOnLibraryModelisation.add(method);
+  }
+
   private DexProgramClass getEnumUnboxingCandidateOrNull(TypeElement lattice) {
     if (lattice.isClassType()) {
       DexType classType = lattice.asClassType().getClassType();
@@ -128,7 +137,7 @@ public class EnumUnboxer {
     return enumUnboxingCandidatesInfo.getCandidateClassOrNull(type);
   }
 
-  public void analyzeEnums(IRCode code) {
+  public void analyzeEnums(IRCode code, MutableMethodConversionOptions conversionOptions) {
     Set<DexType> eligibleEnums = Sets.newIdentityHashSet();
     for (BasicBlock block : code.blocks) {
       for (Instruction instruction : block.getInstructions()) {
@@ -190,6 +199,9 @@ public class EnumUnboxer {
       for (DexType eligibleEnum : eligibleEnums) {
         enumUnboxingCandidatesInfo.addMethodDependency(eligibleEnum, code.context());
       }
+    }
+    if (methodsDependingOnLibraryModelisation.contains(code.context())) {
+      conversionOptions.disablePeepholeOptimizations();
     }
   }
 
@@ -274,6 +286,7 @@ public class EnumUnboxer {
           // The name data is required for the correct mapping from the enum name to the ordinal in
           // the valueOf utility method.
           addRequiredNameData(enumType);
+          markMethodDependsOnLibraryModelisation(context);
           continue;
         }
       }
@@ -380,6 +393,10 @@ public class EnumUnboxer {
     appView.rewriteWithLensAndApplication(enumUnboxingLens, appBuilder.build());
     updateOptimizationInfos(executorService, feedback);
     postBuilder.put(dependencies);
+    // Methods depending on library modelisation need to be reprocessed so they are peephole
+    // optimized.
+    postBuilder.put(methodsDependingOnLibraryModelisation);
+    methodsDependingOnLibraryModelisation.clear();
     postBuilder.rewrittenWithLens(appView, previousLens);
   }
 
@@ -789,49 +806,12 @@ public class EnumUnboxer {
         return Reason.INVALID_INVOKE;
       }
       assert dexClass.isLibraryClass();
-      if (dexClass.type != factory.enumType) {
-        // System.identityHashCode(Object) is supported for proto enums.
-        // Object#getClass without outValue and Objects.requireNonNull are supported since R8
-        // rewrites explicit null checks to such instructions.
-        if (singleTarget == factory.javaLangSystemMethods.identityHashCode) {
-          return Reason.ELIGIBLE;
-        }
-        if (singleTarget == factory.stringMembers.valueOf) {
-          addRequiredNameData(enumClass.type);
-          return Reason.ELIGIBLE;
-        }
-        if (singleTarget == factory.objectMembers.getClass
-            && (!invokeMethod.hasOutValue() || !invokeMethod.outValue().hasAnyUsers())) {
-          // This is a hidden null check.
-          return Reason.ELIGIBLE;
-        }
-        if (singleTarget == factory.objectsMethods.requireNonNull
-            || singleTarget == factory.objectsMethods.requireNonNullWithMessage) {
-          return Reason.ELIGIBLE;
-        }
-        return Reason.UNSUPPORTED_LIBRARY_CALL;
+      Reason reason =
+          analyzeLibraryInvoke(code, enumClass, enumValue, invokeMethod, singleTarget, dexClass);
+      if (reason == Reason.ELIGIBLE) {
+        markMethodDependsOnLibraryModelisation(code.context());
       }
-      // TODO(b/147860220): EnumSet and EnumMap may be interesting to model.
-      if (singleTarget == factory.enumMembers.compareTo) {
-        return Reason.ELIGIBLE;
-      } else if (singleTarget == factory.enumMembers.equals) {
-        return Reason.ELIGIBLE;
-      } else if (singleTarget == factory.enumMembers.nameMethod
-          || singleTarget == factory.enumMembers.toString) {
-        assert invokeMethod.asInvokeMethodWithReceiver().getReceiver() == enumValue;
-        addRequiredNameData(enumClass.type);
-        return Reason.ELIGIBLE;
-      } else if (singleTarget == factory.enumMembers.ordinalMethod) {
-        return Reason.ELIGIBLE;
-      } else if (singleTarget == factory.enumMembers.hashCode) {
-        return Reason.ELIGIBLE;
-      } else if (singleTarget == factory.enumMembers.constructor) {
-        // Enum constructor call is allowed only if called from an enum initializer.
-        if (code.method().isInstanceInitializer() && code.method().holder() == enumClass.type) {
-          return Reason.ELIGIBLE;
-        }
-      }
-      return Reason.UNSUPPORTED_LIBRARY_CALL;
+      return reason;
     }
 
     // A field put is valid only if the field is not on an enum, and the field type and the valuePut
@@ -943,6 +923,59 @@ public class EnumUnboxer {
     }
 
     return Reason.OTHER_UNSUPPORTED_INSTRUCTION;
+  }
+
+  @NotNull
+  private Reason analyzeLibraryInvoke(
+      IRCode code,
+      DexProgramClass enumClass,
+      Value enumValue,
+      InvokeMethod invokeMethod,
+      DexMethod singleTarget,
+      DexClass dexClass) {
+    if (dexClass.type != factory.enumType) {
+      // System.identityHashCode(Object) is supported for proto enums.
+      // Object#getClass without outValue and Objects.requireNonNull are supported since R8
+      // rewrites explicit null checks to such instructions.
+      if (singleTarget == factory.javaLangSystemMethods.identityHashCode) {
+        return Reason.ELIGIBLE;
+      }
+      if (singleTarget == factory.stringMembers.valueOf) {
+        addRequiredNameData(enumClass.type);
+        return Reason.ELIGIBLE;
+      }
+      if (singleTarget == factory.objectMembers.getClass
+          && (!invokeMethod.hasOutValue() || !invokeMethod.outValue().hasAnyUsers())) {
+        // This is a hidden null check.
+        return Reason.ELIGIBLE;
+      }
+      if (singleTarget == factory.objectsMethods.requireNonNull
+          || singleTarget == factory.objectsMethods.requireNonNullWithMessage) {
+        return Reason.ELIGIBLE;
+      }
+      return Reason.UNSUPPORTED_LIBRARY_CALL;
+    }
+    // TODO(b/147860220): EnumSet and EnumMap may be interesting to model.
+    if (singleTarget == factory.enumMembers.compareTo) {
+      return Reason.ELIGIBLE;
+    } else if (singleTarget == factory.enumMembers.equals) {
+      return Reason.ELIGIBLE;
+    } else if (singleTarget == factory.enumMembers.nameMethod
+        || singleTarget == factory.enumMembers.toString) {
+      assert invokeMethod.asInvokeMethodWithReceiver().getReceiver() == enumValue;
+      addRequiredNameData(enumClass.type);
+      return Reason.ELIGIBLE;
+    } else if (singleTarget == factory.enumMembers.ordinalMethod) {
+      return Reason.ELIGIBLE;
+    } else if (singleTarget == factory.enumMembers.hashCode) {
+      return Reason.ELIGIBLE;
+    } else if (singleTarget == factory.enumMembers.constructor) {
+      // Enum constructor call is allowed only if called from an enum initializer.
+      if (code.method().isInstanceInitializer() && code.method().holder() == enumClass.type) {
+        return Reason.ELIGIBLE;
+      }
+    }
+    return Reason.UNSUPPORTED_LIBRARY_CALL;
   }
 
   private EnumInstanceFieldData computeEnumFieldData(
