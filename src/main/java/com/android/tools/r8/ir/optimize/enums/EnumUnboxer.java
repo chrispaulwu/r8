@@ -87,6 +87,7 @@ public class EnumUnboxer {
   private final ProgramPackageCollection enumsToUnboxWithPackageRequirement =
       ProgramPackageCollection.createEmpty();
 
+  private final Set<DexProgramClass> candidatesToRemoveInWave = Sets.newConcurrentHashSet();
   private final ProgramMethodSet methodsDependingOnLibraryModelisation =
       ProgramMethodSet.createConcurrent();
 
@@ -109,10 +110,17 @@ public class EnumUnboxer {
     enumUnboxingCandidatesInfo = new EnumUnboxingCandidateAnalysis(appView, this).findCandidates();
   }
 
+  public void updateEnumUnboxingCandidatesInfo() {
+    for (DexProgramClass candidate : candidatesToRemoveInWave) {
+      enumUnboxingCandidatesInfo.removeCandidate(candidate.type);
+    }
+    candidatesToRemoveInWave.clear();
+  }
+
   private void markEnumAsUnboxable(Reason reason, DexProgramClass enumClass) {
     assert enumClass.isEnum();
     reportFailure(enumClass.type, reason);
-    enumUnboxingCandidatesInfo.removeCandidate(enumClass.type);
+    candidatesToRemoveInWave.add(enumClass);
   }
 
   private void markMethodDependsOnLibraryModelisation(ProgramMethod method) {
@@ -362,7 +370,9 @@ public class EnumUnboxer {
       ExecutorService executorService,
       OptimizationFeedbackDelayed feedback)
       throws ExecutionException {
+    assert candidatesToRemoveInWave.isEmpty();
     EnumInstanceFieldDataMap enumInstanceFieldDataMap = finishAnalysis();
+    assert candidatesToRemoveInWave.isEmpty();
     // At this point the enum unboxing candidates are no longer candidates, they will all be
     // unboxed. We extract the now immutable enums to unbox information and clear the candidate
     // info.
@@ -462,6 +472,7 @@ public class EnumUnboxer {
     analyzeInitializers();
     analyzeAccessibility();
     EnumInstanceFieldDataMap enumInstanceFieldDataMap = analyzeFields();
+    updateEnumUnboxingCandidatesInfo();
     if (debugLogEnabled) {
       reportEnumsAnalysis();
     }
