@@ -5,15 +5,14 @@
 package com.android.tools.r8.classmerging.vertical;
 
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPresent;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
 
 import com.android.tools.r8.NoVerticalClassMerging;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
-import com.android.tools.r8.utils.codeinspector.AssertUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -32,20 +31,20 @@ public class VerticalClassMergingWithMissingSuperClassTest extends TestBase {
 
   @Test
   public void test() throws Exception {
-    AssertUtils.assertFailsCompilation(
-        () ->
-            testForR8(parameters.getBackend())
-                .addProgramClasses(Main.class, A.class, B.class, C.class)
-                .addKeepMainRule(Main.class)
-                .addDontWarn(MissingClass.class)
-                .enableNoVerticalClassMergingAnnotations()
-                .setMinApi(parameters.getApiLevel())
-                .compile()
-                .inspect(inspector -> assertThat(inspector.clazz(B.class), not(isPresent())))
-                .addRunClasspathFiles(buildOnDexRuntime(parameters, MissingClass.class))
-                .run(parameters.getRuntime(), Main.class)
-                .assertSuccessWithOutputLines("C", "A", "B"),
-        exception -> assertEquals(NullPointerException.class, exception.getCause().getClass()));
+    testForR8(parameters.getBackend())
+        .addProgramClasses(Main.class, A.class, B.class, C.class)
+        .addKeepMainRule(Main.class)
+        .addDontWarn(MissingClass.class)
+        .allowDiagnosticWarningMessages(!parameters.canUseDefaultAndStaticInterfaceMethods())
+        .enableNoVerticalClassMergingAnnotations()
+        .setMinApi(parameters.getApiLevel())
+        .compile()
+        .assertAllWarningMessagesMatch(
+            containsString("required for default or static interface methods desugaring"))
+        .inspect(inspector -> assertThat(inspector.clazz(B.class), not(isPresent())))
+        .addRunClasspathFiles(buildOnDexRuntime(parameters, MissingClass.class))
+        .run(parameters.getRuntime(), Main.class)
+        .assertSuccessWithOutputLines("C", "A", "B");
   }
 
   static class Main {
