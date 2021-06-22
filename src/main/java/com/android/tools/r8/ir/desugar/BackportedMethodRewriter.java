@@ -974,6 +974,17 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
       DexProto proto;
       DexMethod method;
 
+      // List
+      type = factory.listType;
+
+      // List List.copyOf(Collection)
+      name = factory.createString("copyOf");
+      proto = factory.createProto(factory.listType, factory.collectionType);
+      method = factory.createMethod(type, proto, name);
+      addProvider(
+          new MethodGenerator(
+              method, BackportedMethods::CollectionsMethods_copyOfList, "copyOfList"));
+
       // Set
       type = factory.setType;
 
@@ -1130,16 +1141,7 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
     }
 
     private void initializeJava10MethodProviders(DexItemFactory factory) {
-      // List
-      DexType type = factory.listType;
-
-      // List List.copyOf(Collection)
-      DexString name = factory.createString("copyOf");
-      DexProto proto = factory.createProto(factory.listType, factory.collectionType);
-      DexMethod method = factory.createMethod(type, proto, name);
-      addProvider(
-          new MethodGenerator(
-              method, BackportedMethods::CollectionsMethods_copyOfList, "copyOfList"));
+      // Nothing right now.
     }
 
     private void initializeJava11MethodProviders(DexItemFactory factory) {
