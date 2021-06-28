@@ -72,6 +72,7 @@ import com.android.tools.r8.utils.StringUtils.BraceType;
 import com.android.tools.r8.utils.collections.LongLivedProgramMethodMultisetBuilder;
 import com.android.tools.r8.utils.collections.ProgramMethodMultiset;
 import com.android.tools.r8.utils.collections.ProgramMethodSet;
+import com.google.common.collect.Iterables;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -731,7 +732,7 @@ public class Outliner {
     int argumentRegisters;
     DexType returnType;
     Value returnValue;
-    int returnValueUsersLeft;
+    int returnValueUniqueUsersLeft;
     int pendingNewInstanceIndex = -1;
 
     OutlineSpotter(ProgramMethod method, BasicBlock block) {
@@ -825,18 +826,15 @@ public class Outliner {
     // Check if the current instruction can be included in the outline.
     private boolean canIncludeInstruction(Instruction instruction) {
       // Find the users of the active out-value (potential return value).
-      int returnValueUsersLeftIfIncluded = returnValueUsersLeft;
-      if (returnValue != null) {
-        for (Value value : instruction.inValues()) {
-          if (value == returnValue) {
-            returnValueUsersLeftIfIncluded--;
-          }
-        }
+      int returnValueUniqueUsersLeftIfIncluded = returnValueUniqueUsersLeft;
+      if (returnValue != null
+          && Iterables.any(instruction.inValues(), value -> value == returnValue)) {
+        returnValueUniqueUsersLeftIfIncluded--;
       }
 
       // If this instruction has an out-value, but the previous one is still active end the
       // outline.
-      if (instruction.outValue() != null && returnValueUsersLeftIfIncluded > 0) {
+      if (instruction.outValue() != null && returnValueUniqueUsersLeftIfIncluded > 0) {
         return false;
       }
 
@@ -1003,10 +1001,10 @@ public class Outliner {
       if (returnValue != null) {
         for (Value value : inValues) {
           if (value.getAliasedValue() == returnValue) {
-            assert returnValueUsersLeft > 0;
-            returnValueUsersLeft--;
+            assert returnValueUniqueUsersLeft > 0;
+            returnValueUniqueUsersLeft--;
           }
-          if (returnValueUsersLeft == 0) {
+          if (returnValueUniqueUsersLeft == 0) {
             returnValue = null;
             returnType = appView.dexItemFactory().voidType;
           }
@@ -1067,9 +1065,9 @@ public class Outliner {
     }
 
     private void updateReturnValueState(Value newReturnValue, DexType newReturnType) {
-      returnValueUsersLeft = newReturnValue.numberOfAllUsers();
+      returnValueUniqueUsersLeft = newReturnValue.numberOfAllUsers();
       // If the return value is not used don't track it.
-      if (returnValueUsersLeft == 0) {
+      if (returnValueUniqueUsersLeft == 0) {
         returnValue = null;
         returnType = appView.dexItemFactory().voidType;
       } else {
@@ -1124,7 +1122,7 @@ public class Outliner {
       argumentRegisters = 0;
       returnType = appView.dexItemFactory().voidType;
       returnValue = null;
-      returnValueUsersLeft = 0;
+      returnValueUniqueUsersLeft = 0;
       pendingNewInstanceIndex = -1;
     }
   }
