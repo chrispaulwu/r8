@@ -846,6 +846,7 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
     assert !accessFlags.isStatic();
     return builder(this)
         .modifyAccessFlags(MethodAccessFlags::setAbstract)
+        .setIsLibraryMethodOverrideIfKnown(isLibraryMethodOverride())
         .unsetCode()
         .addBuildConsumer(
             method -> OptimizationFeedbackSimple.getInstance().unsetBridgeInfo(method))
@@ -1488,6 +1489,19 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
       assert !isLibraryMethodOverride.isUnknown();
       this.isLibraryMethodOverride = isLibraryMethodOverride;
       return this;
+    }
+
+    public Builder setIsLibraryMethodOverrideIf(
+        boolean condition, OptionalBool isLibraryMethodOverride) {
+      if (condition) {
+        return setIsLibraryMethodOverride(isLibraryMethodOverride);
+      }
+      return this;
+    }
+
+    public Builder setIsLibraryMethodOverrideIfKnown(OptionalBool isLibraryMethodOverride) {
+      return setIsLibraryMethodOverrideIf(
+          !isLibraryMethodOverride.isUnknown(), isLibraryMethodOverride);
     }
 
     public Builder setParameterAnnotations(ParameterAnnotationsList parameterAnnotations) {
