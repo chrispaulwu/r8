@@ -55,6 +55,7 @@ import com.android.tools.r8.ir.optimize.NestUtils;
 import com.android.tools.r8.ir.optimize.info.CallSiteOptimizationInfo;
 import com.android.tools.r8.ir.optimize.info.DefaultMethodOptimizationInfo;
 import com.android.tools.r8.ir.optimize.info.MethodOptimizationInfo;
+import com.android.tools.r8.ir.optimize.info.OptimizationFeedbackSimple;
 import com.android.tools.r8.ir.optimize.info.UpdatableMethodOptimizationInfo;
 import com.android.tools.r8.ir.optimize.inliner.WhyAreYouNotInliningReporter;
 import com.android.tools.r8.ir.regalloc.RegisterAllocator;
@@ -70,6 +71,7 @@ import com.android.tools.r8.naming.NamingLens;
 import com.android.tools.r8.shaking.AnnotationRemover;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.utils.BooleanUtils;
+import com.android.tools.r8.utils.ConsumerUtils;
 import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.OptionalBool;
 import com.android.tools.r8.utils.Pair;
@@ -842,9 +844,12 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
     assert !accessFlags.isFinal();
     // static abstract is an invalid access combination and we should never create that.
     assert !accessFlags.isStatic();
-    accessFlags.setAbstract();
-    this.code = null;
-    return this;
+    return builder(this)
+        .modifyAccessFlags(MethodAccessFlags::setAbstract)
+        .unsetCode()
+        .addBuildConsumer(
+            method -> OptimizationFeedbackSimple.getInstance().unsetBridgeInfo(method))
+        .build();
   }
 
   /**
@@ -1428,6 +1433,8 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
     private final CfVersion classFileVersion;
     private boolean d8R8Synthesized;
 
+    private Consumer<DexEncodedMethod> buildConsumer = ConsumerUtils.emptyConsumer();
+
     private Builder(DexEncodedMethod from) {
       this(from, from.d8R8Synthesized);
     }
@@ -1456,6 +1463,16 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
 
     public void setCompilationState(CompilationState compilationState) {
       this.compilationState = compilationState;
+    }
+
+    public Builder addBuildConsumer(Consumer<DexEncodedMethod> consumer) {
+      this.buildConsumer = this.buildConsumer.andThen(consumer);
+      return this;
+    }
+
+    public Builder modifyAccessFlags(Consumer<MethodAccessFlags> consumer) {
+      consumer.accept(accessFlags);
+      return this;
     }
 
     public Builder setAccessFlags(MethodAccessFlags accessFlags) {
@@ -1535,6 +1552,10 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
       return this;
     }
 
+    public Builder unsetCode() {
+      return setCode(null);
+    }
+
     public DexEncodedMethod build() {
       assert method != null;
       assert accessFlags != null;
@@ -1557,6 +1578,7 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
       if (!isLibraryMethodOverride.isUnknown()) {
         result.setLibraryMethodOverride(isLibraryMethodOverride);
       }
+      buildConsumer.accept(result);
       return result;
     }
   }
