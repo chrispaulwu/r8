@@ -375,6 +375,10 @@ public class UpdatableMethodOptimizationInfo extends MethodOptimizationInfo {
     this.classInlinerEligibility = eligibility;
   }
 
+  void unsetClassInlinerEligibility() {
+    this.classInlinerEligibility = null;
+  }
+
   void setInstanceInitializerInfo(InstanceInitializerInfo instanceInitializerInfo) {
     this.instanceInitializerInfo = instanceInitializerInfo;
   }

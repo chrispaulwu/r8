@@ -170,6 +170,15 @@ public class OptimizationFeedbackSimple extends OptimizationFeedback {
     // Ignored.
   }
 
+  public void unsetClassInlinerEligibility(DexEncodedMethod method) {
+    if (method.getOptimizationInfo().isUpdatableMethodOptimizationInfo()) {
+      method
+          .getOptimizationInfo()
+          .asUpdatableMethodOptimizationInfo()
+          .unsetClassInlinerEligibility();
+    }
+  }
+
   @Override
   public void setInstanceInitializerInfo(
       DexEncodedMethod method, InstanceInitializerInfo instanceInitializerInfo) {
