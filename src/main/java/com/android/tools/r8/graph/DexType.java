@@ -148,6 +148,10 @@ public class DexType extends DexReference implements PresortedComparable<DexType
     classConsumer.accept(this, arg);
   }
 
+  public String getTypeName() {
+    return toSourceString();
+  }
+
   @Override
   public String toSourceString() {
     if (toStringCache == null) {
