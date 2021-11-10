@@ -38,6 +38,7 @@ public enum DexVersion {
 
   public static DexVersion getDexVersion(AndroidApiLevel androidApiLevel) {
     switch (androidApiLevel) {
+      case Sv2:
       case S:
       case R:
       case Q:
