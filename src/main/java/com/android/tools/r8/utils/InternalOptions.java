@@ -1588,14 +1588,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public static class ApiModelTestingOptions {
 
-    public boolean enableApiCallerIdentification =
-        System.getProperty("com.android.tools.r8.disableApiModeling") == null;
-    public boolean checkAllApiReferencesAreSet =
-        System.getProperty("com.android.tools.r8.disableApiModeling") == null;
-    public boolean enableStubbingOfClasses =
-        System.getProperty("com.android.tools.r8.disableApiModeling") == null;
-    public boolean enableOutliningOfMethods =
-        System.getProperty("com.android.tools.r8.disableApiModeling") == null;
+    public boolean enableApiCallerIdentification = false;
+    public boolean checkAllApiReferencesAreSet = false;
+    public boolean enableStubbingOfClasses = false;
+    public boolean enableOutliningOfMethods = false;
 
     // A mapping from references to the api-level introducing them.
     public Map<MethodReference, AndroidApiLevel> methodApiMapping = new HashMap<>();
