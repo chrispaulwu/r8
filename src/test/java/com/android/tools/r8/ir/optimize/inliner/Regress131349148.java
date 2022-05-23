@@ -11,6 +11,7 @@ import com.android.tools.r8.R8TestRunResult;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.google.common.collect.Streams;
@@ -42,6 +43,7 @@ public class Regress131349148 extends TestBase {
         testForR8(parameters.getBackend())
             .addProgramClasses(TestClass.class, ClassWithCatchReflectiveOperation.class)
             .addKeepMainRule(TestClass.class)
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .setMinApi(parameters.getApiLevel())
             .compile()
             .run(parameters.getRuntime(), TestClass.class)
@@ -64,6 +66,7 @@ public class Regress131349148 extends TestBase {
                 ClassWithCatchNonExisting.class,
                 ExistingException.class)
             .addKeepMainRule(TestClassCallingMethodWithNonExisting.class)
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .addDontWarn(NonExistingException.class)
             .setMinApi(parameters.getApiLevel())
             .compile()

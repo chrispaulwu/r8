@@ -98,6 +98,7 @@ public class ApiModelNoOutlineForFullyMockedTest extends TestBase {
         .apply(this::setupTestBuilder)
         .addKeepMainRule(Main.class)
         .enableInliningAnnotations()
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .enableNoReturnTypeStrengtheningAnnotations()
         .compile()
         .applyIf(addToBootClasspath(), b -> b.addBootClasspathClasses(LibraryClass.class))

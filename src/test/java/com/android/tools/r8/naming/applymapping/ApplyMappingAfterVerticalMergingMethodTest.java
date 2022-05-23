@@ -16,6 +16,7 @@ import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.ToolHelper;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.codeinspector.FoundMethodSubject;
@@ -109,6 +110,7 @@ public class ApplyMappingAfterVerticalMergingMethodTest extends TestBase {
         .enableInliningAnnotations()
         .enableMemberValuePropagationAnnotations()
         .addProgramClasses(LIBRARY_CLASSES)
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .addKeepMainRule(LibrarySubclass.class)
         .addKeepClassAndDefaultConstructor(LibrarySubclass.class)
         .addVerticallyMergedClassesInspector(

@@ -12,6 +12,7 @@ import com.android.tools.r8.NeverClassInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import java.nio.file.Path;
@@ -47,6 +48,7 @@ public class AbstractClassAlsoImplementedByMissingClassTest extends TestBase {
             // Helper is added on the classpath such that R8 doesn't know what it does.
             .addClasspathClasses(Helper.class)
             .addKeepMainRule(TestClass.class)
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             // Keeping A, A.<init>(), and A.kept() should make it possible to provide an
             // implementation
             // of A after the R8 compilation.

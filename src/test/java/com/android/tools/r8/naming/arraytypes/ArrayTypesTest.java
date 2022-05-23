@@ -7,6 +7,7 @@ package com.android.tools.r8.naming.arraytypes;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.FileUtils;
 import com.android.tools.r8.utils.StringUtils;
@@ -69,6 +70,7 @@ public class ArrayTypesTest extends TestBase {
   private void runR8Test(boolean enableMinification) throws Exception {
     testForR8(parameters.getBackend())
         .minification(enableMinification)
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .addProgramClasses(Main.class, A.class)
         .addProgramClassFileData(generateTestClass())
         .addKeepMainRule(Main.class)

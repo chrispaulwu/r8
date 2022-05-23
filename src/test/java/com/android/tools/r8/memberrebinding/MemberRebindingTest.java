@@ -106,6 +106,7 @@ public class MemberRebindingTest {
         options -> {
           options.inlinerOptions().enableInlining = false;
           options.enableRedundantFieldLoadElimination = false;
+          options.apiModelingOptions().enableApiCallerIdentification = true;
         });
   }
 

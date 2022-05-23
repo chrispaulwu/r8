@@ -102,6 +102,7 @@ public class ApiModelMockClassTest extends TestBase {
             && parameters.getDexRuntimeVersion().isNewerThanOrEqual(Version.V12_0_0));
     testForR8(parameters.getBackend())
         .apply(this::setupTestBuilder)
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .addKeepMainRule(Main.class)
         .enableInliningAnnotations()
         .compile()

@@ -19,6 +19,7 @@ import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.ToolHelper;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.references.ClassReference;
 import com.android.tools.r8.references.Reference;
@@ -217,6 +218,7 @@ public class KeepAnnotatedMemberTest extends TestBase {
                     options
                         .getOpenClosedInterfacesOptions()
                         .suppressZipFileAssignmentsToJavaLangAutoCloseable())
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .addDontWarnGoogle()
             .addDontWarnJavaxNullableAnnotation()
             .apply(this::configureHorizontalClassMerging)
@@ -235,6 +237,7 @@ public class KeepAnnotatedMemberTest extends TestBase {
                     + PRESENT_ANNOTATION
                     + " *** *(...); }")
             .addDontWarnGoogle()
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .addDontWarnJavaxNullableAnnotation()
             .addOptionsModification(
                 options ->
@@ -258,6 +261,7 @@ public class KeepAnnotatedMemberTest extends TestBase {
                     + PRESENT_ANNOTATION
                     + " *** *(...); }")
             .addDontWarnGoogle()
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .addDontWarnJavaxNullableAnnotation()
             .addOptionsModification(
                 options ->
@@ -283,6 +287,7 @@ public class KeepAnnotatedMemberTest extends TestBase {
                     + PRESENT_ANNOTATION
                     + " <2> <3>(...); }")
             .addDontWarnGoogle()
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .addDontWarnJavaxNullableAnnotation()
             .addOptionsModification(
                 options ->

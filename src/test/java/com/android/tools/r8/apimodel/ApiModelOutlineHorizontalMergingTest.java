@@ -109,6 +109,7 @@ public class ApiModelOutlineHorizontalMergingTest extends TestBase {
         parameters.isDexRuntime()
             && parameters.getDexRuntimeVersion().isNewerThanOrEqual(Version.V12_0_0));
     testForR8(parameters.getBackend())
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .apply(this::setupTestBuilder)
         .addKeepMainRule(Main.class)
         .enableInliningAnnotations()

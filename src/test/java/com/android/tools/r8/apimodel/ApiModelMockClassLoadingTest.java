@@ -95,6 +95,7 @@ public class ApiModelMockClassLoadingTest extends TestBase {
     testForR8(parameters.getBackend())
         .apply(this::setupTestBuilder)
         .addKeepMainRule(Main.class)
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .compile()
         .inspect(this::inspect)
         .applyIf(isGreaterOrEqualToMockLevel(), b -> b.addBootClasspathClasses(LibraryClass.class))

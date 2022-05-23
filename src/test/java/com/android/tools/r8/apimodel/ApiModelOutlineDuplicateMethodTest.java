@@ -97,6 +97,7 @@ public class ApiModelOutlineDuplicateMethodTest extends TestBase {
         .apply(this::setupTestBuilder)
         .addKeepMainRule(Main.class)
         .enableInliningAnnotations()
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .compile()
         .applyIf(addToBootClasspath(), b -> b.addBootClasspathClasses(LibraryClass.class))
         .run(parameters.getRuntime(), Main.class)

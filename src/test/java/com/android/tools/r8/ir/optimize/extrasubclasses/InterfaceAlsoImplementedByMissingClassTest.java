@@ -12,6 +12,7 @@ import com.android.tools.r8.NeverClassInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import java.nio.file.Path;
@@ -50,6 +51,7 @@ public class InterfaceAlsoImplementedByMissingClassTest extends TestBase {
             // Keeping I and I.kept() should make it possible to provide an implementation of
             // I after the R8 compilation.
             .addKeepRules("-keep class " + I.class.getTypeName() + " { void kept(); }")
+            .apply(ApiModelingTestHelper::enableApiCallerIdentification)
             .enableNeverClassInliningAnnotations()
             .setMinApi(parameters.getApiLevel())
             .compile()

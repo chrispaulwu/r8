@@ -13,6 +13,7 @@ import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.classmerging.vertical.testclasses.VerticalClassMergingWithNonVisibleAnnotationTestClasses;
 import com.android.tools.r8.classmerging.vertical.testclasses.VerticalClassMergingWithNonVisibleAnnotationTestClasses.Base;
 import com.android.tools.r8.shaking.ProguardKeepAttributes;
@@ -43,6 +44,7 @@ public class VerticalClassMergingWithNonVisibleAnnotationTest extends TestBase {
     testForR8Compat(parameters.getBackend())
         .addInnerClasses(VerticalClassMergingWithNonVisibleAnnotationTestClasses.class)
         .addProgramClasses(Sub.class)
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .setMinApi(parameters.getApiLevel())
         .addKeepMainRule(Sub.class)
         .addKeepClassRules(

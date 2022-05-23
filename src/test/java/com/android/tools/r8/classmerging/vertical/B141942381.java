@@ -13,6 +13,7 @@ import com.android.tools.r8.NeverClassInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.android.tools.r8.utils.codeinspector.FieldSubject;
@@ -52,6 +53,7 @@ public class B141942381 extends TestBase {
         .setMinApi(parameters.getApiLevel())
         .addKeepAttributes("Signatures")
         .enableNeverClassInliningAnnotations()
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .noMinification()
         .compile()
         .inspect(this::inspect)
