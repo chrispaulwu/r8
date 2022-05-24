@@ -13,6 +13,7 @@ import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.ToolHelper.DexVm.Version;
+import com.android.tools.r8.apimodel.ApiModelingTestHelper;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.StringUtils;
@@ -101,6 +102,7 @@ public class InlineCatchHandlerWithLibraryTypeTest extends TestBase {
         .addProgramClassFileData(getClassWithCatchHandler())
         .addKeepMainRule(TestClass.class)
         .setMinApi(parameters.getApiLevel())
+        .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         // Use the latest library so that all of the exceptions are defined.
         .addLibraryFiles(ToolHelper.getAndroidJar(AndroidApiLevel.LATEST))
         .compile()
