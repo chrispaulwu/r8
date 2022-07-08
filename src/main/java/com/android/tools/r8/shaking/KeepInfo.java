@@ -175,8 +175,8 @@ public abstract class KeepInfo<B extends Builder<B, K>, K extends KeepInfo<B, K>
       return true;
     }
     return !configuration.isForceProguardCompatibilityEnabled()
-        && internalIsOptimizationAllowed()
-        && internalIsShrinkingAllowed();
+        && isOptimizationAllowed(configuration)
+        && isShrinkingAllowed(configuration);
   }
 
   public boolean isEnclosingMethodAttributeRemovalAllowed(

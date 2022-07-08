@@ -7,7 +7,6 @@ package com.android.tools.r8.graph.genericsignature;
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -49,7 +48,9 @@ public class GenericSignatureDontOptimizeTest extends TestBase {
         .compile()
         .inspect(this::inspect)
         .run(parameters.getRuntime(), Main.class)
-        .assertFailureWithErrorThatThrows(ClassCastException.class);
+        // b/234480449: To keep the 3.2. branch stable in full-mode, release, we still keep
+        // the signature when having -dontoptimize, in contradiction to b/221404266.
+        .assertSuccessWithOutputLines("class java.lang.String");
   }
 
   private void inspect(CodeInspector inspector) {
@@ -59,7 +60,9 @@ public class GenericSignatureDontOptimizeTest extends TestBase {
 
     ClassSubject main$1 = inspector.clazz(Main.class.getTypeName() + "$1");
     assertThat(main$1, isPresent());
-    assertNull(main$1.getFinalSignatureAttribute());
+    assertEquals(
+        "L" + binaryName(Foo.class) + "<" + descriptor(String.class) + ">;",
+        main$1.getFinalSignatureAttribute());
   }
 
   public static class Foo<T> {
