@@ -1579,6 +1579,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public static class TestingOptions {
 
+    public boolean neverReuseCfLocalRegisters = false;
+
     public static void allowExperimentClassFileVersion(InternalOptions options) {
       options.reportedExperimentClassFileVersion.set(true);
     }
