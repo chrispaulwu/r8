@@ -14,6 +14,7 @@ import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.analysis.type.TypeElement;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
+import com.android.tools.r8.utils.BooleanUtils;
 import com.android.tools.r8.utils.ConsumerUtils;
 import com.android.tools.r8.utils.InternalOptions;
 import com.google.common.collect.Sets;
@@ -121,6 +122,10 @@ public interface InstructionListIterator
       IRCode code,
       DexType type,
       Consumer<InitClass> consumer);
+
+  default void replaceCurrentInstructionWithConstBoolean(IRCode code, boolean value) {
+    replaceCurrentInstructionWithConstInt(code, BooleanUtils.intValue(value));
+  }
 
   void replaceCurrentInstructionWithConstClass(
       AppView<?> appView, IRCode code, DexType type, DebugLocalInfo localInfo);
