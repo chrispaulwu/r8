@@ -189,6 +189,12 @@ public class MachineDesugaredLibrarySpecification {
     return false;
   }
 
+  public boolean isContextTypeMaintainedOrRewritten(DexReference reference) {
+    // Support through type rewriting.
+    return getRewriteType().containsKey(reference.getContextType())
+        || getMaintainType().contains(reference.getContextType());
+  }
+
   public AndroidApiLevel getRequiredCompilationApiLevel() {
     return topLevelFlags.getRequiredCompilationAPILevel();
   }
