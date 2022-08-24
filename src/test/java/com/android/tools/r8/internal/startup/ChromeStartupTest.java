@@ -13,13 +13,16 @@ import static org.junit.Assume.assumeTrue;
 import com.android.tools.r8.ArchiveProgramResourceProvider;
 import com.android.tools.r8.DexIndexedConsumer;
 import com.android.tools.r8.R8FullTestBuilder;
-import com.android.tools.r8.StartupProfileProvider;
 import com.android.tools.r8.StringResource;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.ThrowableConsumer;
 import com.android.tools.r8.ToolHelper;
+import com.android.tools.r8.errors.Unimplemented;
+import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.startup.StartupProfileBuilder;
+import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.ZipUtils;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
@@ -236,8 +239,24 @@ public class ChromeStartupTest extends TestBase {
       Path outDirectory)
       throws Exception {
     StartupProfileProvider startupProfileProvider =
-        StringResource.fromFile(chromeDirectory.resolve("startup.txt"))
-            ::getStringWithRuntimeException;
+        new StartupProfileProvider() {
+          @Override
+          public String get() {
+            return StringResource.fromFile(chromeDirectory.resolve("startup.txt"))
+                .getStringWithRuntimeException();
+          }
+
+          @Override
+          public void getStartupProfile(StartupProfileBuilder startupProfileBuilder) {
+            throw new Unimplemented();
+          }
+
+          @Override
+          public Origin getOrigin() {
+            return Origin.unknown();
+          }
+        };
+
     buildR8(
         testBuilder ->
             testBuilder.addOptionsModification(

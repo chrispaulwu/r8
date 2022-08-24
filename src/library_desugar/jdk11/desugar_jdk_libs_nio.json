@@ -1,5 +1,5 @@
 {
-  "identifier": "com.tools.android:desugar_jdk_libs:2.0.0",
+  "identifier": "com.tools.android:desugar_jdk_libs_configuration_nio:2.0.0",
   "configuration_format_version": 100,
   "required_compilation_api_level": 30,
   "synthesized_library_classes_package_prefix": "j$.",
@@ -34,7 +34,8 @@
         "java.time.ZonedDateTime java.util.GregorianCalendar#toZonedDateTime()": "java.util.DesugarGregorianCalendar"
       },
       "wrapper_conversion": [
-        "java.time.Clock"
+        "java.time.Clock",
+        "java.time.temporal.ChronoUnit"
       ],
       "custom_conversion": {
         "java.time.Duration": "java.time.TimeConversions",
@@ -235,8 +236,12 @@
         "java.util.Spliterator java.util.LinkedHashSet#spliterator()": "java.util.DesugarLinkedHashSet"
       },
       "api_generic_types_conversion": {
-        "java.util.Set java.util.stream.Collector#characteristics()" : [-1, "java.util.Set java.util.stream.StreamApiFlips#flipCharacteristicSet(java.util.Set)"]
+        "java.util.Set java.util.stream.Collector#characteristics()" : [-1, "java.util.Set java.util.stream.StreamApiFlips#flipCharacteristicSet(java.util.Set)"],
+        "java.lang.Object java.lang.StackWalker#walk(java.util.function.Function)": [0, "java.util.function.Function java.util.stream.StackWalkerApiFlips#flipFunctionStream(java.util.function.Function)"]
       },
+      "never_outline_api": [
+        "java.lang.Object java.lang.StackWalker#walk(java.util.function.Function)"
+      ],
       "wrapper_conversion": [
         "java.nio.channels.SeekableByteChannel",
         "java.util.PrimitiveIterator$OfDouble",
@@ -280,7 +285,6 @@
     {
       "api_level_below_or_equal": 18,
       "rewrite_prefix": {
-        "java.lang.DesugarCharacter": "j$.lang.DesugarCharacter",
         "java.nio.charset.StandardCharsets": "j$.nio.charset.StandardCharsets"
       },
       "retarget_method": {
@@ -332,6 +336,12 @@
       "dont_retarget": [
         "android.support.multidex.MultiDexExtractor$ExtractedDex"
       ]
+    },
+    {
+      "api_level_below_or_equal": 18,
+      "rewrite_prefix": {
+        "java.lang.DesugarCharacter": "j$.lang.DesugarCharacter"
+      }
     }
   ],
   "library_flags": [
@@ -341,7 +351,6 @@
         "desugar.": "j$.desugar.",
         "libcore.": "j$.libcore.",
         "java.lang.Desugar": "j$.lang.Desugar",
-        "java.lang.ref.Cleaner": "j$.lang.ref.Cleaner",
         "sun.security.action.": "j$.sun.security.action."
       }
     },
@@ -369,6 +378,15 @@
         "java.util.ConversionRuntimeException": "j$.util.ConversionRuntimeException"
       },
       "rewrite_derived_prefix": {
+        "desugar.sun.nio.fs.DesugarDefaultFileSystemProvider": {
+          "sun.nio.fs.DefaultFileSystemProvider": "j$.adapter.HybridFileSystemProvider"
+        },
+        "desugar.sun.nio.fs.DesugarDefaultFileTypeDetector": {
+          "sun.nio.fs.DefaultFileTypeDetector": "j$.adapter.HybridFileTypeDetector"
+        },
+        "sun.misc.DesugarUnsafe": {
+          "jdk.internal.misc.Unsafe" : "j$.sun.misc.DesugarUnsafe"
+        },
         "java.nio.file.attribute.": {
           "j$.nio.file.attribute.": "java.nio.file.attribute."
         },
@@ -435,6 +453,9 @@
         },
         "java.util.Optional": {
           "j$.util.Optional": "java.util.Optional"
+        },
+        "java.util.stream.Stream": {
+          "j$.util.stream.Stream": "java.util.stream.Stream"
         }
       }
     },

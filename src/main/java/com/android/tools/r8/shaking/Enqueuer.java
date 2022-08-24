@@ -2820,19 +2820,20 @@ public class Enqueuer {
     WorkList<DexType> worklist = WorkList.newIdentityWorkList(type);
     worklist.addIfNotSeen(interfaces);
     while (worklist.hasNext()) {
-      DexClass clazz = appInfo().definitionFor(worklist.next());
-      if (clazz == null) {
-        continue;
-      }
-      if (clazz.isProgramClass()) {
-        markProgramMethodOverridesAsLive(instantiation, clazz.asProgramClass());
-      } else {
-        markLibraryAndClasspathMethodOverridesAsLive(instantiation, clazz);
-      }
-      if (clazz.superType != null) {
-        worklist.addIfNotSeen(clazz.superType);
-      }
-      worklist.addIfNotSeen(clazz.interfaces);
+      ClassResolutionResult classResolutionResult =
+          appInfo().contextIndependentDefinitionForWithResolutionResult(worklist.next());
+      classResolutionResult.forEachClassResolutionResult(
+          clazz -> {
+            if (clazz.isProgramClass()) {
+              markProgramMethodOverridesAsLive(instantiation, clazz.asProgramClass());
+            } else {
+              markLibraryAndClasspathMethodOverridesAsLive(instantiation, clazz);
+            }
+            if (clazz.superType != null) {
+              worklist.addIfNotSeen(clazz.superType);
+            }
+            worklist.addIfNotSeen(clazz.interfaces);
+          });
     }
   }
 
@@ -2973,12 +2974,18 @@ public class Enqueuer {
     worklist.addIfNotSeen(instantiatedClass);
     while (worklist.hasNext()) {
       DexProgramClass clazz = worklist.next();
-      DexEncodedMethod override = clazz.lookupVirtualMethod(libraryMethodOverride);
+      ProgramMethod override = clazz.lookupProgramMethod(libraryMethodOverride);
       if (override != null) {
-        if (override.isLibraryMethodOverride().isTrue()) {
+        if (override.getDefinition().isLibraryMethodOverride().isTrue()) {
           continue;
         }
-        override.setLibraryMethodOverride(OptionalBool.TRUE);
+        override.getDefinition().setLibraryMethodOverride(OptionalBool.TRUE);
+        // TODO(b/243483849): The minifier does not detect library overrides if the library class
+        //  is present both as program and library class. We force disable minification here as a
+        //  work-around until this is fixed.
+        if (options.loadAllClassDefinitions) {
+          shouldNotBeMinified(override);
+        }
       }
       clazz.forEachImmediateSupertype(
           superType -> {

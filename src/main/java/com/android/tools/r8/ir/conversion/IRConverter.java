@@ -46,6 +46,7 @@ import com.android.tools.r8.ir.desugar.desugaredlibrary.apiconversion.DesugaredL
 import com.android.tools.r8.ir.desugar.itf.EmulatedInterfaceApplicationRewriter;
 import com.android.tools.r8.ir.desugar.itf.InterfaceMethodProcessorFacade;
 import com.android.tools.r8.ir.desugar.itf.InterfaceProcessor;
+import com.android.tools.r8.ir.desugar.itf.L8InnerOuterAttributeEraser;
 import com.android.tools.r8.ir.desugar.lambda.LambdaDeserializationMethodRemover;
 import com.android.tools.r8.ir.desugar.nest.D8NestBasedAccessDesugaring;
 import com.android.tools.r8.ir.optimize.AssertionsRewriter;
@@ -81,6 +82,9 @@ import com.android.tools.r8.ir.optimize.membervaluepropagation.R8MemberValueProp
 import com.android.tools.r8.ir.optimize.outliner.Outliner;
 import com.android.tools.r8.ir.optimize.string.StringBuilderAppendOptimizer;
 import com.android.tools.r8.ir.optimize.string.StringOptimizer;
+import com.android.tools.r8.lightir.IR2LIRConverter;
+import com.android.tools.r8.lightir.LIR2IRConverter;
+import com.android.tools.r8.lightir.LIRCode;
 import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.naming.IdentifierNameStringMarker;
 import com.android.tools.r8.optimize.argumentpropagation.ArgumentPropagator;
@@ -365,6 +369,7 @@ public class IRConverter {
 
     if (appView.options().isDesugaredLibraryCompilation()) {
       new EmulatedInterfaceApplicationRewriter(appView).rewriteApplication(builder);
+      new L8InnerOuterAttributeEraser(appView).run();
     }
     processCovariantReturnTypeAnnotations(builder);
 
@@ -1611,12 +1616,25 @@ public class IRConverter {
       OptimizationFeedback feedback,
       BytecodeMetadataProvider bytecodeMetadataProvider,
       Timing timing) {
+    if (options.testing.roundtripThroughLIR) {
+      code = roundtripThroughLIR(code, feedback, bytecodeMetadataProvider, timing);
+    }
     if (options.isGeneratingClassFiles()) {
       finalizeToCf(code, feedback, bytecodeMetadataProvider, timing);
     } else {
       assert options.isGeneratingDex();
       finalizeToDex(code, feedback, bytecodeMetadataProvider, timing);
     }
+  }
+
+  private IRCode roundtripThroughLIR(
+      IRCode code,
+      OptimizationFeedback feedback,
+      BytecodeMetadataProvider bytecodeMetadataProvider,
+      Timing timing) {
+    LIRCode lirCode = IR2LIRConverter.translate(code);
+    IRCode irCode = LIR2IRConverter.translate(code.context(), lirCode, appView);
+    return irCode;
   }
 
   private void finalizeToCf(

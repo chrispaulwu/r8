@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class MachineDesugaredLibrarySpecification implements DesugaredLibrarySpecification {
 
@@ -103,6 +104,13 @@ public class MachineDesugaredLibrarySpecification implements DesugaredLibrarySpe
     return topLevelFlags.getExtraKeepRules();
   }
 
+  @Override
+  public Set<String> getMaintainTypeOrPrefixForTesting() {
+    return rewritingFlags.getMaintainType().stream()
+        .map(DexType::toString)
+        .collect(Collectors.toSet());
+  }
+
   public Map<DexType, DexType> getRewriteType() {
     return rewritingFlags.getRewriteType();
   }
@@ -178,6 +186,10 @@ public class MachineDesugaredLibrarySpecification implements DesugaredLibrarySpe
 
   public Map<DexType, CustomConversionDescriptor> getCustomConversions() {
     return rewritingFlags.getCustomConversions();
+  }
+
+  public Set<DexMethod> getNeverOutlineApi() {
+    return rewritingFlags.getNeverOutlineApi();
   }
 
   public Map<DexMethod, MethodAccessFlags> getAmendLibraryMethods() {

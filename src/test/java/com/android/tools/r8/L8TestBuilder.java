@@ -8,6 +8,8 @@ import static junit.framework.Assert.assertNull;
 import static junit.framework.TestCase.assertTrue;
 
 import com.android.tools.r8.TestBase.Backend;
+import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecification;
+import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecificationParser;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.AndroidAppConsumers;
@@ -23,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
@@ -195,6 +198,7 @@ public class L8TestBuilder {
     if (programConsumer != null) {
       return null;
     }
+    assertNoUnexpectedDiagnosticMessages();
     return new L8TestCompileResult(
             sink.build(),
             apiLevel,
@@ -203,16 +207,53 @@ public class L8TestBuilder {
             mapping,
             state,
             backend.isCf() ? OutputMode.ClassFile : OutputMode.DexIndexed)
-        .applyIf(
-            finalPrefixVerification,
-            compileResult ->
-                compileResult.inspect(
-                    inspector ->
-                        inspector.forAllClasses(
-                            clazz ->
-                                assertTrue(
-                                    clazz.getFinalName().startsWith("j$.")
-                                        || clazz.getFinalName().startsWith("java.")))));
+        .applyIf(finalPrefixVerification, this::validatePrefix);
+  }
+
+  private void validatePrefix(L8TestCompileResult compileResult) throws IOException {
+    InternalOptions options = new InternalOptions();
+    DesugaredLibrarySpecification specification =
+        DesugaredLibrarySpecificationParser.parseDesugaredLibrarySpecification(
+            this.desugaredLibrarySpecification,
+            options.dexItemFactory(),
+            options.reporter,
+            true,
+            apiLevel.getLevel());
+    Set<String> maintainTypeOrPrefix = specification.getMaintainTypeOrPrefixForTesting();
+    compileResult.inspect(
+        inspector ->
+            inspector.forAllClasses(
+                clazz -> {
+                  String finalName = clazz.getFinalName();
+                  if (finalName.startsWith("java.")) {
+                    assertTrue(maintainTypeOrPrefix.stream().anyMatch(finalName::startsWith));
+                  } else {
+                    assertTrue(finalName.startsWith("j$."));
+                  }
+                }));
+  }
+
+  private void assertNoUnexpectedDiagnosticMessages() {
+    TestDiagnosticMessages diagnosticsMessages = state.getDiagnosticsMessages();
+    diagnosticsMessages.assertNoErrors();
+    List<Diagnostic> warnings = diagnosticsMessages.getWarnings();
+    // We allow warnings exclusively when using the extended version for JDK11 testing.
+    // In this case, all warnings should apply to org.testng.Assert types which are not present
+    // in the vanilla desugared library.
+    // Vanilla desugared library compilation should have no warnings.
+    assertTrue(
+        warnings.isEmpty()
+            || warnings.stream()
+                .allMatch(warn -> warn.getDiagnosticMessage().contains("org.testng.Assert")));
+    List<Diagnostic> infos = diagnosticsMessages.getInfos();
+    // The rewriting confuses the generic signatures in some methods. Such signatures are never
+    // used by tools (they use the non library desugared version) and are stripped when compiling
+    // with R8 anyway.
+    // TODO(b/243483320): Investigate the Invalid signature.
+    assertTrue(
+        infos.isEmpty()
+            || infos.stream()
+                .allMatch(info -> info.getDiagnosticMessage().contains("Invalid signature ")));
   }
 
   private L8Command.Builder addProgramClassFileData(L8Command.Builder builder) {

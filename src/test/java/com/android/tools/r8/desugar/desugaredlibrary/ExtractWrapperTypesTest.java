@@ -117,8 +117,11 @@ public class ExtractWrapperTypesTest extends DesugaredLibraryTestBase {
           "java.util.stream.LongStream"
               + " java.util.stream.LongStream.flatMap(java.util.function.LongFunction)");
 
+  // Missing conversions in JDK8 desugared library that are fixed in JDK11 desugared library.
   private static final Set<String> MISSING_GENERIC_TYPE_CONVERSION_8 =
-      ImmutableSet.of("java.util.Set java.util.stream.Collector.characteristics()");
+      ImmutableSet.of(
+          "java.util.Set java.util.stream.Collector.characteristics()",
+          "java.lang.Object java.lang.StackWalker.walk(java.util.function.Function)");
 
   // TODO(b/238179854): Investigate how to fix these.
   private static final Set<String> MISSING_GENERIC_TYPE_CONVERSION_PATH =
@@ -147,7 +150,7 @@ public class ExtractWrapperTypesTest extends DesugaredLibraryTestBase {
 
   // TODO: parameterize to check both api<=23 as well as 23<api<26 for which the spec differs.
   private final AndroidApiLevel minApi = AndroidApiLevel.B;
-  private final AndroidApiLevel targetApi = AndroidApiLevel.S;
+  private final AndroidApiLevel targetApi = AndroidApiLevel.MASTER;
 
   private Set<String> getMissingGenericTypeConversions() {
     HashSet<String> missing = new HashSet<>(MISSING_GENERIC_TYPE_CONVERSION);
@@ -407,6 +410,11 @@ public class ExtractWrapperTypesTest extends DesugaredLibraryTestBase {
               indirectWrappers.computeIfAbsent(t, k -> new HashSet<>()).add(reference);
             }
           };
+      if (clazz.getAccessFlags().isEnum()) {
+        // Enum are not really wrapped, instead, each instance is converted to the matching
+        // instance, so there is no need to wrap indirect parameters and return types.
+        continue;
+      }
       clazz.forAllVirtualMethods(
           method -> {
             assertTrue(method.toString(), method.isPublic() || method.isProtected());

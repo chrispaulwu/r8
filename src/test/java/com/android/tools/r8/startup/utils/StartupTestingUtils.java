@@ -10,11 +10,11 @@ import static org.junit.Assert.fail;
 import com.android.tools.r8.CompilationFailedException;
 import com.android.tools.r8.D8TestBuilder;
 import com.android.tools.r8.D8TestRunResult;
-import com.android.tools.r8.StartupProfileProvider;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestCompilerBuilder;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.ThrowableConsumer;
+import com.android.tools.r8.errors.Unimplemented;
 import com.android.tools.r8.experimental.startup.StartupConfigurationParser;
 import com.android.tools.r8.experimental.startup.StartupItem;
 import com.android.tools.r8.experimental.startup.StartupProfile;
@@ -22,9 +22,12 @@ import com.android.tools.r8.experimental.startup.instrumentation.StartupInstrume
 import com.android.tools.r8.graph.DexItemFactory;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexType;
+import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.references.ClassReference;
 import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.TypeReference;
+import com.android.tools.r8.startup.StartupProfileBuilder;
+import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.ClassReferenceUtils;
 import com.android.tools.r8.utils.MethodReferenceUtils;
@@ -157,7 +160,23 @@ public class StartupTestingUtils {
                                   builder.addStartupItem(
                                       convertStartupItemToDex(startupItem, dexItemFactory))))
                   .build();
-          StartupProfileProvider startupProfileProvider = startupProfile::serializeToString;
+          StartupProfileProvider startupProfileProvider =
+              new StartupProfileProvider() {
+                @Override
+                public String get() {
+                  return startupProfile.serializeToString();
+                }
+
+                @Override
+                public void getStartupProfile(StartupProfileBuilder startupProfileBuilder) {
+                  throw new Unimplemented();
+                }
+
+                @Override
+                public Origin getOrigin() {
+                  return Origin.unknown();
+                }
+              };
           options.getStartupOptions().setStartupProfileProvider(startupProfileProvider);
         });
   }

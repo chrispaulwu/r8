@@ -17,7 +17,9 @@ import com.android.tools.r8.compilerapi.inputdependencies.InputDependenciesTest;
 import com.android.tools.r8.compilerapi.mapid.CustomMapIdTest;
 import com.android.tools.r8.compilerapi.mockdata.MockClass;
 import com.android.tools.r8.compilerapi.mockdata.MockClassWithAssertion;
+import com.android.tools.r8.compilerapi.mockdata.PostStartupMockClass;
 import com.android.tools.r8.compilerapi.sourcefile.CustomSourceFileTest;
+import com.android.tools.r8.compilerapi.startupprofile.StartupProfileApiTest;
 import com.android.tools.r8.compilerapi.testsetup.ApiTestingSetUpTest;
 import com.android.tools.r8.compilerapi.wrappers.CommandLineParserTest;
 import com.android.tools.r8.compilerapi.wrappers.EnableMissingLibraryApiModelingTest;
@@ -41,15 +43,15 @@ public class CompilerApiTestCollection extends BinaryCompatibilityTestCollection
           CustomSourceFileTest.ApiTest.class,
           AssertionConfigurationTest.ApiTest.class,
           InputDependenciesTest.ApiTest.class,
-          DesugarDependenciesTest.ApiTest.class);
-
-  private static final List<Class<? extends CompilerApiTest>> CLASSES_PENDING_BINARY_COMPATIBILITY =
-      ImmutableList.of(
+          DesugarDependenciesTest.ApiTest.class,
           GlobalSyntheticsTest.ApiTest.class,
           CommandLineParserTest.ApiTest.class,
           EnableMissingLibraryApiModelingTest.ApiTest.class,
           AndroidPlatformBuildApiTest.ApiTest.class,
           UnsupportedFeaturesDiagnosticApiTest.ApiTest.class);
+
+  private static final List<Class<? extends CompilerApiTest>> CLASSES_PENDING_BINARY_COMPATIBILITY =
+      ImmutableList.of(StartupProfileApiTest.ApiTest.class);
 
   private final TemporaryFolder temp;
 
@@ -74,7 +76,11 @@ public class CompilerApiTestCollection extends BinaryCompatibilityTestCollection
 
   @Override
   public List<Class<?>> getAdditionalClassesForTests() {
-    return ImmutableList.of(CompilerApiTest.class, MockClass.class, MockClassWithAssertion.class);
+    return ImmutableList.of(
+        CompilerApiTest.class,
+        MockClass.class,
+        MockClassWithAssertion.class,
+        PostStartupMockClass.class);
   }
 
   @Override
