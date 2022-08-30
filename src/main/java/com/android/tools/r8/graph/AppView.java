@@ -208,7 +208,7 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
       DexApplication application, MainDexInfo mainDexInfo) {
     ClassToFeatureSplitMap classToFeatureSplitMap =
         ClassToFeatureSplitMap.createInitialClassToFeatureSplitMap(application.options);
-    StartupOrder startupOrder = StartupOrder.createInitialStartupOrder(application.options);
+    StartupOrder startupOrder = StartupOrder.createInitialStartupOrderForR8(application);
     AppInfoWithClassHierarchy appInfo =
         AppInfoWithClassHierarchy.createInitialAppInfoWithClassHierarchy(
             application,

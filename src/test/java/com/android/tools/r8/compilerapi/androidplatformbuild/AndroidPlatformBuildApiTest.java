@@ -3,6 +3,7 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.compilerapi.androidplatformbuild;
 
+import static com.android.tools.r8.MarkerMatcher.markerAndroidPlatformBuild;
 import static com.android.tools.r8.MarkerMatcher.markerMinApi;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -24,6 +25,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 public class AndroidPlatformBuildApiTest extends CompilerApiTestRunner {
+
+  public static final int MIN_API_LEVEL = 31;
 
   public AndroidPlatformBuildApiTest(TestParameters parameters) {
     super(parameters);
@@ -51,7 +54,10 @@ public class AndroidPlatformBuildApiTest extends CompilerApiTestRunner {
     test.accept(new DexIndexedConsumer.ArchiveConsumer(output));
     assertThat(
         new CodeInspector(output).getMarkers(),
-        CoreMatchers.everyItem(markerMinApi(AndroidApiLevel.ANDROID_PLATFORM)));
+        CoreMatchers.everyItem(
+            CoreMatchers.allOf(
+                markerMinApi(AndroidApiLevel.getAndroidApiLevel(MIN_API_LEVEL)),
+                markerAndroidPlatformBuild())));
   }
 
   public static class ApiTest extends CompilerApiTest {
@@ -67,6 +73,7 @@ public class AndroidPlatformBuildApiTest extends CompilerApiTestRunner {
               .addLibraryFiles(getJava8RuntimeJar())
               .setProgramConsumer(programConsumer)
               .setAndroidPlatformBuild(true)
+              .setMinApiLevel(MIN_API_LEVEL)
               .build());
     }
 
@@ -78,6 +85,7 @@ public class AndroidPlatformBuildApiTest extends CompilerApiTestRunner {
               .addLibraryFiles(getJava8RuntimeJar())
               .setProgramConsumer(programConsumer)
               .setAndroidPlatformBuild(true)
+              .setMinApiLevel(MIN_API_LEVEL)
               .build());
     }
 

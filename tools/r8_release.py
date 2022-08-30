@@ -15,7 +15,7 @@ import zipfile
 
 import utils
 
-R8_DEV_BRANCH = '4.0'
+R8_DEV_BRANCH = '8.0'
 R8_VERSION_FILE = os.path.join(
     'src', 'main', 'java', 'com', 'android', 'tools', 'r8', 'Version.java')
 THIS_FILE_RELATIVE = os.path.join('tools', 'r8_release.py')
@@ -567,12 +567,10 @@ def prepare_desugar_library(args):
         % library_version)
       sys.exit(1)
 
-    library_archive = DESUGAR_JDK_LIBS + '.zip'
-    library_jar = DESUGAR_JDK_LIBS + '.jar'
-    library_artifact_id = \
-        '%s:%s:%s' % (ANDROID_TOOLS_PACKAGE, DESUGAR_JDK_LIBS, library_version)
-
     postfix = "" if library_version.startswith('1.1') else '_jdk11_legacy'
+    library_archive = DESUGAR_JDK_LIBS + postfix + '.zip'
+    library_jar = DESUGAR_JDK_LIBS + postfix + '.jar'
+
     configuration_archive = DESUGAR_JDK_LIBS_CONFIGURATION + postfix + '.zip'
 
     with utils.TempDir() as temp:
@@ -590,9 +588,11 @@ def prepare_desugar_library(args):
             args, [library_gfile, configuration_gfile])
 
         print("Staged Release ID " + release_id + ".\n")
+        library_artifact_id = \
+            '%s:%s:%s' % (ANDROID_TOOLS_PACKAGE, DESUGAR_JDK_LIBS, library_version)
         gmaven_publisher_stage_redir_test_info(
             release_id,
-            "com.android.tools:%s:%s" % (DESUGAR_JDK_LIBS, library_version),
+            library_artifact_id,
             library_jar)
 
         print("")
@@ -893,6 +893,10 @@ def parse_options():
                       default=[],
                       action='append',
                       help='List of bugs for release version')
+  result.add_argument('--no-bugs',
+                      default=False,
+                      action='store_true',
+                      help='Allow Studio release without specifying any bugs')
   result.add_argument('--studio',
                       metavar=('<path>'),
                       help='Release for studio by setting the path to a studio '
@@ -938,10 +942,15 @@ def parse_options():
                       metavar=('<path>'),
                       help='Location for dry run output.')
   args = result.parse_args()
+  if (len(args.bug) > 0 and args.no_bugs):
+    print("Use of '--bug' and '--no-bugs' are mutually exclusive")
+    sys.exit(1)
+
   if (args.studio
       and args.version
       and not 'dev' in args.version
-      and args.bug == []):
+      and args.bug == []
+      and not args.no_bugs):
     print("When releasing a release version to Android Studio add the "
            + "list of bugs by using '--bug'")
     sys.exit(1)

@@ -8,6 +8,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import com.android.tools.r8.KotlinTestBase;
 import com.android.tools.r8.KotlinTestParameters;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestShrinkerBuilder;
 import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.shaking.ProguardKeepAttributes;
 import com.android.tools.r8.utils.AndroidApiLevel;
@@ -34,10 +35,17 @@ public class ProcessKotlinStdlibTest extends KotlinTestBase {
   }
 
   private void test(Collection<String> rules) throws Exception {
+    boolean notShrinking = rules.contains("-dontshrink");
     testForR8(parameters.getBackend())
         .addProgramFiles(kotlinc.getKotlinStdlibJar(), kotlinc.getKotlinAnnotationJar())
         .addLibraryFiles(ToolHelper.getAndroidJar(AndroidApiLevel.LATEST))
         .addKeepRules(rules)
+        .applyIf(
+            notShrinking && kotlinParameters.isKotlinDev(),
+            TestShrinkerBuilder::addDontWarnJavaLangReflectAnnotatedType)
+        .applyIf(
+            notShrinking && kotlinParameters.isKotlinDev() && parameters.isCfRuntime(),
+            TestShrinkerBuilder::addDontWarnJavaLangInvokeLambdaMetadataFactory)
         .addKeepAttributes(ProguardKeepAttributes.SIGNATURE)
         .addKeepAttributes(ProguardKeepAttributes.INNER_CLASSES)
         .addKeepAttributes(ProguardKeepAttributes.ENCLOSING_METHOD)

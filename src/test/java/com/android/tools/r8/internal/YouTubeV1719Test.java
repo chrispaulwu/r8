@@ -144,17 +144,20 @@ public class YouTubeV1719Test extends YouTubeCompilationTestBase {
     R8TestCompileResult r8CompileResult =
         compileApplicationWithR8(
             testBuilder ->
-                testBuilder.addOptionsModification(
-                    options -> {
-                      if (startupProfileProvider != null) {
-                        options
-                            .getStartupOptions()
-                            .setStartupProfileProvider(startupProfileProvider)
-                            .setEnableMinimalStartupDex(enableMinimalStartupDex)
-                            .setEnableStartupBoundaryOptimizations(
-                                enableStartupBoundaryOptimizations);
-                      }
-                    }));
+                testBuilder
+                    .addOptionsModification(
+                        options -> {
+                          if (startupProfileProvider != null) {
+                            options
+                                .getStartupOptions()
+                                .setEnableMinimalStartupDex(enableMinimalStartupDex)
+                                .setEnableStartupBoundaryOptimizations(
+                                    enableStartupBoundaryOptimizations);
+                          }
+                        })
+                    .applyIf(
+                        startupProfileProvider != null,
+                        b -> b.addStartupProfileProviders(startupProfileProvider)));
 
     // Compile desugared library using cf backend (without keep rules).
     L8TestCompileResult l8CompileResult = compileDesugaredLibraryWithL8();

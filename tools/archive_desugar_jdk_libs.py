@@ -135,6 +135,7 @@ def CloneDesugaredLibrary(github_account, checkout_dir):
   git_utils.GitClone(
     'https://github.com/'
         + github_account + '/' + GITHUB_REPRO, checkout_dir)
+  git_utils.GitCheckout('3a970cd008e944845a7b3d29a3b5a13123df11fe', checkout_dir)
 
 def GetJavaEnv():
   java_env = dict(os.environ, JAVA_HOME = jdk.GetJdk11Home())
@@ -207,7 +208,7 @@ def write_sha1_for(file):
     file.write(hexdigest)
 
 def Undesugar(variant, maven_zip, version, undesugared_maven_zip):
-  gradle.RunGradle(['testJar', 'repackageTestDeps'])
+  gradle.RunGradle(['testJar', 'repackageTestDeps', '-Pno_internal'])
   with utils.TempDir() as tmp:
     with zipfile.ZipFile(maven_zip, 'r') as zip_ref:
       zip_ref.extractall(tmp)
@@ -290,8 +291,8 @@ def BuildAndUpload(options, variant):
 
     # Upload the jar file for accessing GCS as a maven repro.
     maven_destination = archive.GetUploadDestination(
-        utils.get_maven_path('desugar_jdk_libs', version),
-        'desugar_jdk_libs-%s.jar' % version,
+        utils.get_maven_path(LIBRARY_NAME_MAP[variant], version),
+        '%s-%s.jar' % (LIBRARY_NAME_MAP[variant], version),
         is_main)
     if options.dry_run:
       print('Dry run, not actually creating maven repo')

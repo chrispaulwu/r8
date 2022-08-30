@@ -4,11 +4,16 @@
 
 package com.android.tools.r8.experimental.startup;
 
+import com.android.tools.r8.experimental.startup.profile.StartupItem;
+import com.android.tools.r8.experimental.startup.profile.StartupProfile;
 import com.android.tools.r8.graph.AppView;
+import com.android.tools.r8.graph.DexApplication;
+import com.android.tools.r8.graph.DexDefinitionSupplier;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.GraphLens;
 import com.android.tools.r8.graph.PrunedItems;
+import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
 import com.android.tools.r8.synthesis.SyntheticItems;
 import com.android.tools.r8.utils.InternalOptions;
 import java.util.Collection;
@@ -18,21 +23,38 @@ public abstract class StartupOrder {
 
   StartupOrder() {}
 
-  public static StartupOrder createInitialStartupOrder(InternalOptions options) {
-    StartupProfile startupProfile = StartupProfile.parseStartupProfile(options);
+  public static StartupOrder createInitialStartupOrder(
+      InternalOptions options,
+      DexDefinitionSupplier definitions,
+      SyntheticToSyntheticContextGeneralization syntheticToSyntheticContextGeneralization) {
+    StartupProfile startupProfile =
+        StartupProfile.parseStartupProfile(
+            options, definitions, syntheticToSyntheticContextGeneralization);
     if (startupProfile == null || startupProfile.getStartupItems().isEmpty()) {
       return empty();
     }
     return new NonEmptyStartupOrder(new LinkedHashSet<>(startupProfile.getStartupItems()));
   }
 
+  public static StartupOrder createInitialStartupOrderForD8(AppView<?> appView) {
+    return createInitialStartupOrder(
+        appView.options(), appView, SyntheticToSyntheticContextGeneralization.createForD8());
+  }
+
+  public static StartupOrder createInitialStartupOrderForR8(DexApplication application) {
+    return createInitialStartupOrder(
+        application.options, application, SyntheticToSyntheticContextGeneralization.createForR8());
+  }
+
   public static StartupOrder empty() {
     return new EmptyStartupOrder();
   }
 
+  public abstract boolean contains(DexMethod method, SyntheticItems syntheticItems);
+
   public abstract boolean contains(DexType type, SyntheticItems syntheticItems);
 
-  public abstract Collection<StartupItem<DexType, DexMethod, ?>> getItems();
+  public abstract Collection<StartupItem> getItems();
 
   public abstract boolean isEmpty();
 

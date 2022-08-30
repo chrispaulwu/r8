@@ -15,6 +15,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tools.r8.KotlinCompilerTool.KotlinCompilerVersion;
 import com.android.tools.r8.KotlinTestParameters;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.ToolHelper.ProcessResult;
@@ -36,7 +37,7 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class MetadataRewriteInMultifileClassTest extends KotlinMetadataTestBase {
-  private static final String EXPECTED = StringUtils.lines(", 1, 2, 3");
+  private static final String EXPECTED = StringUtils.lines(", 1, 2, 3", ", 1, 2, 3");
 
   private final TestParameters parameters;
 
@@ -44,7 +45,11 @@ public class MetadataRewriteInMultifileClassTest extends KotlinMetadataTestBase 
   public static Collection<Object[]> data() {
     return buildParameters(
         getTestParameters().withCfRuntimes().build(),
-        getKotlinTestParameters().withAllCompilersAndTargetVersions().build());
+        getKotlinTestParameters()
+            .withAllCompilers()
+            .withOldCompilersStartingFrom(KotlinCompilerVersion.KOTLINC_1_4_20)
+            .withAllTargetVersions()
+            .build());
   }
 
   public MetadataRewriteInMultifileClassTest(
@@ -95,9 +100,7 @@ public class MetadataRewriteInMultifileClassTest extends KotlinMetadataTestBase 
             .addClasspathFiles(libJar)
             .addSourceFiles(getKotlinFileInTest(PKG_PREFIX + "/multifileclass_app", "main"))
             .setOutputPath(temp.newFolder().toPath())
-            // TODO(b/151193860): update to just .compile() once fixed.
             .compileRaw();
-    // TODO(b/151193860): should be able to compile!
     assertNotEquals(0, kotlinTestCompileResult.exitCode);
     assertThat(kotlinTestCompileResult.stderr, containsString("unresolved reference: join"));
   }
@@ -113,8 +116,6 @@ public class MetadataRewriteInMultifileClassTest extends KotlinMetadataTestBase 
     assertThat(joinOfInt, not(isPresent()));
 
     inspectMetadataForFacade(inspector, util);
-    // TODO(b/156290332): Seems like this test is incorrect and should never work.
-    // inspectSignedKt(inspector);
   }
 
   @Test
@@ -126,6 +127,7 @@ public class MetadataRewriteInMultifileClassTest extends KotlinMetadataTestBase 
             // Keep UtilKt#comma*Join*().
             .addKeepRules("-keep class **.UtilKt")
             .addKeepRules("-keep,allowobfuscation class **.UtilKt__SignedKt")
+            .addKeepRules("-keep,allowobfuscation class **.UtilKt__UnsignedKt")
             .addKeepRules("-keepclassmembers class * { ** comma*Join*(...); }")
             // Keep yet rename joinOf*(String).
             .addKeepRules("-keepclassmembers,allowobfuscation class * { ** joinOf*(...); }")
@@ -134,16 +136,18 @@ public class MetadataRewriteInMultifileClassTest extends KotlinMetadataTestBase 
             .inspect(this::inspectRenamed)
             .writeToZip();
 
-    ProcessResult kotlinTestCompileResult =
+    Path output =
         kotlinc(parameters.getRuntime().asCf(), kotlinc, targetVersion)
             .addClasspathFiles(libJar)
             .addSourceFiles(getKotlinFileInTest(PKG_PREFIX + "/multifileclass_app", "main"))
             .setOutputPath(temp.newFolder().toPath())
-            // TODO(b/151193860): update to just .compile() once fixed.
-            .compileRaw();
-    // TODO(b/151193860): should be able to compile!
-    assertNotEquals(0, kotlinTestCompileResult.exitCode);
-    assertThat(kotlinTestCompileResult.stderr, containsString("unresolved reference: join"));
+            .compile();
+
+    testForJvm()
+        .addRunClasspathFiles(kotlinc.getKotlinStdlibJar(), libJar)
+        .addClasspath(output)
+        .run(parameters.getRuntime(), PKG + ".multifileclass_app.MainKt")
+        .assertSuccessWithOutput(EXPECTED);
   }
 
   private void inspectRenamed(CodeInspector inspector) {

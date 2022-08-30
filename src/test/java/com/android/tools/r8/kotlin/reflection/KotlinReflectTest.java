@@ -13,6 +13,7 @@ import com.android.tools.r8.KotlinTestParameters;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestCompileResult;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestShrinkerBuilder;
 import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.kotlin.metadata.KotlinMetadataTestBase;
 import com.android.tools.r8.shaking.ProguardKeepAttributes;
@@ -98,6 +99,12 @@ public class KotlinReflectTest extends KotlinTestBase {
         .addKeepAttributes(ProguardKeepAttributes.RUNTIME_VISIBLE_ANNOTATIONS)
         .allowDiagnosticMessages()
         .allowUnusedDontWarnKotlinReflectJvmInternal(kotlinc.isNot(KOTLINC_1_3_72))
+        .applyIf(
+            parameters.isCfRuntime() && kotlinParameters.isKotlinDev(),
+            TestShrinkerBuilder::addDontWarnJavaLangInvokeLambdaMetadataFactory)
+        .applyIf(
+            kotlinParameters.isKotlinDev(),
+            TestShrinkerBuilder::addDontWarnJavaLangReflectAnnotatedType)
         .compile()
         .assertNoErrorMessages()
         // -keepattributes Signature is added in kotlin-reflect from version 1.4.20.

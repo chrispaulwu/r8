@@ -4,6 +4,7 @@
 
 package com.android.tools.r8.experimental.startup;
 
+import com.android.tools.r8.experimental.startup.profile.StartupItem;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexType;
@@ -18,12 +19,17 @@ public class EmptyStartupOrder extends StartupOrder {
   EmptyStartupOrder() {}
 
   @Override
+  public boolean contains(DexMethod method, SyntheticItems syntheticItems) {
+    return false;
+  }
+
+  @Override
   public boolean contains(DexType type, SyntheticItems syntheticItems) {
     return false;
   }
 
   @Override
-  public Collection<StartupItem<DexType, DexMethod, ?>> getItems() {
+  public Collection<StartupItem> getItems() {
     return Collections.emptyList();
   }
 

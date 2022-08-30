@@ -15,10 +15,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Wrapper to make it easy to call D8 mode when compiling a dump file.
@@ -50,7 +52,8 @@ public class CompileDumpD8 {
           "--main-dex-list",
           "--main-dex-list-output",
           "--desugared-lib",
-          "--threads");
+          "--threads",
+          "--startup-profile");
 
   public static void main(String[] args) throws CompilationFailedException {
     OutputMode outputMode = OutputMode.DexIndexed;
@@ -61,6 +64,7 @@ public class CompileDumpD8 {
     List<Path> library = new ArrayList<>();
     List<Path> classpath = new ArrayList<>();
     List<Path> mainDexRulesFiles = new ArrayList<>();
+    List<Path> startupProfileFiles = new ArrayList<>();
     int minApi = 1;
     int threads = -1;
     boolean enableMissingLibraryApiModeling = false;
@@ -131,6 +135,11 @@ public class CompileDumpD8 {
               mainDexRulesFiles.add(Paths.get(operand));
               break;
             }
+          case "--startup-profile":
+            {
+              startupProfileFiles.add(Paths.get(operand));
+              break;
+            }
           default:
             throw new IllegalArgumentException("Unimplemented option: " + option);
         }
@@ -151,6 +160,13 @@ public class CompileDumpD8 {
         .accept(new Object[] {enableMissingLibraryApiModeling});
     getReflectiveBuilderMethod(commandBuilder, "setAndroidPlatformBuild", boolean.class)
         .accept(new Object[] {androidPlatformBuild});
+    getReflectiveBuilderMethod(commandBuilder, "addStartupProfileProviders", Collection.class)
+        .accept(
+            new Object[] {
+              startupProfileFiles.stream()
+                  .map(CompileDumpUtils::createStartupProfileProviderFromDumpFile)
+                  .collect(Collectors.toList())
+            });
     if (desugaredLibJson != null) {
       commandBuilder.addDesugaredLibraryConfiguration(readAllBytesJava7(desugaredLibJson));
     }

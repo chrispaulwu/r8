@@ -7,11 +7,9 @@ package com.android.tools.r8.classmerging.horizontal;
 import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.errors.Unimplemented;
-import com.android.tools.r8.experimental.startup.StartupClass;
-import com.android.tools.r8.experimental.startup.StartupProfile;
-import com.android.tools.r8.graph.DexItemFactory;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.references.ClassReference;
+import com.android.tools.r8.references.Reference;
 import com.android.tools.r8.startup.StartupProfileBuilder;
 import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.utils.BooleanUtils;
@@ -50,41 +48,6 @@ public class HorizontalClassMergingWithStartupClassesTest extends TestBase {
     testForR8(parameters.getBackend())
         .addInnerClasses(getClass())
         .addKeepClassAndMembersRules(Main.class)
-        .addOptionsModification(
-            options -> {
-              DexItemFactory dexItemFactory = options.dexItemFactory();
-              StartupProfile startupProfile =
-                  StartupProfile.builder()
-                      .apply(
-                          builder ->
-                              getStartupClasses()
-                                  .forEach(
-                                      startupClass ->
-                                          builder.addStartupClass(
-                                              StartupClass.dexBuilder()
-                                                  .setClassReference(
-                                                      toDexType(startupClass, dexItemFactory))
-                                                  .build())))
-                      .build();
-              StartupProfileProvider startupProfileProvider =
-                  new StartupProfileProvider() {
-                    @Override
-                    public String get() {
-                      return startupProfile.serializeToString();
-                    }
-
-                    @Override
-                    public void getStartupProfile(StartupProfileBuilder startupProfileBuilder) {
-                      throw new Unimplemented();
-                    }
-
-                    @Override
-                    public Origin getOrigin() {
-                      return Origin.unknown();
-                    }
-                  };
-              options.getStartupOptions().setStartupProfileProvider(startupProfileProvider);
-            })
         .addHorizontallyMergedClassesInspector(
             inspector ->
                 inspector
@@ -101,6 +64,24 @@ public class HorizontalClassMergingWithStartupClassesTest extends TestBase {
                                 .assertIsCompleteMergeGroup(
                                     OnClickHandlerA.class, OnClickHandlerB.class))
                     .assertNoOtherClassesMerged())
+        .addStartupProfileProviders(
+            new StartupProfileProvider() {
+
+              @Override
+              public void getStartupProfile(StartupProfileBuilder startupProfileBuilder) {
+                for (Class<?> startupClass : getStartupClasses()) {
+                  ClassReference startupClassReference = Reference.classFromClass(startupClass);
+                  startupProfileBuilder.addStartupClass(
+                      startupClassBuilder ->
+                          startupClassBuilder.setClassReference(startupClassReference));
+                }
+              }
+
+              @Override
+              public Origin getOrigin() {
+                return Origin.unknown();
+              }
+            })
         .enableInliningAnnotations()
         .setMinApi(parameters.getApiLevel())
         .compile()

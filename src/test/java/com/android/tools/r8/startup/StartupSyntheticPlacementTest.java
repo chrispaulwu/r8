@@ -16,14 +16,15 @@ import com.android.tools.r8.R8TestCompileResult;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestCompilerBuilder;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.experimental.startup.StartupClass;
-import com.android.tools.r8.experimental.startup.StartupItem;
-import com.android.tools.r8.experimental.startup.StartupMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.ir.desugar.LambdaClass;
+import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
 import com.android.tools.r8.references.ClassReference;
-import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.Reference;
+import com.android.tools.r8.startup.profile.ExternalStartupClass;
+import com.android.tools.r8.startup.profile.ExternalStartupItem;
+import com.android.tools.r8.startup.profile.ExternalStartupMethod;
+import com.android.tools.r8.startup.profile.ExternalSyntheticStartupMethod;
 import com.android.tools.r8.startup.utils.MixedSectionLayoutInspector;
 import com.android.tools.r8.startup.utils.StartupTestingUtils;
 import com.android.tools.r8.synthesis.SyntheticItemsTestUtils;
@@ -34,10 +35,12 @@ import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.android.tools.r8.utils.codeinspector.MethodSubject;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -90,7 +93,7 @@ public class StartupSyntheticPlacementTest extends TestBase {
     Path optimizedApp = r8CompileResult.writeToZip();
 
     // Then instrument the app to generate a startup list for the minified app.
-    List<StartupItem<ClassReference, MethodReference, ?>> startupList = new ArrayList<>();
+    Set<ExternalStartupItem> startupList = new LinkedHashSet<>();
     testForD8(parameters.getBackend())
         .addProgramFiles(optimizedApp)
         .apply(
@@ -100,7 +103,9 @@ public class StartupSyntheticPlacementTest extends TestBase {
         .compile()
         .addRunClasspathFiles(StartupTestingUtils.getAndroidUtilLog(temp))
         .run(parameters.getRuntime(), Main.class, Boolean.toString(useLambda))
-        .apply(StartupTestingUtils.removeStartupListFromStdout(startupList::add))
+        .apply(
+            StartupTestingUtils.removeStartupListFromStdout(
+                startupList::add, SyntheticToSyntheticContextGeneralization.createForD8()))
         .assertSuccessWithOutputLines(getExpectedOutput())
         .apply(
             runResult ->
@@ -125,7 +130,7 @@ public class StartupSyntheticPlacementTest extends TestBase {
   @Test
   public void testLayoutUsingR8() throws Exception {
     // First generate a startup list for the original app.
-    List<StartupItem<ClassReference, MethodReference, ?>> startupList = new ArrayList<>();
+    Set<ExternalStartupItem> startupList = new LinkedHashSet<>();
     D8TestCompileResult instrumentationCompileResult =
         testForD8(parameters.getBackend())
             .addInnerClasses(getClass())
@@ -139,7 +144,9 @@ public class StartupSyntheticPlacementTest extends TestBase {
     instrumentationCompileResult
         .addRunClasspathFiles(StartupTestingUtils.getAndroidUtilLog(temp))
         .run(parameters.getRuntime(), Main.class, Boolean.toString(useLambda))
-        .apply(StartupTestingUtils.removeStartupListFromStdout(startupList::add))
+        .apply(
+            StartupTestingUtils.removeStartupListFromStdout(
+                startupList::add, SyntheticToSyntheticContextGeneralization.createForR8()))
         .assertSuccessWithOutputLines(getExpectedOutput())
         .apply(
             runResult ->
@@ -167,7 +174,7 @@ public class StartupSyntheticPlacementTest extends TestBase {
   private void configureStartupOptions(
       TestCompilerBuilder<?, ?, ?, ?, ?> testBuilder,
       CodeInspector inspector,
-      List<StartupItem<ClassReference, MethodReference, ?>> startupList) {
+      Collection<ExternalStartupItem> startupList) {
     testBuilder
         .addOptionsModification(
             options -> {
@@ -188,36 +195,30 @@ public class StartupSyntheticPlacementTest extends TestBase {
   }
 
   @SuppressWarnings("unchecked")
-  private List<StartupItem<ClassReference, MethodReference, ?>> getExpectedStartupList(
+  private Set<ExternalStartupItem> getExpectedStartupList(
       CodeInspector inspector, boolean isStartupListForOriginalApp) throws NoSuchMethodException {
-    ImmutableList.Builder<StartupItem<ClassReference, MethodReference, ?>> builder =
-        ImmutableList.builder();
+    ImmutableSet.Builder<ExternalStartupItem> builder = ImmutableSet.builder();
     builder.add(
-        StartupClass.referenceBuilder()
+        ExternalStartupClass.builder()
             .setClassReference(Reference.classFromClass(Main.class))
             .build(),
-        StartupMethod.referenceBuilder()
+        ExternalStartupMethod.builder()
             .setMethodReference(MethodReferenceUtils.mainMethod(Main.class))
             .build(),
-        StartupClass.referenceBuilder()
-            .setClassReference(Reference.classFromClass(A.class))
-            .build(),
-        StartupMethod.referenceBuilder()
+        ExternalStartupClass.builder().setClassReference(Reference.classFromClass(A.class)).build(),
+        ExternalStartupMethod.builder()
             .setMethodReference(Reference.methodFromMethod(A.class.getDeclaredMethod("a")))
             .build(),
-        StartupClass.referenceBuilder()
-            .setClassReference(Reference.classFromClass(B.class))
-            .build(),
-        StartupMethod.referenceBuilder()
+        ExternalStartupClass.builder().setClassReference(Reference.classFromClass(B.class)).build(),
+        ExternalStartupMethod.builder()
             .setMethodReference(
                 Reference.methodFromMethod(B.class.getDeclaredMethod("b", boolean.class)))
             .build());
     if (useLambda) {
       if (isStartupListForOriginalApp) {
         builder.add(
-            StartupClass.referenceBuilder()
-                .setClassReference(Reference.classFromClass(B.class))
-                .setSynthetic()
+            ExternalSyntheticStartupMethod.builder()
+                .setSyntheticContextReference(Reference.classFromClass(B.class))
                 .build());
       } else {
         ClassSubject bClassSubject = inspector.clazz(B.class);
@@ -238,14 +239,14 @@ public class StartupSyntheticPlacementTest extends TestBase {
             externalSyntheticLambdaClassSubject.getFinalReference();
 
         builder.add(
-            StartupClass.referenceBuilder()
+            ExternalStartupClass.builder()
                 .setClassReference(externalSyntheticLambdaClassReference)
                 .build(),
-            StartupMethod.referenceBuilder()
+            ExternalStartupMethod.builder()
                 .setMethodReference(
                     MethodReferenceUtils.instanceConstructor(externalSyntheticLambdaClassReference))
                 .build(),
-            StartupMethod.referenceBuilder()
+            ExternalStartupMethod.builder()
                 .setMethodReference(
                     Reference.method(
                         externalSyntheticLambdaClassReference,
@@ -253,7 +254,7 @@ public class StartupSyntheticPlacementTest extends TestBase {
                         ImmutableList.of(Reference.classFromClass(Object.class)),
                         null))
                 .build(),
-            StartupMethod.referenceBuilder()
+            ExternalStartupMethod.builder()
                 .setMethodReference(
                     Reference.method(
                         Reference.classFromClass(B.class),
@@ -263,16 +264,14 @@ public class StartupSyntheticPlacementTest extends TestBase {
                 .build());
       }
       builder.add(
-          StartupMethod.referenceBuilder()
+          ExternalStartupMethod.builder()
               .setMethodReference(
                   Reference.methodFromMethod(B.class.getDeclaredMethod("lambda$b$0", Object.class)))
               .build());
     }
     builder.add(
-        StartupClass.referenceBuilder()
-            .setClassReference(Reference.classFromClass(C.class))
-            .build(),
-        StartupMethod.referenceBuilder()
+        ExternalStartupClass.builder().setClassReference(Reference.classFromClass(C.class)).build(),
+        ExternalStartupMethod.builder()
             .setMethodReference(Reference.methodFromMethod(C.class.getDeclaredMethod("c")))
             .build());
     return builder.build();

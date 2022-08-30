@@ -11,12 +11,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
-import com.android.tools.r8.experimental.startup.StartupClass;
-import com.android.tools.r8.experimental.startup.StartupItem;
-import com.android.tools.r8.experimental.startup.StartupMethod;
-import com.android.tools.r8.references.ClassReference;
-import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.Reference;
+import com.android.tools.r8.startup.profile.ExternalStartupClass;
+import com.android.tools.r8.startup.profile.ExternalStartupItem;
+import com.android.tools.r8.startup.profile.ExternalStartupMethod;
 import com.android.tools.r8.startup.utils.StartupTestingUtils;
 import com.android.tools.r8.utils.MethodReferenceUtils;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
@@ -41,12 +39,12 @@ public class InliningOutOfStartupPartitionTest extends TestBase {
 
   @Test
   public void test() throws Exception {
-    List<StartupItem<ClassReference, MethodReference, ?>> startupItems =
+    List<ExternalStartupItem> startupItems =
         ImmutableList.of(
-            StartupClass.referenceBuilder()
+            ExternalStartupClass.builder()
                 .setClassReference(Reference.classFromClass(Main.class))
                 .build(),
-            StartupMethod.referenceBuilder()
+            ExternalStartupMethod.builder()
                 .setMethodReference(MethodReferenceUtils.mainMethod(Main.class))
                 .build());
     testForR8(parameters.getBackend())
@@ -60,12 +58,14 @@ public class InliningOutOfStartupPartitionTest extends TestBase {
             inspector -> {
               ClassSubject mainClassSubject = inspector.clazz(Main.class);
               assertThat(mainClassSubject, isPresent());
+              // The postStartupMethod() should be inlined into PostStartupClass.runPostStartup().
               assertThat(mainClassSubject.uniqueMethodWithName("postStartupMethod"), isAbsent());
 
               ClassSubject postStartupClassSubject = inspector.clazz(PostStartupClass.class);
-              // TODO(b/242815611): Should be present since inlining increases the size of the
-              //  startup.
-              assertThat(postStartupClassSubject, isAbsent());
+              assertThat(postStartupClassSubject, isPresent());
+              // The runPostStartup() method must not be inlined into Main.main().
+              assertThat(
+                  postStartupClassSubject.uniqueMethodWithName("runPostStartup"), isPresent());
             })
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("Hello, world!");

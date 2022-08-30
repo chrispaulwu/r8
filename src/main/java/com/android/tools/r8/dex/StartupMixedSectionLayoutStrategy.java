@@ -5,10 +5,10 @@
 package com.android.tools.r8.dex;
 
 import com.android.tools.r8.dex.FileWriter.MixedSectionOffsets;
-import com.android.tools.r8.experimental.startup.StartupClass;
-import com.android.tools.r8.experimental.startup.StartupItem;
-import com.android.tools.r8.experimental.startup.StartupMethod;
 import com.android.tools.r8.experimental.startup.StartupOrder;
+import com.android.tools.r8.experimental.startup.profile.StartupClass;
+import com.android.tools.r8.experimental.startup.profile.StartupItem;
+import com.android.tools.r8.experimental.startup.profile.StartupMethod;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexAnnotation;
 import com.android.tools.r8.graph.DexAnnotationDirectory;
@@ -82,21 +82,23 @@ public class StartupMixedSectionLayoutStrategy extends DefaultMixedSectionLayout
             virtualFile.classes().size());
     LensCodeRewriterUtils rewriter = new LensCodeRewriterUtils(appView, true);
     StartupIndexedItemCollection indexedItemCollection = new StartupIndexedItemCollection();
-    for (StartupItem<DexType, DexMethod, ?> startupItem : startupOrderForWriting.getItems()) {
-      // All synthetic startup items should be removed after calling
-      // StartupOrder#toStartupOrderForWriting.
-      assert !startupItem.isSynthetic();
+    for (StartupItem startupItem : startupOrderForWriting.getItems()) {
       startupItem.accept(
           startupClass ->
               collectStartupItems(startupClass, indexedItemCollection, virtualFileDefinitions),
           startupMethod ->
               collectStartupItems(
-                  startupMethod, indexedItemCollection, virtualFileDefinitions, rewriter));
+                  startupMethod, indexedItemCollection, virtualFileDefinitions, rewriter),
+          syntheticStartupMethod -> {
+            // All synthetic startup items should be removed after calling
+            // StartupOrder#toStartupOrderForWriting.
+            assert false;
+          });
     }
   }
 
   private void collectStartupItems(
-      StartupClass<DexType, DexMethod> startupClass,
+      StartupClass startupClass,
       StartupIndexedItemCollection indexedItemCollection,
       Map<DexType, DexProgramClass> virtualFileDefinitions) {
     DexProgramClass definition = virtualFileDefinitions.get(startupClass.getReference());
@@ -119,7 +121,7 @@ public class StartupMixedSectionLayoutStrategy extends DefaultMixedSectionLayout
   }
 
   private void collectStartupItems(
-      StartupMethod<DexType, DexMethod> startupMethod,
+      StartupMethod startupMethod,
       StartupIndexedItemCollection indexedItemCollection,
       Map<DexType, DexProgramClass> virtualFileDefinitions,
       LensCodeRewriterUtils rewriter) {

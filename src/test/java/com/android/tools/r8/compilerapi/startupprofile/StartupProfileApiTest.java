@@ -5,6 +5,8 @@ package com.android.tools.r8.compilerapi.startupprofile;
 
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tools.r8.D8;
 import com.android.tools.r8.D8Command;
@@ -13,17 +15,30 @@ import com.android.tools.r8.ProgramConsumer;
 import com.android.tools.r8.R8;
 import com.android.tools.r8.R8Command;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TextInputStream;
 import com.android.tools.r8.compilerapi.CompilerApiTest;
 import com.android.tools.r8.compilerapi.CompilerApiTestRunner;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.profile.art.ArtProfileClassRuleInfo;
+import com.android.tools.r8.profile.art.ArtProfileMethodRuleInfo;
+import com.android.tools.r8.profile.art.ArtProfileRulePredicate;
+import com.android.tools.r8.references.ClassReference;
+import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.Reference;
 import com.android.tools.r8.startup.StartupProfileBuilder;
 import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.utils.ThrowingConsumer;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.BiConsumer;
 import org.junit.Test;
 
@@ -82,9 +97,8 @@ public class StartupProfileApiTest extends CompilerApiTestRunner {
     testRunner.accept(new DexIndexedConsumer.DirectoryConsumer(output));
     assertThat(
         new CodeInspector(output.resolve("classes.dex")).clazz(test.getMockClass()), isPresent());
-    // TODO(b/238173796): The PostStartupMockClass should be in classes2.dex.
     assertThat(
-        new CodeInspector(output.resolve("classes.dex")).clazz(test.getPostStartupMockClass()),
+        new CodeInspector(output.resolve("classes2.dex")).clazz(test.getPostStartupMockClass()),
         isPresent());
   }
 
@@ -96,17 +110,50 @@ public class StartupProfileApiTest extends CompilerApiTestRunner {
 
     private StartupProfileProvider getStartupProfileProvider() {
       return new StartupProfileProvider() {
-        @Override
-        public String get() {
-          // Intentionally empty. All uses of this API should be rewritten to use getStartupProfile.
-          return "";
-        }
 
         @Override
         public void getStartupProfile(StartupProfileBuilder startupProfileBuilder) {
-          startupProfileBuilder.addStartupClass(
-              startupClassBuilder ->
-                  startupClassBuilder.setClassReference(Reference.classFromClass(getMockClass())));
+          // Create human-readable ART startup profile.
+          ClassReference mockClassReference = Reference.classFromClass(getMockClass());
+          ClosableByteArrayInputStream inputStream =
+              new ClosableByteArrayInputStream(mockClassReference.getDescriptor().getBytes());
+
+          // Create parser and parse ART profile.
+          List<ClassReference> seenClasses = new ArrayList<>();
+          startupProfileBuilder.addHumanReadableArtProfile(
+              new TextInputStream() {
+
+                @Override
+                public InputStream getInputStream() {
+                  return inputStream;
+                }
+
+                @Override
+                public Charset getCharset() {
+                  return StandardCharsets.UTF_8;
+                }
+              },
+              parserBuilder ->
+                  parserBuilder.setRulePredicate(
+                      new ArtProfileRulePredicate() {
+                        @Override
+                        public boolean testClassRule(
+                            ClassReference reference, ArtProfileClassRuleInfo classRuleInfo) {
+                          seenClasses.add(reference);
+                          return true;
+                        }
+
+                        @Override
+                        public boolean testMethodRule(
+                            MethodReference reference, ArtProfileMethodRuleInfo methodRuleInfo) {
+                          return true;
+                        }
+                      }));
+
+          // Verify rule predicate has been used and input stream is closed.
+          assertEquals(1, seenClasses.size());
+          assertEquals(mockClassReference, seenClasses.get(0));
+          assertTrue(inputStream.isClosed());
         }
 
         @Override
@@ -196,6 +243,25 @@ public class StartupProfileApiTest extends CompilerApiTestRunner {
       Collection<StartupProfileProvider> startupProfileProviders =
           Collections.singleton(startupProfileProvider);
       commandBuilder.addStartupProfileProviders(startupProfileProviders);
+    }
+
+    private static class ClosableByteArrayInputStream extends ByteArrayInputStream {
+
+      private boolean closed;
+
+      public ClosableByteArrayInputStream(byte[] buf) {
+        super(buf);
+      }
+
+      @Override
+      public void close() throws IOException {
+        super.close();
+        closed = true;
+      }
+
+      public boolean isClosed() {
+        return closed;
+      }
     }
   }
 }

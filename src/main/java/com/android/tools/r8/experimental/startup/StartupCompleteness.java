@@ -4,15 +4,16 @@
 
 package com.android.tools.r8.experimental.startup;
 
+import com.android.tools.r8.experimental.startup.profile.StartupItem;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexEncodedMethod;
-import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexReference;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.MethodAccessFlags;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.graph.ThrowNullCode;
+import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
 import com.android.tools.r8.utils.InternalOptions;
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceMaps;
@@ -27,11 +28,16 @@ public class StartupCompleteness {
   private final StartupOrder startupOrder;
 
   private StartupCompleteness(AppView<?> appView) {
+    SyntheticToSyntheticContextGeneralization syntheticToSyntheticContextGeneralization =
+        appView.enableWholeProgramOptimizations()
+            ? SyntheticToSyntheticContextGeneralization.createForR8()
+            : SyntheticToSyntheticContextGeneralization.createForD8();
     this.appView = appView;
     this.startupOrder =
         appView.hasClassHierarchy()
             ? appView.appInfoWithClassHierarchy().getStartupOrder()
-            : StartupOrder.createInitialStartupOrder(appView.options());
+            : StartupOrder.createInitialStartupOrder(
+                appView.options(), null, syntheticToSyntheticContextGeneralization);
   }
 
   /**
@@ -78,26 +84,20 @@ public class StartupCompleteness {
     Set<DexReference> startupItems = Sets.newIdentityHashSet();
     Map<DexType, List<DexProgramClass>> syntheticContextsToSyntheticClasses =
         appView.getSyntheticItems().computeSyntheticContextsToSyntheticClasses(appView);
-    for (StartupItem<DexType, DexMethod, ?> startupItem : startupOrder.getItems()) {
-      if (startupItem.isSynthetic()) {
-        assert startupItem.isStartupClass();
-        List<DexProgramClass> syntheticClasses =
-            syntheticContextsToSyntheticClasses.getOrDefault(
-                startupItem.asStartupClass().getReference(), Collections.emptyList());
-        for (DexProgramClass syntheticClass : syntheticClasses) {
-          startupItems.add(syntheticClass.getType());
-          syntheticClass.forEachProgramMethod(method -> startupItems.add(method.getReference()));
-        }
-      } else {
-        if (startupItem.isStartupClass()) {
-          StartupClass<DexType, DexMethod> startupClass = startupItem.asStartupClass();
-          startupItems.add(startupClass.getReference());
-        } else {
-          assert startupItem.isStartupMethod();
-          StartupMethod<DexType, DexMethod> startupMethod = startupItem.asStartupMethod();
-          startupItems.add(startupMethod.getReference());
-        }
-      }
+    for (StartupItem startupItem : startupOrder.getItems()) {
+      startupItem.accept(
+          startupClass -> startupItems.add(startupClass.getReference()),
+          startupMethod -> startupItems.add(startupMethod.getReference()),
+          syntheticStartupMethod -> {
+            List<DexProgramClass> syntheticClasses =
+                syntheticContextsToSyntheticClasses.getOrDefault(
+                    syntheticStartupMethod.getSyntheticContextType(), Collections.emptyList());
+            for (DexProgramClass syntheticClass : syntheticClasses) {
+              startupItems.add(syntheticClass.getType());
+              syntheticClass.forEachProgramMethod(
+                  method -> startupItems.add(method.getReference()));
+            }
+          });
     }
     return startupItems;
   }

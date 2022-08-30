@@ -9,21 +9,22 @@ import static org.junit.Assert.assertEquals;
 import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.experimental.startup.StartupClass;
-import com.android.tools.r8.experimental.startup.StartupItem;
-import com.android.tools.r8.experimental.startup.StartupMethod;
-import com.android.tools.r8.references.ClassReference;
-import com.android.tools.r8.references.MethodReference;
+import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
 import com.android.tools.r8.references.Reference;
+import com.android.tools.r8.startup.profile.ExternalStartupClass;
+import com.android.tools.r8.startup.profile.ExternalStartupItem;
+import com.android.tools.r8.startup.profile.ExternalStartupMethod;
 import com.android.tools.r8.startup.utils.StartupTestingUtils;
 import com.android.tools.r8.utils.BooleanUtils;
 import com.android.tools.r8.utils.MethodReferenceUtils;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -48,7 +49,9 @@ public class StartupInstrumentationTest extends TestBase {
   @Test
   public void test() throws Exception {
     Path out = temp.newFolder().toPath().resolve("out.txt").toAbsolutePath();
-    List<StartupItem<ClassReference, MethodReference, ?>> startupList = new ArrayList<>();
+    Set<ExternalStartupItem> startupList = new LinkedHashSet<>();
+    SyntheticToSyntheticContextGeneralization syntheticGeneralization =
+        SyntheticToSyntheticContextGeneralization.createForD8();
     testForD8(parameters.getBackend())
         .addInnerClasses(getClass())
         .applyIf(
@@ -65,8 +68,11 @@ public class StartupInstrumentationTest extends TestBase {
         .run(parameters.getRuntime(), Main.class, Boolean.toString(logcat), out.toString())
         .applyIf(
             logcat,
-            StartupTestingUtils.removeStartupListFromStdout(startupList::add),
-            runResult -> StartupTestingUtils.readStartupListFromFile(out, startupList::add))
+            StartupTestingUtils.removeStartupListFromStdout(
+                startupList::add, syntheticGeneralization),
+            runResult ->
+                StartupTestingUtils.readStartupListFromFile(
+                    out, startupList::add, syntheticGeneralization))
         .assertSuccessWithOutputLines(getExpectedOutput());
     assertEquals(getExpectedStartupList(), startupList);
   }
@@ -75,19 +81,18 @@ public class StartupInstrumentationTest extends TestBase {
     return ImmutableList.of("foo");
   }
 
-  private List<StartupItem<ClassReference, MethodReference, ?>> getExpectedStartupList()
-      throws NoSuchMethodException {
-    return ImmutableList.of(
-        StartupClass.referenceBuilder()
+  private Set<ExternalStartupItem> getExpectedStartupList() throws NoSuchMethodException {
+    return ImmutableSet.of(
+        ExternalStartupClass.builder()
             .setClassReference(Reference.classFromClass(Main.class))
             .build(),
-        StartupMethod.referenceBuilder()
+        ExternalStartupMethod.builder()
             .setMethodReference(MethodReferenceUtils.mainMethod(Main.class))
             .build(),
-        StartupClass.referenceBuilder()
+        ExternalStartupClass.builder()
             .setClassReference(Reference.classFromClass(AStartupClass.class))
             .build(),
-        StartupMethod.referenceBuilder()
+        ExternalStartupMethod.builder()
             .setMethodReference(
                 Reference.methodFromMethod(AStartupClass.class.getDeclaredMethod("foo")))
             .build());
