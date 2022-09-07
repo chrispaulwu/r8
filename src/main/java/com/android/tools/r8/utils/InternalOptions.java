@@ -54,6 +54,7 @@ import com.android.tools.r8.horizontalclassmerging.HorizontalClassMerger;
 import com.android.tools.r8.horizontalclassmerging.HorizontallyMergedClasses;
 import com.android.tools.r8.horizontalclassmerging.Policy;
 import com.android.tools.r8.inspector.internal.InspectorImpl;
+import com.android.tools.r8.ir.analysis.proto.ProtoReferences;
 import com.android.tools.r8.ir.analysis.type.TypeElement;
 import com.android.tools.r8.ir.code.IRCode;
 import com.android.tools.r8.ir.desugar.TypeRewriter;
@@ -231,7 +232,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   void enableProtoShrinking() {
-    inlinerOptions.applyInliningToInlinee = true;
     enableFieldBitAccessAnalysis = true;
     protoShrinking.enableGeneratedMessageLiteShrinking = true;
     protoShrinking.enableGeneratedMessageLiteBuilderShrinking = true;
@@ -1391,6 +1391,11 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     }
   }
 
+  public interface ApplyInliningToInlineePredicate {
+
+    boolean test(AppView<?> appView, ProgramMethod method, int inliningDepth);
+  }
+
   public class InlinerOptions {
 
     public boolean enableInlining =
@@ -1416,14 +1421,11 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     // GMS Core.
     public int inliningControlFlowResolutionBlocksThreshold = 15;
 
-    // TODO(b/141451716): Evaluate the effect of allowing inlining in the inlinee.
-    public boolean applyInliningToInlinee =
-        System.getProperty("com.android.tools.r8.applyInliningToInlinee") != null;
-    public int applyInliningToInlineeMaxDepth = 0;
-
     public boolean enableInliningOfInvokesWithClassInitializationSideEffects = true;
     public boolean enableInliningOfInvokesWithNullableReceivers = true;
     public boolean disableInliningOfLibraryMethodOverrides = true;
+
+    public ApplyInliningToInlineePredicate applyInliningToInlineePredicateForTesting = null;
 
     public int getSimpleInliningInstructionLimit() {
       // If a custom simple inlining instruction limit is set, then use that.
@@ -1437,6 +1439,17 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
       // Allow the size of the dex code to be up to 5 bytes.
       assert isGeneratingDex();
       return 5;
+    }
+
+    public boolean shouldApplyInliningToInlinee(
+        AppView<?> appView, ProgramMethod inlinee, int inliningDepth) {
+      if (applyInliningToInlineePredicateForTesting != null) {
+        return applyInliningToInlineePredicateForTesting.test(appView, inlinee, inliningDepth);
+      }
+      if (protoShrinking.shouldApplyInliningToInlinee(appView, inlinee, inliningDepth)) {
+        return true;
+      }
+      return false;
     }
   }
 
@@ -1699,6 +1712,15 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
     public boolean isEnumLiteProtoShrinkingEnabled() {
       return enableEnumLiteProtoShrinking;
+    }
+
+    public boolean shouldApplyInliningToInlinee(
+        AppView<?> appView, ProgramMethod inlinee, int inliningDepth) {
+      if (isProtoShrinkingEnabled() && inliningDepth == 1) {
+        ProtoReferences protoReferences = appView.protoShrinker().getProtoReferences();
+        return inlinee.getHolderType() == protoReferences.generatedMessageLiteType;
+      }
+      return false;
     }
   }
 
