@@ -28,6 +28,7 @@ import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.InternalOptions.DesugarState;
 import com.android.tools.r8.utils.InternalOptions.HorizontalClassMergerOptions;
 import com.android.tools.r8.utils.InternalOptions.LineNumberOptimization;
+import com.android.tools.r8.utils.ProgramClassCollection;
 import com.android.tools.r8.utils.Reporter;
 import com.android.tools.r8.utils.StringDiagnostic;
 import com.android.tools.r8.utils.ThreadUtils;
@@ -457,6 +458,7 @@ public final class D8Command extends BaseCompilerCommand {
           enableMissingLibraryApiModeling,
           getAndroidPlatformBuild(),
           getStartupProfileProviders(),
+          getClassConflictResolver(),
           factory);
     }
   }
@@ -548,6 +550,7 @@ public final class D8Command extends BaseCompilerCommand {
       boolean enableMissingLibraryApiModeling,
       boolean isAndroidPlatformBuild,
       List<StartupProfileProvider> startupProfileProviders,
+      ClassConflictResolver classConflictResolver,
       DexItemFactory factory) {
     super(
         inputApp,
@@ -567,7 +570,8 @@ public final class D8Command extends BaseCompilerCommand {
         mapIdProvider,
         null,
         isAndroidPlatformBuild,
-        startupProfileProviders);
+        startupProfileProviders,
+        classConflictResolver);
     this.intermediate = intermediate;
     this.globalSyntheticsConsumer = globalSyntheticsConsumer;
     this.desugarGraphConsumer = desugarGraphConsumer;
@@ -694,6 +698,10 @@ public final class D8Command extends BaseCompilerCommand {
     if (getStartupProfileProviders().size() == 1) {
       internal.getStartupOptions().setStartupProfileProvider(getStartupProfileProviders().get(0));
     }
+
+    internal.programClassConflictResolver =
+        ProgramClassCollection.wrappedConflictResolver(
+            getClassConflictResolver(), internal.reporter);
 
     internal.setDumpInputFlags(getDumpInputFlags());
     internal.dumpOptions = dumpOptions();
