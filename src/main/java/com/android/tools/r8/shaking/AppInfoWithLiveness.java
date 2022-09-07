@@ -234,7 +234,12 @@ public class AppInfoWithLiveness extends AppInfoWithClassHierarchy
       Set<DexType> lockCandidates,
       Map<DexType, Visibility> initClassReferences,
       Set<DexMethod> recordFieldValuesReferences) {
-    super(committedItems, classToFeatureSplitMap, mainDexInfo, missingClasses, startupOrder);
+    super(
+        committedItems,
+        classToFeatureSplitMap,
+        mainDexInfo,
+        missingClasses,
+        startupOrder);
     this.deadProtoTypes = deadProtoTypes;
     this.liveTypes = liveTypes;
     this.targetedMethods = targetedMethods;

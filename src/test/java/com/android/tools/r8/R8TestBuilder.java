@@ -15,6 +15,8 @@ import com.android.tools.r8.dexsplitter.SplitterTestBase.SplitRunner;
 import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.experimental.graphinfo.GraphConsumer;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.profile.art.ArtProfileConsumer;
+import com.android.tools.r8.profile.art.ArtProfileProvider;
 import com.android.tools.r8.shaking.CheckEnumUnboxedRule;
 import com.android.tools.r8.shaking.CollectingGraphConsumer;
 import com.android.tools.r8.shaking.KeepUnusedReturnValueRule;
@@ -64,6 +66,7 @@ public abstract class R8TestBuilder<T extends R8TestBuilder<T>>
 
   private AllowedDiagnosticMessages allowedDiagnosticMessages = AllowedDiagnosticMessages.NONE;
   private boolean allowUnusedProguardConfigurationRules = false;
+  private boolean enableMissingLibraryApiModeling = true;
   private CollectingGraphConsumer graphConsumer = null;
   private List<String> keepRules = new ArrayList<>();
   private List<Path> mainDexRulesFiles = new ArrayList<>();
@@ -138,6 +141,7 @@ public abstract class R8TestBuilder<T extends R8TestBuilder<T>>
     ToolHelper.addSyntheticProguardRulesConsumerForTesting(
         builder, rules -> box.syntheticProguardRules = rules);
     libraryDesugaringTestConfiguration.configure(builder);
+    builder.setEnableExperimentalMissingLibraryApiModeling(enableMissingLibraryApiModeling);
     ToolHelper.runAndBenchmarkR8WithoutResult(
         builder,
         optionsConsumer.andThen(
@@ -775,6 +779,12 @@ public abstract class R8TestBuilder<T extends R8TestBuilder<T>>
 
   public T noDefaultProguardMapConsumer() {
     createDefaultProguardMapConsumer = false;
+    return self();
+  }
+
+  public T addArtProfileForRewriting(
+      ArtProfileProvider artProfileProvider, ArtProfileConsumer residualArtProfileConsumer) {
+    builder.addArtProfileForRewriting(artProfileProvider, residualArtProfileConsumer);
     return self();
   }
 

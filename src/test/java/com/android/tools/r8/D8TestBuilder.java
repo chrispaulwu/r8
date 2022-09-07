@@ -7,6 +7,8 @@ import com.android.tools.r8.D8Command.Builder;
 import com.android.tools.r8.TestBase.Backend;
 import com.android.tools.r8.benchmarks.BenchmarkResults;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.profile.art.ArtProfileConsumer;
+import com.android.tools.r8.profile.art.ArtProfileProvider;
 import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.utils.AndroidApp;
 import com.android.tools.r8.utils.InternalOptions;
@@ -29,6 +31,7 @@ public class D8TestBuilder
   }
 
   private StringBuilder proguardMapOutputBuilder = null;
+  private boolean enableMissingLibraryApiModeling = true;
 
   @Override
   public boolean isD8TestBuilder() {
@@ -80,6 +83,7 @@ public class D8TestBuilder
       BenchmarkResults benchmarkResults)
       throws CompilationFailedException {
     libraryDesugaringTestConfiguration.configure(builder);
+    builder.setEnableExperimentalMissingLibraryApiModeling(enableMissingLibraryApiModeling);
     ToolHelper.runAndBenchmarkD8(builder, optionsConsumer, benchmarkResults);
     return new D8TestCompileResult(
         getState(),
@@ -127,6 +131,12 @@ public class D8TestBuilder
     assert proguardMapOutputBuilder == null;
     proguardMapOutputBuilder = new StringBuilder();
     getBuilder().setProguardMapConsumer((s, h) -> proguardMapOutputBuilder.append(s));
+    return self();
+  }
+
+  public D8TestBuilder addArtProfileForRewriting(
+      ArtProfileProvider artProfileProvider, ArtProfileConsumer residualArtProfileConsumer) {
+    builder.addArtProfileForRewriting(artProfileProvider, residualArtProfileConsumer);
     return self();
   }
 

@@ -5,7 +5,6 @@
 package com.android.tools.r8.apimodel;
 
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForClass;
-import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForDefaultInstanceInitializer;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForMethod;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.verifyThat;
 import static org.junit.Assume.assumeTrue;
@@ -55,8 +54,9 @@ public class ApiModelOutlineMethodAndStubClassTest extends TestBase {
         .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .apply(ApiModelingTestHelper::enableStubbingOfClasses)
         .apply(ApiModelingTestHelper::enableOutliningOfMethods)
+        // We only model the class and not the default initializer, otherwise we outline the new
+        // instance call and remove the last reference in non-outlined code.
         .apply(setMockApiLevelForClass(LibraryClass.class, libraryClassLevel))
-        .apply(setMockApiLevelForDefaultInstanceInitializer(LibraryClass.class, libraryClassLevel))
         .apply(setMockApiLevelForMethod(apiMethod(), libraryMethodLevel));
   }
 
@@ -123,7 +123,7 @@ public class ApiModelOutlineMethodAndStubClassTest extends TestBase {
   public static class LibraryClass {
 
     // Only present from api level 30
-    public void foo() {
+    public static void foo() {
       System.out.println("LibraryClass::foo");
     }
   }

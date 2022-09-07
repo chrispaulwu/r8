@@ -36,7 +36,7 @@ public class AndroidApiLevelUtils {
       ProgramMethod inlinee,
       InternalOptions options,
       WhyAreYouNotInliningReporter whyAreYouNotInliningReporter) {
-    if (!options.apiModelingOptions().enableApiCallerIdentification) {
+    if (!options.apiModelingOptions().isApiCallerIdentificationEnabled()) {
       return true;
     }
     if (caller.getHolderType() == inlinee.getHolderType()) {
@@ -90,13 +90,19 @@ public class AndroidApiLevelUtils {
       DexMethod original,
       AndroidApiLevelCompute androidApiLevelCompute,
       InternalOptions options) {
+    // If we are not using the api database and we have the platform build, then we assume we are
+    // running with boot class path as min api and all definitions are accessible at runtime.
+    if (!androidApiLevelCompute.isEnabled()) {
+      assert !options.apiModelingOptions().enableLibraryApiModeling;
+      return options.isAndroidPlatformBuild();
+    }
+    assert options.apiModelingOptions().enableLibraryApiModeling;
     ComputedApiLevel apiLevel =
         androidApiLevelCompute.computeApiLevelForLibraryReference(
             method.getReference(), ComputedApiLevel.unknown());
     if (apiLevel.isUnknownApiLevel()) {
       return false;
     }
-    assert options.apiModelingOptions().enableApiCallerIdentification;
     ComputedApiLevel apiLevelOfOriginal =
         androidApiLevelCompute.computeApiLevelForLibraryReference(
             original, ComputedApiLevel.unknown());
@@ -107,15 +113,21 @@ public class AndroidApiLevelUtils {
   }
 
   public static boolean isApiSafeForReference(LibraryDefinition definition, AppView<?> appView) {
-    return isApiSafeForReference(definition, appView.apiLevelCompute(), appView.options());
+    if (appView.options().isAndroidPlatformBuild()) {
+      assert definition != null;
+      return true;
+    }
+    return isApiSafeForReference(
+        definition, appView.apiLevelCompute(), appView.options(), appView.dexItemFactory());
   }
 
   private static boolean isApiSafeForReference(
       LibraryDefinition definition,
       AndroidApiLevelCompute androidApiLevelCompute,
-      InternalOptions options) {
+      InternalOptions options,
+      DexItemFactory factory) {
     if (!options.apiModelingOptions().enableApiCallerIdentification) {
-      return false;
+      return factory.libraryTypesAssumedToBePresent.contains(definition.getContextType());
     }
     ComputedApiLevel apiLevel =
         androidApiLevelCompute.computeApiLevelForLibraryReference(
@@ -163,7 +175,7 @@ public class AndroidApiLevelUtils {
       // Program and classpath classes are not api level dependent.
       return true;
     }
-    if (!appView.options().apiModelingOptions().enableApiCallerIdentification) {
+    if (!appView.options().apiModelingOptions().isApiCallerIdentificationEnabled()) {
       // Conservatively bail out if we don't have api modeling.
       return false;
     }

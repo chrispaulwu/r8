@@ -4,12 +4,27 @@
 
 package com.android.tools.r8.profile.art;
 
-import com.android.tools.r8.references.ClassReference;
-import com.android.tools.r8.references.MethodReference;
+import com.android.tools.r8.Keep;
+import com.android.tools.r8.TextInputStream;
+import java.util.function.Consumer;
 
+/** API for building an ART profile. */
+@Keep
 public interface ArtProfileBuilder {
 
-  void addClassRule(ClassReference classReference, ArtProfileClassRuleInfo classRuleInfo);
+  /** API for adding information about a class rule to the compiler. */
+  ArtProfileBuilder addClassRule(Consumer<ArtProfileClassRuleBuilder> classRuleBuilderConsumer);
 
-  void addMethodRule(MethodReference methodReference, ArtProfileMethodRuleInfo methodRuleInfo);
+  /** API for adding information about a method rule to the compiler. */
+  ArtProfileBuilder addMethodRule(Consumer<ArtProfileMethodRuleBuilder> methodRuleBuilderConsumer);
+
+  /**
+   * Adds the rules from the given human-readable ART profile and then closes the stream.
+   *
+   * @see <a href="https://developer.android.com/topic/performance/baselineprofiles">ART Baseline
+   *     Profiles</a>
+   */
+  ArtProfileBuilder addHumanReadableArtProfile(
+      TextInputStream textInputStream,
+      Consumer<HumanReadableArtProfileParserBuilder> parserBuilderConsumer);
 }

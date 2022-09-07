@@ -69,7 +69,7 @@ import com.android.tools.r8.naming.signature.GenericSignatureRewriter;
 import com.android.tools.r8.optimize.AccessModifier;
 import com.android.tools.r8.optimize.MemberRebindingAnalysis;
 import com.android.tools.r8.optimize.MemberRebindingIdentityLensFactory;
-import com.android.tools.r8.optimize.VisibilityBridgeRemover;
+import com.android.tools.r8.optimize.RedundantBridgeRemover;
 import com.android.tools.r8.optimize.bridgehoisting.BridgeHoisting;
 import com.android.tools.r8.optimize.interfaces.analysis.CfOpenClosedInterfacesAnalysis;
 import com.android.tools.r8.optimize.proto.ProtoNormalizer;
@@ -112,7 +112,6 @@ import com.android.tools.r8.utils.StringDiagnostic;
 import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.ThreadUtils;
 import com.android.tools.r8.utils.Timing;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.io.ByteStreams;
 import java.io.ByteArrayOutputStream;
@@ -123,7 +122,6 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -215,18 +213,10 @@ public class R8 {
     try {
       Marker marker = options.getMarker(Tool.R8);
       assert marker != null;
-      // Get the markers from the input which are different from the one created for this
-      // compilation
-      Set<Marker> markers = new HashSet<>(appView.dexItemFactory().extractMarkers());
-      markers.remove(marker);
       if (options.isGeneratingClassFiles()) {
         new CfApplicationWriter(appView, marker).write(options.getClassFileConsumer(), inputApp);
       } else {
-        new ApplicationWriter(
-                appView,
-                // Ensure that the marker for this compilation is the first in the list.
-                ImmutableList.<Marker>builder().add(marker).addAll(markers).build())
-            .write(executorService, inputApp);
+        new ApplicationWriter(appView, marker).write(executorService, inputApp);
       }
     } catch (IOException e) {
       throw new RuntimeException("Cannot write application", e);
@@ -467,10 +457,10 @@ public class R8 {
                 subtypingInfo);
         boolean changed = appView.setGraphLens(publicizedLens);
         if (changed) {
-          // We can now remove visibility bridges. Note that we do not need to update the
+          // We can now remove redundant bridges. Note that we do not need to update the
           // invoke-targets here, as the existing invokes will simply dispatch to the now
           // visible super-method. MemberRebinding, if run, will then dispatch it correctly.
-          new VisibilityBridgeRemover(appView.withLiveness()).run(executorService);
+          new RedundantBridgeRemover(appView.withLiveness()).run(executorService);
         }
       }
 
@@ -698,10 +688,10 @@ public class R8 {
         }
       }
 
-      // Remove unneeded visibility bridges that have been inserted for member rebinding.
+      // Remove redundant bridges that have been inserted for member rebinding.
       // This can only be done if we have AppInfoWithLiveness.
       if (appView.appInfo().hasLiveness()) {
-        new VisibilityBridgeRemover(appView.withLiveness()).run(executorService);
+        new RedundantBridgeRemover(appView.withLiveness()).run(executorService);
       } else {
         // If we don't have AppInfoWithLiveness here, it must be because we are not shrinking. When
         // we are not shrinking, we can't move visibility bridges. In principle, though, it would be
@@ -853,19 +843,16 @@ public class R8 {
 
   private static boolean allReferencesAssignedApiLevel(
       AppView<? extends AppInfoWithClassHierarchy> appView) {
-    if (!appView.options().apiModelingOptions().checkAllApiReferencesAreSet
+    if (!appView.options().apiModelingOptions().isCheckAllApiReferencesAreSet()
         || appView.options().configurationDebugging) {
       return true;
     }
-    // This will return false if we find anything in the library which is not modeled.
+    // This will assert false if we find anything in the library which is not modeled.
     for (DexProgramClass clazz : appView.appInfo().classesWithDeterministicOrder()) {
       clazz.forEachProgramMember(
           member -> {
             assert !member.getDefinition().getApiLevel().isNotSetApiLevel()
                 : "Every member should have been analyzed";
-            assert appView.options().apiModelingOptions().enableApiCallerIdentification
-                    || member.getDefinition().getApiLevel().isUnknownApiLevel()
-                : "Every member should have level UNKNOWN";
           });
     }
     return true;

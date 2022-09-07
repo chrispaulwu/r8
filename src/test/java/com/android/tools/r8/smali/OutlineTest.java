@@ -46,6 +46,7 @@ import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 import org.junit.Assert;
@@ -1384,7 +1385,14 @@ public class OutlineTest extends SmaliTestBase {
               opts.outline.maxSize = 3;
 
               // Do not allow dead code elimination of the new-instance instructions.
-              opts.apiModelingOptions().enableApiCallerIdentification = false;
+              opts.apiModelingOptions().disableApiModeling();
+              // Do not allow dead code elimination of the new-instance instructions. This can be
+              // achieved by not assuming that StringBuilder is present.
+              DexItemFactory dexItemFactory = opts.itemFactory;
+              opts.itemFactory.libraryTypesAssumedToBePresent =
+                  new HashSet<>(dexItemFactory.libraryTypesAssumedToBePresent);
+              dexItemFactory.libraryTypesAssumedToBePresent.remove(
+                  dexItemFactory.stringBuilderType);
             });
 
     AndroidApp originalApplication = buildApplicationWithAndroidJar(builder);

@@ -34,6 +34,7 @@ import com.android.tools.r8.naming.NamingLens;
 import com.android.tools.r8.naming.SeedMapper;
 import com.android.tools.r8.optimize.argumentpropagation.ArgumentPropagator;
 import com.android.tools.r8.optimize.interfaces.collection.OpenClosedInterfacesCollection;
+import com.android.tools.r8.profile.art.ArtProfileCollection;
 import com.android.tools.r8.retrace.internal.RetraceUtils;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.shaking.AssumeInfoCollection;
@@ -76,6 +77,7 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
   private T appInfo;
   private AppInfoWithClassHierarchy appInfoForDesugaring;
   private AppServices appServices;
+  private ArtProfileCollection artProfileCollection;
   private AssumeInfoCollection assumeInfoCollection = AssumeInfoCollection.builder().build();
   private final DontWarnConfiguration dontWarnConfiguration;
   private final WholeProgramOptimizations wholeProgramOptimizations;
@@ -135,21 +137,25 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
   private final ComputedApiLevel computedMinApiLevel;
 
   private AppView(
-      T appInfo, WholeProgramOptimizations wholeProgramOptimizations, TypeRewriter mapper) {
-    this(appInfo, wholeProgramOptimizations, mapper, Timing.empty());
+      T appInfo,
+      ArtProfileCollection artProfileCollection,
+      WholeProgramOptimizations wholeProgramOptimizations,
+      TypeRewriter mapper) {
+    this(appInfo, artProfileCollection, wholeProgramOptimizations, mapper, Timing.empty());
   }
 
   private AppView(
       T appInfo,
+      ArtProfileCollection artProfileCollection,
       WholeProgramOptimizations wholeProgramOptimizations,
       TypeRewriter mapper,
       Timing timing) {
     assert appInfo != null;
+    this.appInfo = appInfo;
     this.context =
         timing.time(
-            "Compilation context",
-            () -> CompilationContext.createInitialContext(appInfo.options()));
-    this.appInfo = appInfo;
+            "Compilation context", () -> CompilationContext.createInitialContext(options()));
+    this.artProfileCollection = artProfileCollection;
     this.dontWarnConfiguration =
         timing.time(
             "Dont warn config",
@@ -192,12 +198,29 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
   }
 
   public static <T extends AppInfo> AppView<T> createForD8(T appInfo) {
-    return new AppView<>(appInfo, WholeProgramOptimizations.OFF, defaultTypeRewriter(appInfo));
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.createInitialArtProfileCollection(appInfo.options()),
+        WholeProgramOptimizations.OFF,
+        defaultTypeRewriter(appInfo));
+  }
+
+  public static <T extends AppInfo> AppView<T> createForSimulatingD8InR8(T appInfo) {
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.empty(),
+        WholeProgramOptimizations.OFF,
+        defaultTypeRewriter(appInfo));
   }
 
   public static <T extends AppInfo> AppView<T> createForD8(
       T appInfo, TypeRewriter mapper, Timing timing) {
-    return new AppView<>(appInfo, WholeProgramOptimizations.OFF, mapper, timing);
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.createInitialArtProfileCollection(appInfo.options()),
+        WholeProgramOptimizations.OFF,
+        mapper,
+        timing);
   }
 
   public static AppView<AppInfoWithClassHierarchy> createForR8(DexApplication application) {
@@ -216,20 +239,36 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
             mainDexInfo,
             GlobalSyntheticsStrategy.forSingleOutputMode(),
             startupOrder);
-    return new AppView<>(appInfo, WholeProgramOptimizations.ON, defaultTypeRewriter(appInfo));
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.createInitialArtProfileCollection(application.options),
+        WholeProgramOptimizations.ON,
+        defaultTypeRewriter(appInfo));
   }
 
   public static <T extends AppInfo> AppView<T> createForL8(T appInfo, TypeRewriter mapper) {
-    return new AppView<>(appInfo, WholeProgramOptimizations.OFF, mapper);
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.createInitialArtProfileCollection(appInfo.options()),
+        WholeProgramOptimizations.OFF,
+        mapper);
   }
 
   public static <T extends AppInfo> AppView<T> createForRelocator(T appInfo) {
-    return new AppView<>(appInfo, WholeProgramOptimizations.OFF, defaultTypeRewriter(appInfo));
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.empty(),
+        WholeProgramOptimizations.OFF,
+        defaultTypeRewriter(appInfo));
   }
 
   public static AppView<AppInfoWithClassHierarchy> createForTracer(
       AppInfoWithClassHierarchy appInfo) {
-    return new AppView<>(appInfo, WholeProgramOptimizations.ON, defaultTypeRewriter(appInfo));
+    return new AppView<>(
+        appInfo,
+        ArtProfileCollection.empty(),
+        WholeProgramOptimizations.ON,
+        defaultTypeRewriter(appInfo));
   }
 
   public AbstractValueFactory abstractValueFactory() {
@@ -313,6 +352,14 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
 
   public void setAppServices(AppServices appServices) {
     this.appServices = appServices;
+  }
+
+  public ArtProfileCollection getArtProfileCollection() {
+    return artProfileCollection;
+  }
+
+  public void setArtProfileCollection(ArtProfileCollection artProfileCollection) {
+    this.artProfileCollection = artProfileCollection;
   }
 
   public AssumeInfoCollection getAssumeInfoCollection() {
@@ -772,6 +819,7 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
     if (appServices() != null) {
       setAppServices(appServices().prunedCopy(prunedItems));
     }
+    setArtProfileCollection(getArtProfileCollection().withoutPrunedItems(prunedItems));
     setAssumeInfoCollection(getAssumeInfoCollection().withoutPrunedItems(prunedItems));
     if (hasProguardCompatibilityActions()) {
       setProguardCompatibilityActions(
@@ -854,10 +902,11 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
             appliedMemberRebindingLens.isMemberRebindingLens()
                 ? appliedMemberRebindingLens
                     .asMemberRebindingLens()
-                    .toRewrittenFieldRebindingLens(appView, appliedLens)
+                    .toRewrittenFieldRebindingLens(appView, appliedLens, appliedMemberRebindingLens)
                 : appliedMemberRebindingLens
                     .asMemberRebindingIdentityLens()
-                    .toRewrittenMemberRebindingIdentityLens(appView, appliedLens);
+                    .toRewrittenMemberRebindingIdentityLens(
+                        appView, appliedLens, appliedMemberRebindingLens);
       }
     }
 
@@ -870,6 +919,8 @@ public class AppView<T extends AppInfo> implements DexDefinitionSupplier, Librar
                 .setAppInfo(appView.appInfoWithLiveness().rewrittenWithLens(application, lens));
           }
           appView.setAppServices(appView.appServices().rewrittenWithLens(lens));
+          appView.setArtProfileCollection(
+              appView.getArtProfileCollection().rewrittenWithLens(lens));
           appView.setAssumeInfoCollection(
               appView.getAssumeInfoCollection().rewrittenWithLens(appView, lens));
           if (appView.hasInitClassLens()) {

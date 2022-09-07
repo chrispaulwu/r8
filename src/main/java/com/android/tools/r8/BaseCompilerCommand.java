@@ -12,6 +12,9 @@ import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecific
 import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecificationParser;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.humanspecification.HumanDesugaredLibrarySpecification;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.profile.art.ArtProfileConsumer;
+import com.android.tools.r8.profile.art.ArtProfileForRewriting;
+import com.android.tools.r8.profile.art.ArtProfileProvider;
 import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.AndroidApp;
@@ -57,6 +60,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
   private final MapIdProvider mapIdProvider;
   private final SourceFileProvider sourceFileProvider;
   private final boolean isAndroidPlatformBuild;
+  private final List<ArtProfileForRewriting> artProfilesForRewriting;
   private final List<StartupProfileProvider> startupProfileProviders;
   private final ClassConflictResolver classConflictResolver;
 
@@ -78,6 +82,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     mapIdProvider = null;
     sourceFileProvider = null;
     isAndroidPlatformBuild = false;
+    artProfilesForRewriting = null;
     startupProfileProviders = null;
     classConflictResolver = null;
   }
@@ -100,6 +105,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
       MapIdProvider mapIdProvider,
       SourceFileProvider sourceFileProvider,
       boolean isAndroidPlatformBuild,
+      List<ArtProfileForRewriting> artProfilesForRewriting,
       List<StartupProfileProvider> startupProfileProviders,
       ClassConflictResolver classConflictResolver) {
     super(app);
@@ -121,6 +127,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     this.mapIdProvider = mapIdProvider;
     this.sourceFileProvider = sourceFileProvider;
     this.isAndroidPlatformBuild = isAndroidPlatformBuild;
+    this.artProfilesForRewriting = artProfilesForRewriting;
     this.startupProfileProviders = startupProfileProviders;
     this.classConflictResolver = classConflictResolver;
   }
@@ -219,6 +226,10 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     return isAndroidPlatformBuild;
   }
 
+  List<ArtProfileForRewriting> getArtProfilesForRewriting() {
+    return artProfilesForRewriting;
+  }
+
   List<StartupProfileProvider> getStartupProfileProviders() {
     return startupProfileProviders;
   }
@@ -258,7 +269,6 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     protected DesugarState desugarState = DesugarState.ON;
     private List<StringResource> desugaredLibrarySpecificationResources = new ArrayList<>();
     private boolean includeClassesChecksum = false;
-    private boolean lookupLibraryBeforeProgram = true;
     private boolean optimizeMultidexForLinearAlloc = false;
     private BiPredicate<String, Long> dexClassChecksumFilter = (name, checksum) -> true;
     private List<AssertionsConfiguration> assertionsConfiguration = new ArrayList<>();
@@ -268,6 +278,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     private MapIdProvider mapIdProvider = null;
     private SourceFileProvider sourceFileProvider = null;
     private boolean isAndroidPlatformBuild = false;
+    private List<ArtProfileForRewriting> artProfilesForRewriting = new ArrayList<>();
     private List<StartupProfileProvider> startupProfileProviders = new ArrayList<>();
     private ClassConflictResolver classConflictResolver = null;
 
@@ -683,6 +694,23 @@ public abstract class BaseCompilerCommand extends BaseCommand {
 
     public boolean getAndroidPlatformBuild() {
       return isAndroidPlatformBuild;
+    }
+
+    /**
+     * Add an ART profiles that should be rewritten to match the residual application. The ART
+     * profile is given to the compiler by the {@link ArtProfileProvider} and passed back to the
+     * {@link ArtProfileConsumer} at the end of compilation when the ART profile has been fully
+     * rewritten to match the residual application.
+     */
+    public B addArtProfileForRewriting(
+        ArtProfileProvider artProfileProvider, ArtProfileConsumer residualArtProfileProvider) {
+      artProfilesForRewriting.add(
+          new ArtProfileForRewriting(artProfileProvider, residualArtProfileProvider));
+      return self();
+    }
+
+    List<ArtProfileForRewriting> getArtProfilesForRewriting() {
+      return artProfilesForRewriting;
     }
 
     B addStartupProfileProviders(StartupProfileProvider... startupProfileProviders) {

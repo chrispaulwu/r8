@@ -18,9 +18,11 @@ import com.android.tools.r8.dex.code.DexSgetWide;
 import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClassAndField;
+import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexField;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.ProgramMethod;
+import com.android.tools.r8.graph.UseRegistry;
 import com.android.tools.r8.ir.analysis.ClassInitializationAnalysis;
 import com.android.tools.r8.ir.analysis.ClassInitializationAnalysis.AnalysisAssumption;
 import com.android.tools.r8.ir.analysis.ClassInitializationAnalysis.Query;
@@ -268,6 +270,11 @@ public class StaticGet extends FieldInstruction implements FieldGet, StaticField
     }
   }
 
+  @Override
+  void internalRegisterUse(UseRegistry<?> registry, DexClassAndMethod context) {
+    registry.registerStaticFieldRead(getField());
+  }
+
   public static class Builder extends BuilderBase<Builder, StaticGet> {
 
     private DexField field;
@@ -293,7 +300,7 @@ public class StaticGet extends FieldInstruction implements FieldGet, StaticField
   }
 
   @Override
-  public void buildLIR(LIRBuilder<Value> builder) {
+  public void buildLIR(LIRBuilder<Value, BasicBlock> builder) {
     builder.addStaticGet(getField());
   }
 }

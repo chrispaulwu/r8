@@ -4,12 +4,16 @@
 package com.android.tools.r8.lightir;
 
 import com.android.tools.r8.graph.DexItem;
+import com.android.tools.r8.graph.DexItemFactory;
 import com.android.tools.r8.graph.DexMethod;
+import com.android.tools.r8.ir.code.CatchHandlers;
 import com.android.tools.r8.ir.code.IRMetadata;
 import com.android.tools.r8.ir.code.Position;
+import com.android.tools.r8.lightir.LIRBuilder.BlockIndexGetter;
 import com.android.tools.r8.lightir.LIRBuilder.ValueIndexGetter;
 import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.StringUtils.BraceType;
+import it.unimi.dsi.fastutil.ints.Int2ReferenceMap;
 import java.util.Arrays;
 
 public class LIRCode implements Iterable<LIRInstructionView> {
@@ -24,6 +28,18 @@ public class LIRCode implements Iterable<LIRInstructionView> {
     }
   }
 
+  public static class TryCatchTable {
+    final Int2ReferenceMap<CatchHandlers<Integer>> tryCatchHandlers;
+
+    public TryCatchTable(Int2ReferenceMap<CatchHandlers<Integer>> tryCatchHandlers) {
+      this.tryCatchHandlers = tryCatchHandlers;
+    }
+
+    public CatchHandlers<Integer> getHandlersForBlock(int blockIndex) {
+      return tryCatchHandlers.get(blockIndex);
+    }
+  }
+
   private final IRMetadata metadata;
 
   /** Constant pool of items. */
@@ -34,14 +50,21 @@ public class LIRCode implements Iterable<LIRInstructionView> {
   /** Full number of arguments (including receiver for non-static methods). */
   private final int argumentCount;
 
-  /** Byte encoding of the instructions (including phis). */
+  /** Byte encoding of the instructions (excludes arguments, includes phis). */
   private final byte[] instructions;
 
-  /** Cached value for the number of logical instructions (including phis). */
+  /** Cached value for the number of logical instructions (excludes arguments, includes phis). */
   private final int instructionCount;
 
-  public static <V> LIRBuilder<V> builder(DexMethod method, ValueIndexGetter<V> valueIndexGetter) {
-    return new LIRBuilder<V>(method, valueIndexGetter);
+  /** Table of try-catch handlers for each basic block. */
+  private final TryCatchTable tryCatchTable;
+
+  public static <V, B> LIRBuilder<V, B> builder(
+      DexMethod method,
+      ValueIndexGetter<V> valueIndexGetter,
+      BlockIndexGetter<B> blockIndexGetter,
+      DexItemFactory factory) {
+    return new LIRBuilder<V, B>(method, valueIndexGetter, blockIndexGetter, factory);
   }
 
   // Should be constructed using LIRBuilder.
@@ -51,13 +74,15 @@ public class LIRCode implements Iterable<LIRInstructionView> {
       PositionEntry[] positions,
       int argumentCount,
       byte[] instructions,
-      int instructionCount) {
+      int instructionCount,
+      TryCatchTable tryCatchTable) {
     this.metadata = metadata;
     this.constants = constants;
     this.positionTable = positions;
     this.argumentCount = argumentCount;
     this.instructions = instructions;
     this.instructionCount = instructionCount;
+    this.tryCatchTable = tryCatchTable;
   }
 
   public int getArgumentCount() {
@@ -84,6 +109,10 @@ public class LIRCode implements Iterable<LIRInstructionView> {
     return positionTable;
   }
 
+  public TryCatchTable getTryCatchTable() {
+    return tryCatchTable;
+  }
+
   @Override
   public LIRIterator iterator() {
     return new LIRIterator(new ByteArrayIterator(instructions));
@@ -102,6 +131,7 @@ public class LIRCode implements Iterable<LIRInstructionView> {
         .append("):{");
     int index = 0;
     for (LIRInstructionView view : this) {
+      builder.append(index).append(':');
       builder.append(LIROpcodes.toString(view.getOpcode()));
       if (view.getRemainingOperandSizeInBytes() > 0) {
         builder.append("(size:").append(1 + view.getRemainingOperandSizeInBytes()).append(")");

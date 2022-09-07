@@ -18,6 +18,7 @@ import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecific
 import com.android.tools.r8.naming.SourceFileRewriter;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.origin.PathOrigin;
+import com.android.tools.r8.profile.art.ArtProfileForRewriting;
 import com.android.tools.r8.shaking.ProguardConfiguration;
 import com.android.tools.r8.shaking.ProguardConfigurationParser;
 import com.android.tools.r8.shaking.ProguardConfigurationParserOptions;
@@ -662,6 +663,7 @@ public final class R8Command extends BaseCompilerCommand {
               getSourceFileProvider(),
               enableMissingLibraryApiModeling,
               getAndroidPlatformBuild(),
+              getArtProfilesForRewriting(),
               getStartupProfileProviders(),
               getClassConflictResolver());
 
@@ -850,6 +852,7 @@ public final class R8Command extends BaseCompilerCommand {
       SourceFileProvider sourceFileProvider,
       boolean enableMissingLibraryApiModeling,
       boolean isAndroidPlatformBuild,
+      List<ArtProfileForRewriting> artProfilesForRewriting,
       List<StartupProfileProvider> startupProfileProviders,
       ClassConflictResolver classConflictResolver) {
     super(
@@ -870,6 +873,7 @@ public final class R8Command extends BaseCompilerCommand {
         mapIdProvider,
         sourceFileProvider,
         isAndroidPlatformBuild,
+        artProfilesForRewriting,
         startupProfileProviders,
         classConflictResolver);
     assert proguardConfiguration != null;
@@ -1018,7 +1022,8 @@ public final class R8Command extends BaseCompilerCommand {
     internal.outputInspections = InspectorImpl.wrapInspections(getOutputInspections());
 
     if (!enableMissingLibraryApiModeling) {
-      internal.apiModelingOptions().disableMissingApiModeling();
+      internal.apiModelingOptions().disableApiCallerIdentification();
+      internal.apiModelingOptions().disableOutliningAndStubbing();
     }
 
     // Default is to remove all javac generated assertion code when generating dex.
@@ -1054,11 +1059,11 @@ public final class R8Command extends BaseCompilerCommand {
         synthesizedClassPrefix.isEmpty()
             ? System.getProperty("com.android.tools.r8.synthesizedClassPrefix", "")
             : synthesizedClassPrefix;
-    boolean l8Shrinking = !synthesizedClassPrefix.isEmpty();
+    boolean l8Shrinking = !internal.synthesizedClassPrefix.isEmpty();
     // TODO(b/214382176): Enable all the time.
     internal.loadAllClassDefinitions = l8Shrinking;
     if (l8Shrinking) {
-      internal.apiModelingOptions().disableSubbingOfClasses();
+      internal.apiModelingOptions().disableStubbingOfClasses();
     }
     internal.desugaredLibraryKeepRuleConsumer = desugaredLibraryKeepRuleConsumer;
 
@@ -1071,6 +1076,7 @@ public final class R8Command extends BaseCompilerCommand {
 
     internal.configureAndroidPlatformBuild(getAndroidPlatformBuild());
 
+    internal.getArtProfileOptions().setArtProfilesForRewriting(getArtProfilesForRewriting());
     internal.getStartupOptions().setStartupProfileProviders(getStartupProfileProviders());
 
     internal.programClassConflictResolver =

@@ -14,6 +14,7 @@ import com.android.tools.r8.horizontalclassmerging.HorizontalClassMerger;
 import com.android.tools.r8.inspector.Inspector;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecification;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.profile.art.ArtProfileForRewriting;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.AndroidApp;
 import com.android.tools.r8.utils.AssertionConfigurationWithDefault;
@@ -121,6 +122,7 @@ public final class L8Command extends BaseCompilerCommand {
         null,
         false,
         null,
+        null,
         classConflictResolver);
     this.d8Command = d8Command;
     this.r8Command = r8Command;
@@ -223,7 +225,7 @@ public final class L8Command extends BaseCompilerCommand {
     // Disable global optimizations.
     internal.disableGlobalOptimizations();
     internal.apiModelingOptions().disableApiCallerIdentification();
-    internal.apiModelingOptions().disableMissingApiModeling();
+    internal.apiModelingOptions().disableOutliningAndStubbing();
 
     internal.setDumpInputFlags(getDumpInputFlags());
     internal.dumpOptions = dumpOptions();
@@ -372,6 +374,11 @@ public final class L8Command extends BaseCompilerCommand {
                 .setIncludeClassesChecksum(getIncludeClassesChecksum())
                 .setDexClassChecksumFilter(getDexClassChecksumFilter())
                 .setProgramConsumer(getProgramConsumer());
+        for (ArtProfileForRewriting artProfileForRewriting : getArtProfilesForRewriting()) {
+          r8Builder.addArtProfileForRewriting(
+              artProfileForRewriting.getArtProfileProvider(),
+              artProfileForRewriting.getResidualArtProfileConsumer());
+        }
         for (ClassFileResourceProvider libraryResourceProvider :
             inputs.getLibraryResourceProviders()) {
           r8Builder.addLibraryResourceProvider(libraryResourceProvider);
@@ -403,6 +410,11 @@ public final class L8Command extends BaseCompilerCommand {
                 .setIncludeClassesChecksum(getIncludeClassesChecksum())
                 .setDexClassChecksumFilter(getDexClassChecksumFilter())
                 .setProgramConsumer(getProgramConsumer());
+        for (ArtProfileForRewriting artProfileForRewriting : getArtProfilesForRewriting()) {
+          d8Builder.addArtProfileForRewriting(
+              artProfileForRewriting.getArtProfileProvider(),
+              artProfileForRewriting.getResidualArtProfileConsumer());
+        }
         for (ClassFileResourceProvider libraryResourceProvider :
             inputs.getLibraryResourceProviders()) {
           d8Builder.addLibraryResourceProvider(libraryResourceProvider);

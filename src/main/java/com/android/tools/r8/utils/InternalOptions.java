@@ -59,6 +59,7 @@ import com.android.tools.r8.horizontalclassmerging.HorizontalClassMerger;
 import com.android.tools.r8.horizontalclassmerging.HorizontallyMergedClasses;
 import com.android.tools.r8.horizontalclassmerging.Policy;
 import com.android.tools.r8.inspector.internal.InspectorImpl;
+import com.android.tools.r8.ir.analysis.proto.ProtoReferences;
 import com.android.tools.r8.ir.analysis.type.TypeElement;
 import com.android.tools.r8.ir.code.IRCode;
 import com.android.tools.r8.ir.desugar.TypeRewriter;
@@ -72,6 +73,7 @@ import com.android.tools.r8.naming.MapVersion;
 import com.android.tools.r8.optimize.argumentpropagation.ArgumentPropagatorEventConsumer;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.position.Position;
+import com.android.tools.r8.profile.art.ArtProfileOptions;
 import com.android.tools.r8.references.ClassReference;
 import com.android.tools.r8.references.FieldReference;
 import com.android.tools.r8.references.MethodReference;
@@ -89,6 +91,7 @@ import com.android.tools.r8.utils.collections.ProgramMethodSet;
 import com.android.tools.r8.utils.structural.Ordered;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Equivalence.Wrapper;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -238,7 +241,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   void enableProtoShrinking() {
-    inlinerOptions.applyInliningToInlinee = true;
     enableFieldBitAccessAnalysis = true;
     protoShrinking.enableGeneratedMessageLiteShrinking = true;
     protoShrinking.enableGeneratedMessageLiteBuilderShrinking = true;
@@ -275,8 +277,12 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     androidPlatformBuild = isAndroidPlatformBuild;
     // Configure options according to platform build assumptions.
     // See go/r8platformflag and b/232073181.
-    apiModelingOptions().disableMissingApiModeling();
+    apiModelingOptions().disableApiModeling();
     enableBackportMethods = false;
+  }
+
+  public boolean isAndroidPlatformBuild() {
+    return androidPlatformBuild;
   }
 
   public boolean printTimes = System.getProperty("com.android.tools.r8.printtimes") != null;
@@ -342,7 +348,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   public boolean readDebugSetFileEvent = false;
   public boolean disableL8AnnotationRemoval =
       System.getProperty("com.android.tools.r8.disableL8AnnotationRemoval") != null;
-  public boolean enableVisibilityBridgeRemoval = true;
 
   public int callGraphLikelySpuriousCallEdgeThreshold = 50;
 
@@ -815,7 +820,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
       new KotlinOptimizationOptions();
   private final ApiModelTestingOptions apiModelTestingOptions = new ApiModelTestingOptions();
   private final DesugarSpecificOptions desugarSpecificOptions = new DesugarSpecificOptions();
-  private final StartupOptions startupOptions = new StartupOptions(this);
+  private final ArtProfileOptions artProfileOptions = new ArtProfileOptions();
+  private final StartupOptions startupOptions = new StartupOptions();
   private final StartupInstrumentationOptions startupInstrumentationOptions =
       new StartupInstrumentationOptions();
   public final TestingOptions testing = new TestingOptions();
@@ -875,6 +881,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public OpenClosedInterfacesOptions getOpenClosedInterfacesOptions() {
     return openClosedInterfacesOptions;
+  }
+
+  public ArtProfileOptions getArtProfileOptions() {
+    return artProfileOptions;
   }
 
   public StartupOptions getStartupOptions() {
@@ -1450,6 +1460,11 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     }
   }
 
+  public interface ApplyInliningToInlineePredicate {
+
+    boolean test(AppView<?> appView, ProgramMethod method, int inliningDepth);
+  }
+
   public class InlinerOptions {
 
     public boolean enableInlining =
@@ -1475,14 +1490,11 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     // GMS Core.
     public int inliningControlFlowResolutionBlocksThreshold = 15;
 
-    // TODO(b/141451716): Evaluate the effect of allowing inlining in the inlinee.
-    public boolean applyInliningToInlinee =
-        System.getProperty("com.android.tools.r8.applyInliningToInlinee") != null;
-    public int applyInliningToInlineeMaxDepth = 0;
-
     public boolean enableInliningOfInvokesWithClassInitializationSideEffects = true;
     public boolean enableInliningOfInvokesWithNullableReceivers = true;
     public boolean disableInliningOfLibraryMethodOverrides = true;
+
+    public ApplyInliningToInlineePredicate applyInliningToInlineePredicateForTesting = null;
 
     public int getSimpleInliningInstructionLimit() {
       // If a custom simple inlining instruction limit is set, then use that.
@@ -1496,6 +1508,17 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
       // Allow the size of the dex code to be up to 5 bytes.
       assert isGeneratingDex();
       return 5;
+    }
+
+    public boolean shouldApplyInliningToInlinee(
+        AppView<?> appView, ProgramMethod inlinee, int inliningDepth) {
+      if (applyInliningToInlineePredicateForTesting != null) {
+        return applyInliningToInlineePredicateForTesting.test(appView, inlinee, inliningDepth);
+      }
+      if (protoShrinking.shouldApplyInliningToInlinee(appView, inlinee, inliningDepth)) {
+        return true;
+      }
+      return false;
     }
   }
 
@@ -1699,6 +1722,14 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public static class ApiModelTestingOptions {
 
+    // Flag to specify if we should load the database or not. The api database is used for
+    // library member rebinding.
+    public boolean enableLibraryApiModeling =
+        System.getProperty("com.android.tools.r8.disableApiModeling") == null;
+
+    // The flag enableApiCallerIdentification controls if we can inline or merge targets with
+    // different api levels. It is also the flag that specifies if we assign api levels to
+    // references.
     public boolean enableApiCallerIdentification =
         System.getProperty("com.android.tools.r8.disableApiModeling") == null;
     public boolean checkAllApiReferencesAreSet =
@@ -1736,11 +1767,31 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
           });
     }
 
+    public boolean isApiLibraryModelingEnabled() {
+      return enableLibraryApiModeling;
+    }
+
+    public boolean isCheckAllApiReferencesAreSet() {
+      return enableLibraryApiModeling && checkAllApiReferencesAreSet;
+    }
+
+    public boolean isApiCallerIdentificationEnabled() {
+      return enableLibraryApiModeling && enableApiCallerIdentification;
+    }
+
+    public void disableApiModeling() {
+      enableLibraryApiModeling = false;
+      enableApiCallerIdentification = false;
+      enableOutliningOfMethods = false;
+      enableStubbingOfClasses = false;
+      checkAllApiReferencesAreSet = false;
+    }
+
     /**
      * Disable the workarounds for missing APIs. This does not disable the use of the database, just
      * the introduction of soft-verification workarounds for potentially missing API references.
      */
-    public void disableMissingApiModeling() {
+    public void disableOutliningAndStubbing() {
       enableOutliningOfMethods = false;
       enableStubbingOfClasses = false;
     }
@@ -1749,7 +1800,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
       enableApiCallerIdentification = false;
     }
 
-    public void disableSubbingOfClasses() {
+    public void disableStubbingOfClasses() {
       enableStubbingOfClasses = false;
     }
   }
@@ -1786,6 +1837,15 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
     public boolean isEnumLiteProtoShrinkingEnabled() {
       return enableEnumLiteProtoShrinking;
+    }
+
+    public boolean shouldApplyInliningToInlinee(
+        AppView<?> appView, ProgramMethod inlinee, int inliningDepth) {
+      if (isProtoShrinkingEnabled() && inliningDepth == 1) {
+        ProtoReferences protoReferences = appView.protoShrinker().getProtoReferences();
+        return inlinee.getHolderType() == protoReferences.generatedMessageLiteType;
+      }
+      return false;
     }
   }
 
@@ -1835,6 +1895,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
     public ArgumentPropagatorEventConsumer argumentPropagatorEventConsumer =
         ArgumentPropagatorEventConsumer.emptyConsumer();
+
+    public Predicate<DexProgramClass> isEligibleForBridgeHoisting = Predicates.alwaysTrue();
 
     // Force writing the specified bytes as the DEX version content.
     public byte[] forceDexVersionBytes = null;
@@ -1910,6 +1972,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     public boolean enableDeadSwitchCaseElimination = true;
     public boolean enableInvokeSuperToInvokeVirtualRewriting = true;
     public boolean enableMultiANewArrayDesugaringForClassFiles = false;
+    public boolean enableRedundantConstructorBridgeRemoval = false;
     public boolean enableSwitchToIfRewriting = true;
     public boolean enableEnumUnboxingDebugLogs =
         System.getProperty("com.android.tools.r8.enableEnumUnboxingDebugLogs") != null;
@@ -2691,5 +2754,9 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   // work around a DALVIK bug. See b/36951668.
   public boolean canHaveDalvikEmptyAnnotationSetBug() {
     return canHaveBugPresentUntil(AndroidApiLevel.J_MR1);
+  }
+
+  public boolean canHaveNonReboundConstructorInvoke() {
+    return isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
   }
 }

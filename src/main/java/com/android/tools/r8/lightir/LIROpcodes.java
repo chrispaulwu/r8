@@ -14,7 +14,7 @@ public interface LIROpcodes {
 
   static boolean isOneByteInstruction(int opcode) {
     assert opcode >= ACONST_NULL;
-    return opcode <= DCONST_1 || opcode == RETURN || opcode == DEBUGPOS;
+    return opcode <= DCONST_1 || opcode == RETURN || opcode == DEBUGPOS || opcode == FALLTHROUGH;
   }
 
   // Instructions maintaining the same opcode as defined in CF.
@@ -183,6 +183,9 @@ public interface LIROpcodes {
   int DCONST = 203;
   int INVOKEDIRECT = 204;
   int DEBUGPOS = 205;
+  int PHI = 206;
+  int FALLTHROUGH = 207;
+  int MOVEEXCEPTION = 208;
 
   static String toString(int opcode) {
     switch (opcode) {
@@ -489,6 +492,12 @@ public interface LIROpcodes {
         return "INVOKEDIRECT";
       case DEBUGPOS:
         return "DEBUGPOS";
+      case PHI:
+        return "PHI";
+      case FALLTHROUGH:
+        return "FALLTHROUGH";
+      case MOVEEXCEPTION:
+        return "MOVEEXCEPTION";
 
       default:
         throw new Unreachable("Unexpected LIR opcode: " + opcode);

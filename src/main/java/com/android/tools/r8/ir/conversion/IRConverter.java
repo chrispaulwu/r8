@@ -49,6 +49,7 @@ import com.android.tools.r8.ir.desugar.itf.InterfaceProcessor;
 import com.android.tools.r8.ir.desugar.itf.L8InnerOuterAttributeEraser;
 import com.android.tools.r8.ir.desugar.lambda.LambdaDeserializationMethodRemover;
 import com.android.tools.r8.ir.desugar.nest.D8NestBasedAccessDesugaring;
+import com.android.tools.r8.ir.optimize.AssertionErrorTwoArgsConstructorRewriter;
 import com.android.tools.r8.ir.optimize.AssertionsRewriter;
 import com.android.tools.r8.ir.optimize.AssumeInserter;
 import com.android.tools.r8.ir.optimize.CheckNotNullConverter;
@@ -62,6 +63,7 @@ import com.android.tools.r8.ir.optimize.DynamicTypeOptimization;
 import com.android.tools.r8.ir.optimize.IdempotentFunctionCallCanonicalizer;
 import com.android.tools.r8.ir.optimize.Inliner;
 import com.android.tools.r8.ir.optimize.Inliner.ConstraintWithTarget;
+import com.android.tools.r8.ir.optimize.InstanceInitializerOutliner;
 import com.android.tools.r8.ir.optimize.NaturalIntLoopRemover;
 import com.android.tools.r8.ir.optimize.RedundantFieldLoadAndStoreElimination;
 import com.android.tools.r8.ir.optimize.ReflectionOptimizer;
@@ -131,6 +133,7 @@ public class IRConverter {
   private final InternalOptions options;
   private final CfgPrinter printer;
   public final CodeRewriter codeRewriter;
+  public final AssertionErrorTwoArgsConstructorRewriter assertionErrorTwoArgsConstructorRewriter;
   private final NaturalIntLoopRemover naturalIntLoopRemover = new NaturalIntLoopRemover();
   public final MemberValuePropagation<?> memberValuePropagation;
   private final LensCodeRewriter lensCodeRewriter;
@@ -143,6 +146,7 @@ public class IRConverter {
   private final ServiceLoaderRewriter serviceLoaderRewriter;
   private final EnumValueOptimizer enumValueOptimizer;
   private final EnumUnboxer enumUnboxer;
+  private final InstanceInitializerOutliner instanceInitializerOutliner;
 
   public final AssumeInserter assumeInserter;
   private final DynamicTypeOptimization dynamicTypeOptimization;
@@ -179,6 +183,8 @@ public class IRConverter {
     this.options = appView.options();
     this.printer = printer;
     this.codeRewriter = new CodeRewriter(appView);
+    this.assertionErrorTwoArgsConstructorRewriter =
+        new AssertionErrorTwoArgsConstructorRewriter(appView);
     this.classInitializerDefaultsOptimization =
         new ClassInitializerDefaultsOptimization(appView, this);
     this.stringOptimizer = new StringOptimizer(appView);
@@ -227,6 +233,7 @@ public class IRConverter {
       this.enumValueOptimizer = null;
       this.enumUnboxer = EnumUnboxer.empty();
       this.assumeInserter = null;
+      this.instanceInitializerOutliner = null;
       return;
     }
     this.instructionDesugaring =
@@ -237,6 +244,12 @@ public class IRConverter {
         options.processCovariantReturnTypeAnnotations
             ? new CovariantReturnTypeAnnotationTransformer(this, appView.dexItemFactory())
             : null;
+    if (appView.options().desugarState.isOn()
+        && appView.options().apiModelingOptions().enableOutliningOfMethods) {
+      this.instanceInitializerOutliner = new InstanceInitializerOutliner(appView);
+    } else {
+      this.instanceInitializerOutliner = null;
+    }
     if (appView.enableWholeProgramOptimizations()) {
       assert appView.appInfo().hasLiveness();
       assert appView.rootSet() != null;
@@ -357,6 +370,14 @@ public class IRConverter {
 
     reportNestDesugarDependencies();
     clearNestAttributes();
+
+    if (instanceInitializerOutliner != null) {
+      processSimpleSynthesizeMethods(instanceInitializerOutliner.getSynthesizedMethods(), executor);
+    }
+    if (assertionErrorTwoArgsConstructorRewriter != null) {
+      processSimpleSynthesizeMethods(
+          assertionErrorTwoArgsConstructorRewriter.getSynthesizedMethods(), executor);
+    }
 
     application = commitPendingSyntheticItemsD8(appView, application);
 
@@ -780,8 +801,17 @@ public class IRConverter {
     builder.setHighestSortingString(highestSortingString);
 
     if (serviceLoaderRewriter != null) {
-      processSynthesizedServiceLoaderMethods(
+      processSimpleSynthesizeMethods(
           serviceLoaderRewriter.getServiceLoadMethods(), executorService);
+    }
+
+    if (instanceInitializerOutliner != null) {
+      processSimpleSynthesizeMethods(
+          instanceInitializerOutliner.getSynthesizedMethods(), executorService);
+    }
+    if (assertionErrorTwoArgsConstructorRewriter != null) {
+      processSimpleSynthesizeMethods(
+          assertionErrorTwoArgsConstructorRewriter.getSynthesizedMethods(), executorService);
     }
 
     // Update optimization info for all synthesized methods at once.
@@ -865,14 +895,14 @@ public class IRConverter {
     return onWaveDoneActions != null;
   }
 
-  private void processSynthesizedServiceLoaderMethods(
+  private void processSimpleSynthesizeMethods(
       List<ProgramMethod> serviceLoadMethods, ExecutorService executorService)
       throws ExecutionException {
     ThreadUtils.processItems(
-        serviceLoadMethods, this::forEachSynthesizedServiceLoaderMethod, executorService);
+        serviceLoadMethods, this::processAndFinalizeSimpleSynthesiedMethod, executorService);
   }
 
-  private void forEachSynthesizedServiceLoaderMethod(ProgramMethod method) {
+  private void processAndFinalizeSimpleSynthesiedMethod(ProgramMethod method) {
     IRCode code = method.buildIR(appView);
     assert code != null;
     codeRewriter.rewriteMoveResult(code);
@@ -1208,6 +1238,12 @@ public class IRConverter {
       timing.end();
     }
 
+    if (instanceInitializerOutliner != null) {
+      instanceInitializerOutliner.rewriteInstanceInitializers(
+          code, context, methodProcessingContext);
+      assert code.verifyTypes(appView);
+    }
+
     previous = printMethod(code, "IR after disable assertions (SSA)", previous);
 
     // Update the IR code if collected call site optimization info has something useful.
@@ -1309,7 +1345,7 @@ public class IRConverter {
     naturalIntLoopRemover.run(appView, code);
     timing.end();
     timing.begin("Rewrite AssertionError");
-    codeRewriter.rewriteAssertionErrorTwoArgumentConstructor(code, options);
+    assertionErrorTwoArgsConstructorRewriter.rewrite(code, methodProcessingContext);
     timing.end();
     timing.begin("Run CSE");
     codeRewriter.commonSubexpressionElimination(code);
@@ -1620,10 +1656,14 @@ public class IRConverter {
       code = roundtripThroughLIR(code, feedback, bytecodeMetadataProvider, timing);
     }
     if (options.isGeneratingClassFiles()) {
+      timing.begin("IR->CF");
       finalizeToCf(code, feedback, bytecodeMetadataProvider, timing);
+      timing.end();
     } else {
       assert options.isGeneratingDex();
+      timing.begin("IR->DEX");
       finalizeToDex(code, feedback, bytecodeMetadataProvider, timing);
+      timing.end();
     }
   }
 
@@ -1632,8 +1672,12 @@ public class IRConverter {
       OptimizationFeedback feedback,
       BytecodeMetadataProvider bytecodeMetadataProvider,
       Timing timing) {
-    LIRCode lirCode = IR2LIRConverter.translate(code);
+    timing.begin("IR->LIR");
+    LIRCode lirCode = IR2LIRConverter.translate(code, appView.dexItemFactory());
+    timing.end();
+    timing.begin("LIR->IR");
     IRCode irCode = LIR2IRConverter.translate(code.context(), lirCode, appView);
+    timing.end();
     return irCode;
   }
 

@@ -6,6 +6,7 @@ package com.android.tools.r8.apimodel;
 
 import static com.android.tools.r8.utils.codeinspector.CodeMatchers.accessesField;
 import static com.android.tools.r8.utils.codeinspector.CodeMatchers.invokesMethod;
+import static com.android.tools.r8.utils.codeinspector.CodeMatchers.invokesMethodWithHolderAndName;
 import static com.android.tools.r8.utils.codeinspector.CodeMatchers.invokesMethodWithName;
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPresent;
 import static com.android.tools.r8.utils.codeinspector.Matchers.notIf;
@@ -28,6 +29,7 @@ import com.android.tools.r8.utils.codeinspector.FoundMethodSubject;
 import com.android.tools.r8.utils.codeinspector.MethodSubject;
 import com.google.common.collect.ImmutableList;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -122,22 +124,23 @@ public abstract class ApiModelingTestHelper {
       TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
     compilerBuilder.addOptionsModification(
         options -> {
+          options.apiModelingOptions().enableLibraryApiModeling = true;
           options.apiModelingOptions().enableApiCallerIdentification = true;
         });
   }
 
-  static void enableStubbingOfClasses(TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
+  public static void enableStubbingOfClasses(TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
     compilerBuilder.addOptionsModification(
         options -> {
-          options.apiModelingOptions().enableApiCallerIdentification = true;
+          options.apiModelingOptions().enableLibraryApiModeling = true;
           options.apiModelingOptions().enableStubbingOfClasses = true;
         });
   }
 
-  static void enableOutliningOfMethods(TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
+  public static void enableOutliningOfMethods(TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
     compilerBuilder.addOptionsModification(
         options -> {
-          options.apiModelingOptions().enableApiCallerIdentification = true;
+          options.apiModelingOptions().enableLibraryApiModeling = true;
           options.apiModelingOptions().enableOutliningOfMethods = true;
         });
   }
@@ -165,6 +168,19 @@ public abstract class ApiModelingTestHelper {
   public static void disableOutlining(TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
     compilerBuilder.addOptionsModification(
         options -> options.apiModelingOptions().enableOutliningOfMethods = false);
+  }
+
+  public static void disableApiCallerIdentification(
+      TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
+    compilerBuilder.addOptionsModification(
+        options -> options.apiModelingOptions().enableApiCallerIdentification = false);
+  }
+
+  public static void disableApiModeling(TestCompilerBuilder<?, ?, ?, ?, ?> compilerBuilder) {
+    disableOutliningAndStubbing(compilerBuilder);
+    disableApiCallerIdentification(compilerBuilder);
+    compilerBuilder.addOptionsModification(
+        options -> options.apiModelingOptions().enableLibraryApiModeling = false);
   }
 
   static <T extends TestCompilerBuilder<?, ?, ?, ?, ?>>
@@ -334,7 +350,7 @@ public abstract class ApiModelingTestHelper {
       assertThat(target, not(CodeMatchers.invokesMethod(candidate)));
     }
 
-    void isOutlinedFromUntil(Method method, AndroidApiLevel apiLevel) {
+    void isOutlinedFromUntil(Executable method, AndroidApiLevel apiLevel) {
       if (parameters.isDexRuntime() && parameters.getApiLevel().isLessThan(apiLevel)) {
         isOutlinedFrom(method);
       } else {
@@ -342,7 +358,7 @@ public abstract class ApiModelingTestHelper {
       }
     }
 
-    void isOutlinedFrom(Method method) {
+    void isOutlinedFrom(Executable method) {
       // Check that the call is in a synthetic class.
       List<FoundMethodSubject> outlinedMethod =
           inspector.allClasses().stream()
@@ -350,18 +366,20 @@ public abstract class ApiModelingTestHelper {
               .filter(
                   methodSubject ->
                       methodSubject.isSynthetic()
-                          && invokesMethodWithName(methodOfInterest.getMethodName())
+                          && invokesMethodWithHolderAndName(
+                                  methodOfInterest.getHolderClass().getTypeName(),
+                                  methodOfInterest.getMethodName())
                               .matches(methodSubject))
               .collect(Collectors.toList());
       assertEquals(1, outlinedMethod.size());
       // Assert that method invokes the outline
-      MethodSubject caller = inspector.method(method);
+      MethodSubject caller = inspector.method(Reference.methodFromMethod(method));
       assertThat(caller, isPresent());
       assertThat(caller, invokesMethod(outlinedMethod.get(0)));
     }
 
-    void isNotOutlinedFrom(Method method) {
-      MethodSubject caller = inspector.method(method);
+    void isNotOutlinedFrom(Executable method) {
+      MethodSubject caller = inspector.method(Reference.methodFromMethod(method));
       assertThat(caller, isPresent());
       assertThat(caller, invokesMethodWithName(methodOfInterest.getMethodName()));
     }
