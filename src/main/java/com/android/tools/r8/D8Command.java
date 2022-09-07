@@ -27,6 +27,7 @@ import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.InternalOptions.DesugarState;
 import com.android.tools.r8.utils.InternalOptions.HorizontalClassMergerOptions;
 import com.android.tools.r8.utils.InternalOptions.LineNumberOptimization;
+import com.android.tools.r8.utils.ProgramClassCollection;
 import com.android.tools.r8.utils.Reporter;
 import com.android.tools.r8.utils.StringDiagnostic;
 import com.android.tools.r8.utils.ThreadUtils;
@@ -319,6 +320,7 @@ public final class D8Command extends BaseCompilerCommand {
           getThreadCount(),
           getDumpInputFlags(),
           getMapIdProvider(),
+          getClassConflictResolver(),
           factory);
     }
   }
@@ -401,6 +403,7 @@ public final class D8Command extends BaseCompilerCommand {
       int threadCount,
       DumpInputFlags dumpInputFlags,
       MapIdProvider mapIdProvider,
+      ClassConflictResolver classConflictResolver,
       DexItemFactory factory) {
     super(
         inputApp,
@@ -418,7 +421,8 @@ public final class D8Command extends BaseCompilerCommand {
         threadCount,
         dumpInputFlags,
         mapIdProvider,
-        null);
+        null,
+        classConflictResolver);
     this.intermediate = intermediate;
     this.desugarGraphConsumer = desugarGraphConsumer;
     this.desugaredLibraryKeepRuleConsumer = desugaredLibraryKeepRuleConsumer;
@@ -516,6 +520,10 @@ public final class D8Command extends BaseCompilerCommand {
       assert internal.threadCount == ThreadUtils.NOT_SPECIFIED;
       internal.threadCount = getThreadCount();
     }
+
+    internal.programClassConflictResolver =
+        ProgramClassCollection.wrappedConflictResolver(
+            getClassConflictResolver(), internal.reporter);
 
     internal.setDumpInputFlags(getDumpInputFlags(), skipDump);
     internal.dumpOptions = dumpOptions();

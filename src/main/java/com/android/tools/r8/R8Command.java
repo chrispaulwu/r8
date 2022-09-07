@@ -36,6 +36,7 @@ import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.InternalOptions.DesugarState;
 import com.android.tools.r8.utils.InternalOptions.HorizontalClassMergerOptions;
 import com.android.tools.r8.utils.InternalOptions.LineNumberOptimization;
+import com.android.tools.r8.utils.ProgramClassCollection;
 import com.android.tools.r8.utils.Reporter;
 import com.android.tools.r8.utils.StringDiagnostic;
 import com.android.tools.r8.utils.ThreadUtils;
@@ -594,7 +595,8 @@ public final class R8Command extends BaseCompilerCommand {
               getThreadCount(),
               getDumpInputFlags(),
               getMapIdProvider(),
-              getSourceFileProvider());
+              getSourceFileProvider(),
+              getClassConflictResolver());
       return command;
     }
 
@@ -756,7 +758,8 @@ public final class R8Command extends BaseCompilerCommand {
       int threadCount,
       DumpInputFlags dumpInputFlags,
       MapIdProvider mapIdProvider,
-      SourceFileProvider sourceFileProvider) {
+      SourceFileProvider sourceFileProvider,
+      ClassConflictResolver classConflictResolver) {
     super(
         inputApp,
         mode,
@@ -773,7 +776,8 @@ public final class R8Command extends BaseCompilerCommand {
         threadCount,
         dumpInputFlags,
         mapIdProvider,
-        sourceFileProvider);
+        sourceFileProvider,
+        classConflictResolver);
     assert proguardConfiguration != null;
     assert mainDexKeepRules != null;
     this.mainDexKeepRules = mainDexKeepRules;
@@ -952,6 +956,10 @@ public final class R8Command extends BaseCompilerCommand {
     internal.sourceFileProvider =
         SourceFileRewriter.computeSourceFileProvider(
             getSourceFileProvider(), proguardConfiguration, internal);
+
+    internal.programClassConflictResolver =
+        ProgramClassCollection.wrappedConflictResolver(
+            getClassConflictResolver(), internal.reporter);
 
     if (!DETERMINISTIC_DEBUGGING) {
       assert internal.threadCount == ThreadUtils.NOT_SPECIFIED;
