@@ -21,6 +21,7 @@ import com.android.tools.r8.Version;
 import com.android.tools.r8.androidapi.AndroidApiForHashingClass;
 import com.android.tools.r8.androidapi.ComputedApiLevel;
 import com.android.tools.r8.cf.CfVersion;
+import com.android.tools.r8.dex.ApplicationReader.ProgramClassConflictResolver;
 import com.android.tools.r8.dex.Marker;
 import com.android.tools.r8.dex.Marker.Backend;
 import com.android.tools.r8.dex.Marker.Tool;
@@ -157,6 +158,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   // TODO(zerny): Make this private-final once we have full program-consumer support.
   public ProgramConsumer programConsumer = null;
+
+  public ProgramClassConflictResolver programClassConflictResolver = null;
 
   public DataResourceConsumer dataResourceConsumer;
   public FeatureSplitConfiguration featureSplitConfiguration;
