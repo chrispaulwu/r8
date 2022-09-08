@@ -109,7 +109,8 @@ public class ProgramClassCollection extends ClassMap<DexProgramClass> {
   }
 
   private static DexProgramClass mergeIfLegacySynthetics(DexProgramClass a, DexProgramClass b) {
-    if (a.type.isLegacySynthesizedTypeAllowedDuplication()) {
+    if (a.type.isLegacySynthesizedTypeAllowedDuplication()
+        || a.type.isSynthesizedTypeAllowedDuplication()) {
       assert assertEqualClasses(a, b);
       return a;
     }

@@ -114,7 +114,7 @@ public class ApplicationReader {
       StringResource proguardMap,
       ExecutorService executorService)
       throws IOException {
-    return read(proguardMap, executorService, false);
+    return read(proguardMap, executorService, true);
   }
 
   public final LazyLoadedDexApplication read(
