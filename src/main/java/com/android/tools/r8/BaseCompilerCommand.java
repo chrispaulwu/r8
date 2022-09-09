@@ -54,6 +54,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
   private final DumpInputFlags dumpInputFlags;
   private final MapIdProvider mapIdProvider;
   private final SourceFileProvider sourceFileProvider;
+  private final ClassConflictResolver classConflictResolver;
 
   BaseCompilerCommand(boolean printHelp, boolean printVersion) {
     super(printHelp, printVersion);
@@ -72,6 +73,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     dumpInputFlags = DumpInputFlags.noDump();
     mapIdProvider = null;
     sourceFileProvider = null;
+    classConflictResolver = null;
   }
 
   BaseCompilerCommand(
@@ -90,7 +92,8 @@ public abstract class BaseCompilerCommand extends BaseCommand {
       int threadCount,
       DumpInputFlags dumpInputFlags,
       MapIdProvider mapIdProvider,
-      SourceFileProvider sourceFileProvider) {
+      SourceFileProvider sourceFileProvider,
+      ClassConflictResolver classConflictResolver) {
     super(app);
     assert minApiLevel > 0;
     assert mode != null;
@@ -109,6 +112,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     this.dumpInputFlags = dumpInputFlags;
     this.mapIdProvider = mapIdProvider;
     this.sourceFileProvider = sourceFileProvider;
+    this.classConflictResolver = classConflictResolver;
   }
 
   /**
@@ -197,6 +201,10 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     return threadCount;
   }
 
+  ClassConflictResolver getClassConflictResolver() {
+    return classConflictResolver;
+  }
+
   DumpInputFlags getDumpInputFlags() {
     return dumpInputFlags;
   }
@@ -237,6 +245,7 @@ public abstract class BaseCompilerCommand extends BaseCommand {
     private DumpInputFlags dumpInputFlags = DumpInputFlags.noDump();
     private MapIdProvider mapIdProvider = null;
     private SourceFileProvider sourceFileProvider = null;
+    private ClassConflictResolver classConflictResolver = null;
 
     abstract CompilationMode defaultCompilationMode();
 
@@ -719,6 +728,22 @@ public abstract class BaseCompilerCommand extends BaseCommand {
 
     List<Consumer<Inspector>> getOutputInspections() {
       return outputInspections;
+    }
+
+    /**
+     * Set a conflict resolver to determine which class definition to use in case of duplicates.
+     *
+     * <p>If no resolver is set, the compiler will fail compilation in case of duplicates.
+     *
+     * @param resolver Resolver for choosing between duplicate classes.
+     */
+    public B setClassConflictResolver(ClassConflictResolver resolver) {
+      this.classConflictResolver = resolver;
+      return self();
+    }
+
+    ClassConflictResolver getClassConflictResolver() {
+      return classConflictResolver;
     }
   }
 }
