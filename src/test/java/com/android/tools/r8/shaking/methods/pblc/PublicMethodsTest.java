@@ -10,12 +10,15 @@ import static org.junit.Assert.assertEquals;
 
 import com.android.tools.r8.NoVerticalClassMerging;
 import com.android.tools.r8.shaking.methods.MethodsTestBase;
+import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import org.junit.Test;
 
 @NoVerticalClassMerging
@@ -63,6 +66,24 @@ public class PublicMethodsTest extends MethodsTestBase {
     return Main.class;
   }
 
+  private boolean willShrinkConstructors(Shrinker shrinker) {
+    return shrinker.isR8Full()
+        && parameters.getApiLevel().isGreaterThanOrEqualTo(AndroidApiLevel.L);
+  }
+
+  private static BiConsumer<CodeInspector, Shrinker> applyInspectorIf(
+      Predicate<Shrinker> predicate,
+      BiConsumer<CodeInspector, Shrinker> thenInspector,
+      BiConsumer<CodeInspector, Shrinker> elseInspector) {
+    return (inspector, shrinker) -> {
+      if (predicate.test(shrinker)) {
+        thenInspector.accept(inspector, shrinker);
+      } else {
+        elseInspector.accept(inspector, shrinker);
+      }
+    };
+  }
+
   private void checkConstructors(CodeInspector inspector, Set<String> expected) {
     ClassSubject superSubject = inspector.clazz(Super.class);
     assertThat(superSubject, isPresent());
@@ -100,6 +121,11 @@ public class PublicMethodsTest extends MethodsTestBase {
     checkConstructors(inspector, ImmutableSet.of("Super", "Sub", "SubSub"));
   }
 
+  private void checkAllMethodsAndSubSubConstructor(CodeInspector inspector, Shrinker shrinker) {
+    checkMethods(inspector, ImmutableSet.of("m1", "m2", "m3"));
+    checkConstructors(inspector, ImmutableSet.of("SubSub"));
+  }
+
   private void checkAllMethodsNoConstructorsInFullMode(CodeInspector inspector, Shrinker shrinker) {
     checkMethods(inspector, ImmutableSet.of("m1", "m2", "m3"));
     checkNoConstructorsInFullMode(inspector, shrinker);
@@ -115,6 +141,11 @@ public class PublicMethodsTest extends MethodsTestBase {
     checkConstructors(inspector, ImmutableSet.of("Super", "Sub", "SubSub"));
   }
 
+  private void checkM1AndSubSubConstructor(CodeInspector inspector, Shrinker shrinker) {
+    checkMethods(inspector, ImmutableSet.of("m1"));
+    checkConstructors(inspector, ImmutableSet.of("SubSub"));
+  }
+
   private void checkOnlyM2(CodeInspector inspector, Shrinker shrinker) {
     checkMethods(inspector, ImmutableSet.of("m2"));
     checkNoConstructorsInFullMode(inspector, shrinker);
@@ -123,6 +154,11 @@ public class PublicMethodsTest extends MethodsTestBase {
   private void checkM2AndAllConstructors(CodeInspector inspector, Shrinker shrinker) {
     checkMethods(inspector, ImmutableSet.of("m2"));
     checkConstructors(inspector, ImmutableSet.of("Super", "Sub", "SubSub"));
+  }
+
+  private void checkM2AndSubSubConstructor(CodeInspector inspector, Shrinker shrinker) {
+    checkMethods(inspector, ImmutableSet.of("m2"));
+    checkConstructors(inspector, ImmutableSet.of("SubSub"));
   }
 
   private void checkOnlyM3(CodeInspector inspector, Shrinker shrinker) {
@@ -135,11 +171,19 @@ public class PublicMethodsTest extends MethodsTestBase {
     checkConstructors(inspector, ImmutableSet.of("Super", "Sub", "SubSub"));
   }
 
+  private void checkM3AndSubSubConstructor(CodeInspector inspector, Shrinker shrinker) {
+    checkMethods(inspector, ImmutableSet.of("m3"));
+    checkConstructors(inspector, ImmutableSet.of("SubSub"));
+  }
+
   @Test
   public void testKeepAllMethodsWithWildcard() throws Throwable {
     runTest(
         "-keep class **.SubSub { *; }",
-        this::checkAllMethodsAndAllConstructors,
+        applyInspectorIf(
+            this::willShrinkConstructors,
+            this::checkAllMethodsAndSubSubConstructor,
+            this::checkAllMethodsAndAllConstructors),
         allMethodsOutput());
   }
 
@@ -147,7 +191,10 @@ public class PublicMethodsTest extends MethodsTestBase {
   public void testKeepAllMethodsWithMethods() throws Throwable {
     runTest(
         "-keep class **.SubSub { <methods>; }",
-        this::checkAllMethodsAndAllConstructors,
+        applyInspectorIf(
+            this::willShrinkConstructors,
+            this::checkAllMethodsAndSubSubConstructor,
+            this::checkAllMethodsAndAllConstructors),
         allMethodsOutput());
   }
 
@@ -163,7 +210,10 @@ public class PublicMethodsTest extends MethodsTestBase {
   public void testKeepDefaultConstructorAndAllMethodsWithNameWildcard() throws Throwable {
     runTest(
         "-keep class **.SubSub { <init>(); void m*(); }",
-        this::checkAllMethodsAndAllConstructors,
+        applyInspectorIf(
+            this::willShrinkConstructors,
+            this::checkAllMethodsAndSubSubConstructor,
+            this::checkAllMethodsAndAllConstructors),
         allMethodsOutput());
   }
 
@@ -176,7 +226,10 @@ public class PublicMethodsTest extends MethodsTestBase {
   public void testKeepDefaultConstructorAndKeepM1() throws Throwable {
     runTest(
         "-keep class **.SubSub { <init>(); void m1(); }",
-        this::checkM1AndAllConstructors,
+        applyInspectorIf(
+            this::willShrinkConstructors,
+            this::checkM1AndSubSubConstructor,
+            this::checkM1AndAllConstructors),
         onlyM1Output());
   }
 
@@ -189,7 +242,10 @@ public class PublicMethodsTest extends MethodsTestBase {
   public void testKeepDefaultConstructorAndKeepM2() throws Throwable {
     runTest(
         "-keep class **.SubSub { <init>(); void m2(); }",
-        this::checkM2AndAllConstructors,
+        applyInspectorIf(
+            this::willShrinkConstructors,
+            this::checkM2AndSubSubConstructor,
+            this::checkM2AndAllConstructors),
         onlyM2Output());
   }
 
@@ -202,7 +258,10 @@ public class PublicMethodsTest extends MethodsTestBase {
   public void testKeepDefaultConstructorAndKeepM3() throws Throwable {
     runTest(
         "-keep class **.SubSub { <init>(); void m3(); }",
-        this::checkM3AndAllConstructors,
+        applyInspectorIf(
+            this::willShrinkConstructors,
+            this::checkM3AndSubSubConstructor,
+            this::checkM3AndAllConstructors),
         onlyM3Output());
   }
 

@@ -54,6 +54,7 @@ import com.android.tools.r8.naming.ClassNameMapper;
 import com.android.tools.r8.naming.ClassNaming;
 import com.android.tools.r8.naming.ClassNaming.Builder;
 import com.android.tools.r8.naming.ClassNamingForNameMapper.MappedRange;
+import com.android.tools.r8.naming.MapVersion;
 import com.android.tools.r8.naming.MemberNaming;
 import com.android.tools.r8.naming.MemberNaming.FieldSignature;
 import com.android.tools.r8.naming.MemberNaming.MethodSignature;
@@ -69,6 +70,7 @@ import com.android.tools.r8.naming.mappinginformation.FileNameInformation;
 import com.android.tools.r8.naming.mappinginformation.MappingInformation;
 import com.android.tools.r8.naming.mappinginformation.OutlineCallsiteMappingInformation;
 import com.android.tools.r8.naming.mappinginformation.OutlineMappingInformation;
+import com.android.tools.r8.naming.mappinginformation.ResidualSignatureMappingInformation.ResidualMethodSignatureMappingInformation;
 import com.android.tools.r8.naming.mappinginformation.RewriteFrameMappingInformation;
 import com.android.tools.r8.naming.mappinginformation.RewriteFrameMappingInformation.RemoveInnerFramesAction;
 import com.android.tools.r8.naming.mappinginformation.RewriteFrameMappingInformation.ThrowsCondition;
@@ -640,15 +642,25 @@ public class LineNumberOptimizer {
             methodMappingInfo.add(CompilerSynthesizedMappingInformation.builder().build());
           }
 
-          // Don't emit pure identity mappings.
-          if (mappedPositions.isEmpty()
-              && methodMappingInfo.isEmpty()
-              && obfuscatedNameDexString == originalMethod.name
-              && originalMethod.holder == originalType) {
+          MapVersion mapFileVersion = appView.options().getMapFileVersion();
+          if (isIdentityMapping(
+              mapFileVersion,
+              mappedPositions,
+              methodMappingInfo,
+              method,
+              obfuscatedNameDexString,
+              originalMethod,
+              originalType)) {
             assert appView.options().lineNumberOptimization == LineNumberOptimization.OFF
                 || hasAtMostOnePosition(definition, appView.options())
                 || appView.isCfByteCodePassThrough(definition);
             continue;
+          }
+          // TODO(b/169953605): Ensure we emit the residual signature information.
+          if (mapFileVersion.isGreaterThan(MapVersion.MAP_VERSION_2_1)
+              && originalMethod != method.getReference()) {
+            methodMappingInfo.add(
+                ResidualMethodSignatureMappingInformation.fromDexMethod(method.getReference()));
           }
 
           MemberNaming memberNaming = new MemberNaming(originalSignature, obfuscatedName);
@@ -689,26 +701,16 @@ public class LineNumberOptimizer {
             MappedPosition firstPosition = mappedPositions.get(i);
             int j = i + 1;
             MappedPosition lastPosition = firstPosition;
+            MappedPositionRange mappedPositionRange = MappedPositionRange.SINGLE_LINE;
             for (; j < mappedPositions.size(); j++) {
               // Break if this position cannot be merged with lastPosition.
               MappedPosition currentPosition = mappedPositions.get(j);
-              // We allow for ranges being mapped to the same line but not to other ranges:
-              //   1:10:void foo():42:42 -> a
-              // is OK since retrace(a(:7)) = 42, however, the following is not OK:
-              //   1:10:void foo():42:43 -> a
-              // since retrace(a(:7)) = 49, which is not correct.
-              boolean isSingleLine = currentPosition.originalLine == firstPosition.originalLine;
-              boolean differentDelta =
-                  currentPosition.originalLine - lastPosition.originalLine
-                      != currentPosition.obfuscatedLine - lastPosition.obfuscatedLine;
-              boolean isMappingRangeToSingleLine =
-                  firstPosition.obfuscatedLine != lastPosition.obfuscatedLine
-                      && firstPosition.originalLine == lastPosition.originalLine;
+              mappedPositionRange =
+                  mappedPositionRange.canAddNextMappingToRange(lastPosition, currentPosition);
               // Note that currentPosition.caller and lastPosition.class must be deep-compared since
               // multiple inlining passes lose the canonical property of the positions.
               if (currentPosition.method != lastPosition.method
-                  || (!isSingleLine && differentDelta)
-                  || (!isSingleLine && isMappingRangeToSingleLine)
+                  || mappedPositionRange.isOutOfRange()
                   || !Objects.equals(currentPosition.caller, lastPosition.caller)
                   // Break when we see a mapped outline
                   || currentPosition.outlineCallee != null
@@ -820,6 +822,28 @@ public class LineNumberOptimizer {
         });
 
     return classNameMapperBuilder.build();
+  }
+
+  private static boolean isIdentityMapping(
+      MapVersion mapFileVersion,
+      List<MappedPosition> mappedPositions,
+      List<MappingInformation> methodMappingInfo,
+      ProgramMethod method,
+      DexString obfuscatedNameDexString,
+      DexMethod originalMethod,
+      DexType originalType) {
+    if (mapFileVersion.isGreaterThan(MapVersion.MAP_VERSION_2_1)) {
+      // Don't emit pure identity mappings.
+      return mappedPositions.isEmpty()
+          && methodMappingInfo.isEmpty()
+          && originalMethod == method.getReference();
+    } else {
+      // Don't emit pure identity mappings.
+      return mappedPositions.isEmpty()
+          && methodMappingInfo.isEmpty()
+          && obfuscatedNameDexString == originalMethod.name
+          && originalMethod.holder == originalType;
+    }
   }
 
   private static boolean hasAtMostOnePosition(
@@ -1411,6 +1435,55 @@ public class LineNumberOptimizer {
               firstEntry && oldPosition.isOutline(),
               firstEntry ? oldPosition.getOutlineCallee() : null,
               firstEntry ? oldPosition.getOutlinePositions() : null));
+    }
+  }
+
+  private enum MappedPositionRange {
+    // Single line represent a mapping on the form X:X:<method>:Y:Y.
+    SINGLE_LINE,
+    // Range to single line allows for a range on the left hand side, X:X':<method>:Y:Y
+    RANGE_TO_SINGLE,
+    // Same delta is when we have a range on both sides and the delta (line mapping between them)
+    // is the same: X:X':<method>:Y:Y' and delta(X,X') = delta(Y,Y')
+    SAME_DELTA,
+    // Out of range encodes a mapping range that cannot be encoded.
+    OUT_OF_RANGE;
+
+    private boolean isSingleLine() {
+      return this == SINGLE_LINE;
+    }
+
+    private boolean isRangeToSingle() {
+      return this == RANGE_TO_SINGLE;
+    }
+
+    private boolean isOutOfRange() {
+      return this == OUT_OF_RANGE;
+    }
+
+    public MappedPositionRange canAddNextMappingToRange(
+        MappedPosition lastPosition, MappedPosition currentPosition) {
+      if (isOutOfRange()) {
+        return this;
+      }
+      // We allow for ranges being mapped to the same line but not to other ranges:
+      //   1:10:void foo():42:42 -> a
+      // is OK since retrace(a(:7)) = 42, however, the following is not OK:
+      //   1:10:void foo():42:43 -> a
+      // since retrace(a(:7)) = 49, which is not correct.
+      boolean hasSameRightHandSide = lastPosition.originalLine == currentPosition.originalLine;
+      if (hasSameRightHandSide) {
+        boolean hasSameLeftHandSide = lastPosition.obfuscatedLine == currentPosition.obfuscatedLine;
+        return hasSameLeftHandSide ? SINGLE_LINE : RANGE_TO_SINGLE;
+      }
+      if (isRangeToSingle()) {
+        // We cannot recover a delta encoding if we have had range to single encoding.
+        return OUT_OF_RANGE;
+      }
+      boolean sameDelta =
+          currentPosition.originalLine - lastPosition.originalLine
+              == currentPosition.obfuscatedLine - lastPosition.obfuscatedLine;
+      return sameDelta ? SAME_DELTA : OUT_OF_RANGE;
     }
   }
 
