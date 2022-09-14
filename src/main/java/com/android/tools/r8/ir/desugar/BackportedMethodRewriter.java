@@ -194,7 +194,8 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
       }
       if (options.getMinApiLevel().isLessThan(AndroidApiLevel.O)) {
         initializeAndroidOMethodProviders(factory);
-        if (typeIsPresent(factory.supplierType)) {
+        if (appView.rewritePrefix.hasRewrittenType(factory.supplierType, appView)
+            || options.getMinApiLevel().isGreaterThanOrEqualTo(AndroidApiLevel.N)) {
           initializeAndroidOThreadLocalMethodProviderWithSupplier(factory);
         }
       }
@@ -1625,8 +1626,8 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
     }
 
     @Override
-    protected SyntheticKind getSyntheticKind(SyntheticNaming naming) {
-      return naming.THREAD_LOCAL;
+    protected SyntheticKind getSyntheticKind() {
+      return SyntheticNaming.SyntheticKind.THREAD_LOCAL;
     }
 
     @Override
@@ -1641,7 +1642,7 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
           appView
               .getSyntheticItems()
               .createClass(
-                  kinds -> kinds.THREAD_LOCAL,
+                  SyntheticNaming.SyntheticKind.THREAD_LOCAL,
                   methodProcessingContext.createUniqueContext(),
                   appView,
                   builder -> new ThreadLocalSubclassGenerator(builder, appView));
