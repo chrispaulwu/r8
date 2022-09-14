@@ -4,20 +4,14 @@
 
 package com.android.tools.r8.desugar.backports;
 
-import static com.android.tools.r8.desugar.desugaredlibrary.test.CompilationSpecification.SPECIFICATIONS_WITH_CF2CF;
-import static com.android.tools.r8.desugar.desugaredlibrary.test.LibraryDesugaringSpecification.JDK11;
-import static com.android.tools.r8.desugar.desugaredlibrary.test.LibraryDesugaringSpecification.JDK11_LEGACY;
-import static com.android.tools.r8.desugar.desugaredlibrary.test.LibraryDesugaringSpecification.JDK11_MINIMAL;
-import static com.android.tools.r8.desugar.desugaredlibrary.test.LibraryDesugaringSpecification.JDK11_PATH;
-import static com.android.tools.r8.desugar.desugaredlibrary.test.LibraryDesugaringSpecification.JDK8;
-
+import com.android.tools.r8.CompilationMode;
+import com.android.tools.r8.LibraryDesugaringTestConfiguration;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.desugar.desugaredlibrary.DesugaredLibraryTestBase;
-import com.android.tools.r8.desugar.desugaredlibrary.test.CompilationSpecification;
-import com.android.tools.r8.desugar.desugaredlibrary.test.LibraryDesugaringSpecification;
+import com.android.tools.r8.utils.BooleanUtils;
 import com.android.tools.r8.utils.StringUtils;
-import com.google.common.collect.ImmutableList;
 import java.util.List;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -31,26 +25,57 @@ public class ThreadLocalBackportWithDesugaredLibraryTest extends DesugaredLibrar
   public TestParameters parameters;
 
   @Parameter(1)
-  public LibraryDesugaringSpecification libraryDesugaringSpecification;
+  public boolean shrinkDesugaredLibrary;
 
   @Parameter(2)
-  public CompilationSpecification compilationSpecification;
+  public boolean traceReferencesKeepRules;
 
-  @Parameters(name = "{0}, spec: {1}, {2}")
+  @Parameters(name = "{0}, shrinkDesugaredLibrary: {1}, traceReferencesKeepRules {2}")
   public static List<Object[]> data() {
     return buildParameters(
         getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build(),
-        ImmutableList.of(JDK8, JDK11_LEGACY, JDK11_MINIMAL, JDK11, JDK11_PATH),
-        SPECIFICATIONS_WITH_CF2CF);
+        BooleanUtils.values(),
+        BooleanUtils.values());
   }
 
   private static final String EXPECTED_OUTPUT = StringUtils.lines("Hello, world!");
 
   @Test
-  public void testWithDesugaredLibrary() throws Exception {
-    testForDesugaredLibrary(parameters, libraryDesugaringSpecification, compilationSpecification)
+  public void testTimeD8() throws Exception {
+    Assume.assumeTrue(parameters.getRuntime().isDex());
+    Assume.assumeTrue(shrinkDesugaredLibrary || !traceReferencesKeepRules);
+
+    testForD8()
+        .addInnerClasses(getClass())
+        .setMinApi(parameters.getApiLevel())
+        .addLibraryFiles(getLibraryFile())
+        .enableLibraryDesugaring(
+            LibraryDesugaringTestConfiguration.builder()
+                .setMinApi(parameters.getApiLevel())
+                .withKeepRuleConsumer()
+                .setMode(shrinkDesugaredLibrary ? CompilationMode.RELEASE : CompilationMode.DEBUG)
+                .build())
+        .compile()
+        .run(parameters.getRuntime(), TestClass.class)
+        .assertSuccessWithOutput(EXPECTED_OUTPUT);
+  }
+
+  @Test
+  public void testTimeR8() throws Exception {
+    Assume.assumeTrue(parameters.getRuntime().isDex());
+    Assume.assumeTrue(shrinkDesugaredLibrary || !traceReferencesKeepRules);
+
+    testForR8(parameters.getBackend())
         .addInnerClasses(getClass())
         .addKeepMainRule(TestClass.class)
+        .setMinApi(parameters.getApiLevel())
+        .addLibraryFiles(getLibraryFile())
+        .enableLibraryDesugaring(
+            LibraryDesugaringTestConfiguration.builder()
+                .setMinApi(parameters.getApiLevel())
+                .withKeepRuleConsumer()
+                .setMode(shrinkDesugaredLibrary ? CompilationMode.RELEASE : CompilationMode.DEBUG)
+                .build())
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED_OUTPUT);
   }
