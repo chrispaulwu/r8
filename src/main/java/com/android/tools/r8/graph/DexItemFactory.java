@@ -285,6 +285,7 @@ public class DexItemFactory {
   public final DexString optionalLongDescriptor = createString("Ljava/util/OptionalLong;");
   public final DexString streamDescriptor = createString("Ljava/util/stream/Stream;");
   public final DexString arraysDescriptor = createString("Ljava/util/Arrays;");
+  public final DexString threadLocalDescriptor = createString("Ljava/lang/ThreadLocal;");
 
   public final DexString throwableDescriptor = createString(throwableDescriptorString);
   public final DexString illegalAccessErrorDescriptor =
@@ -431,6 +432,7 @@ public class DexItemFactory {
   public final DexType optionalIntType = createStaticallyKnownType(optionalIntDescriptor);
   public final DexType optionalLongType = createStaticallyKnownType(optionalLongDescriptor);
   public final DexType streamType = createStaticallyKnownType(streamDescriptor);
+  public final DexType threadLocalType = createStaticallyKnownType(threadLocalDescriptor);
 
   public final DexType bufferType = createStaticallyKnownType(bufferDescriptor);
   public final DexType byteBufferType = createStaticallyKnownType(byteBufferDescriptor);
