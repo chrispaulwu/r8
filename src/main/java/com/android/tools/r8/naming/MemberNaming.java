@@ -14,6 +14,11 @@ import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.naming.MemberNaming.Signature.SignatureKind;
 import com.android.tools.r8.position.Position;
+import com.android.tools.r8.references.FieldReference;
+import com.android.tools.r8.references.MethodReference;
+import com.android.tools.r8.references.TypeReference;
+import com.android.tools.r8.utils.ArrayUtils;
+import com.android.tools.r8.utils.CollectionUtils;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.StringUtils;
 import java.io.IOException;
@@ -21,6 +26,8 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Objects;
+import java.util.function.Function;
 import org.objectweb.asm.Type;
 
 /**
@@ -28,7 +35,7 @@ import org.objectweb.asm.Type;
  *
  * <p>This includes the signature and the original name.
  */
-public class MemberNaming {
+public class MemberNaming implements MappingWithResidualInfo {
 
   @Override
   public boolean equals(Object o) {
@@ -40,33 +47,47 @@ public class MemberNaming {
     }
 
     MemberNaming that = (MemberNaming) o;
-    return signature.equals(that.signature) && renamedSignature.equals(that.renamedSignature);
+    return signature.equals(that.signature)
+        && renamedName.equals(that.renamedName)
+        && Objects.equals(residualSignature, that.residualSignature);
   }
 
   @Override
   public int hashCode() {
     int result = signature.hashCode();
-    result = 31 * result + renamedSignature.hashCode();
+    result = 31 * result + renamedName.hashCode();
+    result = 31 * result + Objects.hashCode(residualSignature);
     return result;
   }
 
   /** Original signature of the member. */
-  final Signature signature;
-  /** Renamed signature where the name (but not the types) have been renamed. */
-  final Signature renamedSignature;
+  private final Signature signature;
+  /** Residual signature where types and names could be changed. */
+  private Signature residualSignature = null;
+  /**
+   * Renamed name in the mapping file. This value will always be present even if the residual
+   * signature is not.
+   */
+  private final String renamedName;
   /** Position of the member in the file. */
-  final Position position;
+  private final Position position;
 
   public MemberNaming(Signature signature, String renamedName) {
-    this(signature, signature.asRenamed(renamedName), Position.UNKNOWN);
+    this(signature, renamedName, Position.UNKNOWN);
   }
 
-  public MemberNaming(Signature signature, Signature renamedSignature, Position position) {
+  public MemberNaming(Signature signature, Signature residualSignature) {
+    this(signature, residualSignature.getName(), Position.UNKNOWN);
+    this.residualSignature = residualSignature;
+  }
+
+  public MemberNaming(Signature signature, String renamedName, Position position) {
     this.signature = signature;
-    this.renamedSignature = renamedSignature;
+    this.renamedName = renamedName;
     this.position = position;
   }
 
+  @Override
   public Signature getOriginalSignature() {
     return signature;
   }
@@ -75,12 +96,14 @@ public class MemberNaming {
     return signature.name;
   }
 
-  public Signature getRenamedSignature() {
-    return renamedSignature;
+  @Override
+  public boolean hasResidualSignature() {
+    return residualSignature != null;
   }
 
+  @Override
   public String getRenamedName() {
-    return renamedSignature.name;
+    return renamedName;
   }
 
   public boolean isMethodNaming() {
@@ -97,7 +120,17 @@ public class MemberNaming {
 
   @Override
   public String toString() {
-    return signature.toString() + " -> " + renamedSignature.name;
+    return signature.toString() + " -> " + renamedName;
+  }
+
+  @Override
+  public Signature getResidualSignatureInternal() {
+    return residualSignature;
+  }
+
+  @Override
+  public void setResidualSignatureInternal(Signature signature) {
+    this.residualSignature = signature;
   }
 
   public abstract static class Signature {
@@ -119,6 +152,9 @@ public class MemberNaming {
     abstract public int hashCode();
 
     abstract void write(Writer builder) throws IOException;
+
+    public abstract Signature computeResidualSignature(
+        String renamedName, Function<String, String> typeNameMapper);
 
     public boolean isQualified() {
       return name.indexOf(JAVA_PACKAGE_SEPARATOR) != -1;
@@ -191,6 +227,11 @@ public class MemberNaming {
           field.type.toSourceString());
     }
 
+    public static FieldSignature fromFieldReference(FieldReference fieldReference) {
+      return new FieldSignature(
+          fieldReference.getFieldName(), fieldReference.getFieldType().getTypeName());
+    }
+
     public DexField toDexField(DexItemFactory factory, DexType clazz) {
       return factory.createField(
           clazz,
@@ -206,6 +247,12 @@ public class MemberNaming {
     @Override
     public SignatureKind kind() {
       return SignatureKind.FIELD;
+    }
+
+    @Override
+    public FieldSignature computeResidualSignature(
+        String renamedName, Function<String, String> typeNameMapper) {
+      return new FieldSignature(renamedName, DescriptorUtils.mapTypeName(type, typeNameMapper));
     }
 
     @Override
@@ -282,17 +329,21 @@ public class MemberNaming {
     }
 
     public static MethodSignature fromSignature(String name, String signature) {
-      Type[] parameterDescriptors = Type.getArgumentTypes(signature);
       Type returnDescriptor = Type.getReturnType(signature);
-      String[] parameterTypes = new String[parameterDescriptors.length];
-      for (int i = 0; i < parameterDescriptors.length; i++) {
-        parameterTypes[i] =
-            DescriptorUtils.descriptorToJavaType(parameterDescriptors[i].getDescriptor());
-      }
       return new MethodSignature(
           name,
           DescriptorUtils.descriptorToJavaType(returnDescriptor.getDescriptor()),
-          parameterTypes);
+          ArrayUtils.mapToStringArray(
+              Type.getArgumentTypes(signature),
+              param -> DescriptorUtils.descriptorToJavaType(param.getDescriptor())));
+    }
+
+    public static MethodSignature fromMethodReference(MethodReference reference) {
+      TypeReference returnType = reference.getReturnType();
+      return new MethodSignature(
+          reference.getMethodName(),
+          returnType == null ? "void" : returnType.getTypeName(),
+          CollectionUtils.mapToStringArray(reference.getFormalTypes(), TypeReference::getTypeName));
     }
 
     public MethodSignature toUnqualified() {
@@ -317,7 +368,7 @@ public class MemberNaming {
     }
 
     @Override
-    Signature asRenamed(String renamedName) {
+    MethodSignature asRenamed(String renamedName) {
       return new MethodSignature(renamedName, type, parameters);
     }
 
@@ -377,6 +428,17 @@ public class MemberNaming {
       sb.append(')');
       sb.append(javaTypeToDescriptor(type));
       return sb.toString();
+    }
+
+    @Override
+    public MethodSignature computeResidualSignature(
+        String renamedName, Function<String, String> typeNameMapper) {
+      return new MethodSignature(
+          renamedName,
+          DescriptorUtils.mapTypeName(type, typeNameMapper),
+          ArrayUtils.mapToStringArray(
+              parameters,
+              parameterTypeName -> DescriptorUtils.mapTypeName(parameterTypeName, typeNameMapper)));
     }
 
     @Override

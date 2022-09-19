@@ -1973,6 +1973,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     public boolean enableDeadSwitchCaseElimination = true;
     public boolean enableInvokeSuperToInvokeVirtualRewriting = true;
     public boolean enableMultiANewArrayDesugaringForClassFiles = false;
+    public boolean enableRetargetingConstructorBridgeCalls = false;
     public boolean enableSwitchToIfRewriting = true;
     public boolean enableEnumUnboxingDebugLogs =
         System.getProperty("com.android.tools.r8.enableEnumUnboxingDebugLogs") != null;
@@ -2757,6 +2758,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   public boolean canHaveNonReboundConstructorInvoke() {
-    return isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
+    // TODO(b/246679983): Turned off while diagnosing b/246679983.
+    return false && isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
   }
 }
