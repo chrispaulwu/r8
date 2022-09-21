@@ -41,7 +41,6 @@ import com.android.tools.r8.naming.mappinginformation.RewriteFrameMappingInforma
 import com.android.tools.r8.naming.mappinginformation.RewriteFrameMappingInformation.ThrowsCondition;
 import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.Reference;
-import com.android.tools.r8.retrace.internal.RetraceUtils;
 import com.android.tools.r8.synthesis.SyntheticItems;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.InternalOptions.LineNumberOptimization;
@@ -108,7 +107,6 @@ public class MappedPositionToClassNameMapperBuilder {
           assert appView.appInfo().definitionForWithoutExistenceAssert(holder) == null;
           String typeName = holder.toSourceString();
           String sourceFile = entry.getValue();
-          assert !RetraceUtils.hasPredictableSourceFileName(typeName, sourceFile);
           classNameMapperBuilder
               .classNamingBuilder(
                   typeName, typeName, com.android.tools.r8.position.Position.UNKNOWN)
@@ -150,11 +148,9 @@ public class MappedPositionToClassNameMapperBuilder {
       // Check if source file should be added to the map
       DexString originalSourceFile = originalSourceFiles.getOriginalSourceFile(clazz);
       if (originalSourceFile != null) {
-        String sourceFile = originalSourceFile.toString();
-        if (!RetraceUtils.hasPredictableSourceFileName(clazz.toSourceString(), sourceFile)) {
-          getBuilder()
-              .addMappingInformation(FileNameInformation.build(sourceFile), Unreachable::raise);
-        }
+        getBuilder()
+            .addMappingInformation(
+                FileNameInformation.build(originalSourceFile.toSourceString()), Unreachable::raise);
       }
       return this;
     }
@@ -219,13 +215,12 @@ public class MappedPositionToClassNameMapperBuilder {
             || appView.isCfByteCodePassThrough(definition);
         return this;
       }
-      // TODO(b/169953605): Ensure we emit the residual signature information.
       if (mapFileVersion.isGreaterThan(MapVersion.MAP_VERSION_2_1)
-          && originalMethod != method.getReference()) {
+          && originalMethod != method.getReference()
+          && !appView.graphLens().isSimpleRenaming(residualMethod)) {
         methodMappingInfo.add(
             ResidualMethodSignatureMappingInformation.fromDexMethod(residualMethod));
       }
-
       MethodSignature residualSignature = MethodSignature.fromDexMethod(residualMethod);
 
       MemberNaming memberNaming = new MemberNaming(originalSignature, residualSignature);
@@ -234,9 +229,7 @@ public class MappedPositionToClassNameMapperBuilder {
       // Add simple "a() -> b" mapping if we won't have any other with concrete line numbers
       if (mappedPositions.isEmpty()) {
         MappedRange range =
-            getBuilder()
-                .addMappedRange(
-                    null, originalSignature, null, residualSignature.getName().toString());
+            getBuilder().addMappedRange(null, originalSignature, null, residualSignature.getName());
         methodMappingInfo.forEach(info -> range.addMappingInformation(info, Unreachable::raise));
         return this;
       }
@@ -495,6 +488,10 @@ public class MappedPositionToClassNameMapperBuilder {
       return this == OUT_OF_RANGE;
     }
 
+    private boolean isSameDelta() {
+      return this == SAME_DELTA;
+    }
+
     public MappedPositionRange canAddNextMappingToRange(
         MappedPosition lastPosition, MappedPosition currentPosition) {
       if (isOutOfRange()) {
@@ -508,9 +505,12 @@ public class MappedPositionToClassNameMapperBuilder {
       boolean hasSameRightHandSide =
           lastPosition.getOriginalLine() == currentPosition.getOriginalLine();
       if (hasSameRightHandSide) {
+        if (isSameDelta()) {
+          return OUT_OF_RANGE;
+        }
         boolean hasSameLeftHandSide =
             lastPosition.getObfuscatedLine() == currentPosition.getObfuscatedLine();
-        return hasSameLeftHandSide ? SINGLE_LINE : RANGE_TO_SINGLE;
+        return (hasSameLeftHandSide && isSingleLine()) ? SINGLE_LINE : RANGE_TO_SINGLE;
       }
       if (isRangeToSingle()) {
         // We cannot recover a delta encoding if we have had range to single encoding.

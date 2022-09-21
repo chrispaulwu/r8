@@ -272,18 +272,24 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public void configureAndroidPlatformBuild(boolean isAndroidPlatformBuild) {
     assert !androidPlatformBuild;
+    if (isAndroidPlatformBuildOrMinApiPlatform()) {
+      apiModelingOptions().disableApiModeling();
+    }
     if (!isAndroidPlatformBuild) {
       return;
     }
-    androidPlatformBuild = isAndroidPlatformBuild;
     // Configure options according to platform build assumptions.
     // See go/r8platformflag and b/232073181.
-    apiModelingOptions().disableApiModeling();
+    androidPlatformBuild = isAndroidPlatformBuild;
     enableBackportMethods = false;
   }
 
   public boolean isAndroidPlatformBuild() {
     return androidPlatformBuild;
+  }
+
+  public boolean isAndroidPlatformBuildOrMinApiPlatform() {
+    return androidPlatformBuild || minApiLevel.isPlatform();
   }
 
   public boolean printTimes = System.getProperty("com.android.tools.r8.printtimes") != null;
@@ -415,6 +421,11 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   // See b/222081665 for context.
   public boolean createSingletonsForStatelessLambdas =
       System.getProperty("com.android.tools.r8.createSingletonsForStatelessLambdas") != null;
+
+  // Flag to control the representation of stateless lambdas.
+  // See b/222081665 for context.
+  public boolean rewriteInvokeToPrivateInDesugar =
+      System.getProperty("com.android.tools.r8.rewriteInvokeToPrivateInDesugar") != null;
 
   // Flag to allow record annotations in DEX. See b/231930852 for context.
   public boolean emitRecordAnnotationsInDex =
@@ -1856,6 +1867,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     public boolean roundtripThroughLIR = false;
     private boolean hasReadCheckDeterminism = false;
     private DeterminismChecker determinismChecker = null;
+    public boolean usePcEncodingInCfForTesting = false;
 
     // Testing options to analyse locality of items in DEX files when they are generated.
     public boolean calculateItemUseCountInDex = false;
