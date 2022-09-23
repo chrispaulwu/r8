@@ -93,17 +93,15 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
     if (appView.options().enableTryWithResourcesDesugaring()) {
       desugarings.add(new TwrInstructionDesugaring(appView));
     }
-    if (appView.options().isInterfaceMethodDesugaringEnabled()) {
-      interfaceMethodRewriter =
-          new InterfaceMethodRewriter(
-              appView,
-              SetUtils.newImmutableSetExcludingNullItems(
-                  alwaysThrowingInstructionDesugaring,
-                  backportedMethodRewriter,
-                  desugaredLibraryRetargeter));
+    interfaceMethodRewriter =
+        InterfaceMethodRewriter.create(
+            appView,
+            SetUtils.newImmutableSetExcludingNullItems(
+                alwaysThrowingInstructionDesugaring,
+                backportedMethodRewriter,
+                desugaredLibraryRetargeter));
+    if (interfaceMethodRewriter != null) {
       desugarings.add(interfaceMethodRewriter);
-    } else {
-      interfaceMethodRewriter = null;
     }
     desugaredLibraryAPIConverter =
         appView.typeRewriter.isRewriting()
@@ -121,7 +119,9 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
     desugarings.add(new LambdaInstructionDesugaring(appView));
     desugarings.add(new ConstantDynamicInstructionDesugaring(appView));
     desugarings.add(new InvokeSpecialToSelfDesugaring(appView));
-    if (appView.options().rewriteInvokeToPrivateInDesugar) {
+    if (appView.options().isGeneratingClassFiles()) {
+      // Nest desugaring has to be enabled to avoid other invokevirtual to private methods.
+      assert nestBasedAccessDesugaring != null;
       desugarings.add(new InvokeToPrivateRewriter());
     }
     desugarings.add(new StringConcatInstructionDesugaring(appView));

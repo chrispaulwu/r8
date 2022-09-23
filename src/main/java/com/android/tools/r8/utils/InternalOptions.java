@@ -69,6 +69,7 @@ import com.android.tools.r8.ir.desugar.desugaredlibrary.machinespecification.Mac
 import com.android.tools.r8.ir.desugar.nest.Nest;
 import com.android.tools.r8.ir.optimize.Inliner;
 import com.android.tools.r8.ir.optimize.enums.EnumDataMap;
+import com.android.tools.r8.naming.ClassNameMapper;
 import com.android.tools.r8.naming.MapVersion;
 import com.android.tools.r8.optimize.argumentpropagation.ArgumentPropagatorEventConsumer;
 import com.android.tools.r8.origin.Origin;
@@ -421,11 +422,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   // See b/222081665 for context.
   public boolean createSingletonsForStatelessLambdas =
       System.getProperty("com.android.tools.r8.createSingletonsForStatelessLambdas") != null;
-
-  // Flag to control the representation of stateless lambdas.
-  // See b/222081665 for context.
-  public boolean rewriteInvokeToPrivateInDesugar =
-      System.getProperty("com.android.tools.r8.rewriteInvokeToPrivateInDesugar") != null;
 
   // Flag to allow record annotations in DEX. See b/231930852 for context.
   public boolean emitRecordAnnotationsInDex =
@@ -832,6 +828,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
       new KotlinOptimizationOptions();
   private final ApiModelTestingOptions apiModelTestingOptions = new ApiModelTestingOptions();
   private final DesugarSpecificOptions desugarSpecificOptions = new DesugarSpecificOptions();
+  private final MappingComposeOptions mappingComposeOptions = new MappingComposeOptions();
   private final ArtProfileOptions artProfileOptions = new ArtProfileOptions();
   private final StartupOptions startupOptions = new StartupOptions();
   private final StartupInstrumentationOptions startupInstrumentationOptions =
@@ -877,6 +874,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public ApiModelTestingOptions apiModelingOptions() {
     return apiModelTestingOptions;
+  }
+
+  public MappingComposeOptions mappingComposeOptions() {
+    return mappingComposeOptions;
   }
 
   public DesugarSpecificOptions desugarSpecificOptions() {
@@ -1732,6 +1733,14 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     }
   }
 
+  public static class MappingComposeOptions {
+    // TODO(b/241763080): Remove when enabled.
+    public boolean enableExperimentalMappingComposition = false;
+    // TODO(b/247136434): Disable for internal builds.
+    public boolean allowNonExistingOriginalRanges = true;
+    public Consumer<ClassNameMapper> generatedClassNameMapperConsumer = null;
+  }
+
   public static class ApiModelTestingOptions {
 
     // Flag to specify if we should load the database or not. The api database is used for
@@ -1750,6 +1759,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
         System.getProperty("com.android.tools.r8.disableApiModeling") == null;
     public boolean enableOutliningOfMethods =
         System.getProperty("com.android.tools.r8.disableApiModeling") == null;
+    public boolean reportUnknownApiReferences =
+        System.getProperty("com.android.tools.r8.reportUnknownApiReferences") != null;
 
     // TODO(b/232823652): Enable when we can compute the offset correctly.
     public boolean useMemoryMappedByteBuffer = false;
