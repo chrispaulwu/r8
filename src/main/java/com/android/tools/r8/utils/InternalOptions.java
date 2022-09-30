@@ -360,7 +360,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   // Optimization-related flags. These should conform to -dontoptimize and disableAllOptimizations.
   public boolean enableFieldBitAccessAnalysis =
       System.getProperty("com.android.tools.r8.fieldBitAccessAnalysis") != null;
-  public boolean enableVerticalClassMerging = true;
+  public boolean enableVerticalClassMerging = false;
   public boolean enableUnusedInterfaceRemoval = true;
   public boolean enableDevirtualization = true;
   public boolean enableEnumUnboxing = true;
@@ -1681,9 +1681,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   public class HorizontalClassMergerOptions {
 
     // TODO(b/138781768): Set enable to true when this bug is resolved.
-    private boolean enable =
-        !Version.isDevelopmentVersion()
-            || System.getProperty("com.android.tools.r8.disableHorizontalClassMerging") == null;
+    private boolean enable = false;
     private boolean enableInitial = true;
     // TODO(b/205611444): Enable by default.
     private boolean enableClassInitializerDeadlockDetection = true;

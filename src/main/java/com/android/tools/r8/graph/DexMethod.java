@@ -9,6 +9,7 @@ import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.Reference;
 import com.android.tools.r8.references.TypeReference;
 import com.android.tools.r8.utils.BooleanUtils;
+import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.structural.CompareToVisitor;
 import com.android.tools.r8.utils.structural.HashingVisitor;
 import com.android.tools.r8.utils.structural.StructuralMapping;
@@ -30,6 +31,9 @@ public class DexMethod extends DexMember<DexEncodedMethod, DexMethod> {
       throw new CompilationError(
           "Method name '" + name + "' in class '" + holder.toSourceString() +
               "' cannot be represented in dex format.");
+    }
+    if (name.toString().contains("smoothScroll$")) {
+       System.out.printf("smoothScroll: %s, stack: %s", name.toSourceString(), StringUtils.stacktraceAsString(new Throwable()));
     }
   }
 

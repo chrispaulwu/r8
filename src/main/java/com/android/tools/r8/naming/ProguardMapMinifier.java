@@ -507,9 +507,21 @@ public class ProguardMapMinifier {
               ? super.getReservedName(definition.asDexEncodedMethod(), holder)
               : super.getReservedName(definition.asDexEncodedField(), holder);
       if (reservedName != null) {
+//        if (holder.toSourceString().contains("FinderLiveVisitorGameTogetherWidget") ||
+//                holder.toSourceString().contains("FinderLiveAnchorGameTogetherWidget")) {
+//          System.out.print("Find getReservedName: \n");
+//          System.out.printf("------- reservedName: %s\n", reservedName.toSourceString());
+//          System.out.printf("------- method: %s\n", reference.toSourceString());
+//        }
         return reservedName;
       }
       if (mappedNames.containsKey(reference)) {
+//        if (holder.toSourceString().contains("FinderLiveVisitorGameTogetherWidget") ||
+//                holder.toSourceString().contains("FinderLiveAnchorGameTogetherWidget")) {
+//          System.out.print("Find mappedNames: \n");
+//          System.out.printf("------- method: %s\n", reference.toSourceString());
+//          System.out.printf("------- new reservedName: %s\n", factory.createString(mappedNames.get(reference).getRenamedName()));
+//        }
         return factory.createString(mappedNames.get(reference).getRenamedName());
       }
       return null;

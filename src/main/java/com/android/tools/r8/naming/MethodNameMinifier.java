@@ -311,6 +311,12 @@ class MethodNameMinifier {
       for (DexEncodedMethod method : shuffleMethods(holder.methods(), appView.options())) {
         DexString reservedName = strategy.getReservedName(method, holder);
         if (reservedName != null) {
+//          if (method.getReference().toSourceString().contains("FinderLiveVisitorGameTogetherWidget") ||
+//                  method.getReference().toSourceString().contains("FinderLiveAnchorGameTogetherWidget")) {
+//            System.out.print("Find reservedName: \n");
+//            System.out.printf("------- reservedName: %s\n", reservedName.toSourceString());
+//            System.out.printf("------- method: %s\n", method.toSourceString());
+//          }
           state.reserveName(reservedName, method);
         }
       }

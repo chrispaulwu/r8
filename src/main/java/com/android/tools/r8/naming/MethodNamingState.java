@@ -55,6 +55,9 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
     if (newName != null) {
       return newName;
     }
+//    if (Objects.equals(method.getName().toString(), "checkShowPromote")) {
+//      System.out.printf("Find 3: %s \n", method.toSourceString());
+//    }
     Set<DexString> reservedNamesFor = reservationState.getReservedNamesFor(method.getReference());
     // Reservations with applymapping can cause multiple reserved names added to the frontier. In
     // that case, the strategy will return the correct one.
@@ -82,16 +85,52 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
   boolean isAvailable(DexString candidate, DexMethod method) {
     Set<Wrapper<DexMethod>> usedBy = getUsedBy(candidate, method);
     if (usedBy != null && usedBy.contains(MethodSignatureEquivalence.get().wrap(method))) {
+//      if (method.toSourceString().contains("FinderLiveVisitorGameTogetherWidget")) {
+//        System.out.printf("Find 0: %s \n", method.toSourceString());
+//        for (Wrapper<DexMethod> methodWrapper : usedBy) {
+//          DexMethod usedDexMethod = methodWrapper.get();
+//          assert usedDexMethod != null;
+//          System.out.printf("----------------- usedBy: %s\n", usedDexMethod.toSourceString());
+//        }
+//      }
       return true;
     }
     boolean isReserved = reservationState.isReserved(candidate, method);
     if (!isReserved && usedBy == null) {
+//      if (method.toSourceString().contains("FinderLiveVisitorGameTogetherWidget")) {
+//         System.out.printf("Find 1: %s \n", method.toSourceString());
+//      }
       return true;
     }
     // We now have a reserved name. We therefore have to check if the reservation is
     // equal to candidate, otherwise the candidate is not available.
     Set<DexString> methodReservedNames = reservationState.getReservedNamesFor(method);
-    return methodReservedNames != null && methodReservedNames.contains(candidate);
+    boolean containsReserved = methodReservedNames != null && methodReservedNames.contains(candidate);
+
+//    if (method.toSourceString().contains("FinderLiveVisitorGameTogetherWidget")) {
+//      System.out.printf("Find 2: %s \n", method.toSourceString());
+//      System.out.printf("----------------- containsReserved: %b\n", containsReserved);
+//      if (usedBy != null) {
+//        for (Wrapper<DexMethod> methodWrapper : usedBy) {
+//          DexMethod usedDexMethod = methodWrapper.get();
+//          assert usedDexMethod != null;
+//          System.out.printf("----------------- usedBy: %s\n", usedDexMethod.toSourceString());
+//        }
+//      }
+//    }
+    if (containsReserved && usedBy != null) {
+      for (Wrapper<DexMethod> methodWrapper : usedBy) {
+        DexMethod usedDexMethod = methodWrapper.get();
+        assert usedDexMethod != null;
+        if (method.proto.equals(usedDexMethod.proto)) {
+          System.out.print("Find containsReserved: \n");
+          System.out.printf("------- usedBy: %s\n", usedDexMethod.toSourceString());
+          System.out.printf("------- method: %s\n", method.toSourceString());
+          return false;
+        }
+      }
+    }
+    return containsReserved;
   }
 
   private Set<Wrapper<DexMethod>> getUsedBy(DexString name, DexMethod method) {
