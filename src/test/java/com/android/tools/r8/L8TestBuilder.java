@@ -6,8 +6,10 @@ package com.android.tools.r8;
 
 import static junit.framework.Assert.assertNull;
 import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tools.r8.TestBase.Backend;
+import com.android.tools.r8.errors.UnusedProguardKeepRuleDiagnostic;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecification;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecificationParser;
 import com.android.tools.r8.origin.Origin;
@@ -249,14 +251,28 @@ public class L8TestBuilder {
             || warnings.stream()
                 .allMatch(warn -> warn.getDiagnosticMessage().contains("org.testng.Assert")));
     List<Diagnostic> infos = diagnosticsMessages.getInfos();
-    // The rewriting confuses the generic signatures in some methods. Such signatures are never
-    // used by tools (they use the non library desugared version) and are stripped when compiling
-    // with R8 anyway.
-    // TODO(b/243483320): Investigate the Invalid signature.
-    assertTrue(
-        infos.isEmpty()
-            || infos.stream()
-                .allMatch(info -> info.getDiagnosticMessage().contains("Invalid signature ")));
+    for (Diagnostic info : infos) {
+      // The rewriting confuses the generic signatures in some methods. Such signatures are never
+      // used by tools (they use the non library desugared version) and are stripped when compiling
+      // with R8 anyway.
+      if (info instanceof UnusedProguardKeepRuleDiagnostic) {
+        // The default keep rules on desugared library may be unused. They should all be defined
+        // with keepclassmembers.
+        if (info.getDiagnosticMessage().contains("keepclassmembers")) {
+          continue;
+        }
+        // We allow info regarding the extended version of desugared library for JDK11 testing.
+        if (info.getDiagnosticMessage().contains("org.testng.")) {
+          continue;
+        }
+        fail("Unexpected unused proguard keep rule diagnostic: " + info.getDiagnosticMessage());
+      }
+      // TODO(b/243483320): Investigate the Invalid signature.
+      if (info.getDiagnosticMessage().contains("Invalid signature ")) {
+        continue;
+      }
+      fail("Unexpected info diagnostic: " + info.getDiagnosticMessage());
+    }
   }
 
   private L8Command.Builder addProgramClassFileData(L8Command.Builder builder) {

@@ -137,6 +137,7 @@ import com.android.tools.r8.shaking.EnqueuerWorklist.TraceStaticFieldReadAction;
 import com.android.tools.r8.shaking.EnqueuerWorklist.TraceStaticFieldWriteAction;
 import com.android.tools.r8.shaking.GraphReporter.KeepReasonWitness;
 import com.android.tools.r8.shaking.KeepInfoCollection.MutableKeepInfoCollection;
+import com.android.tools.r8.shaking.KeepMethodInfo.Joiner;
 import com.android.tools.r8.shaking.RootSetUtils.ConsequentRootSet;
 import com.android.tools.r8.shaking.RootSetUtils.ConsequentRootSetBuilder;
 import com.android.tools.r8.shaking.RootSetUtils.RootSet;
@@ -943,9 +944,19 @@ public class Enqueuer {
       if (clazz.hasDefaultInitializer()) {
         ProgramMethod defaultInitializer = clazz.getProgramDefaultInitializer();
         if (forceProguardCompatibility) {
-          workList.enqueueMarkMethodKeptAction(
-              defaultInitializer,
-              graphReporter.reportCompatKeepDefaultInitializer(defaultInitializer));
+          Joiner joiner = KeepMethodInfo.newEmptyJoiner();
+          for (ProguardKeepRuleBase rule : rules) {
+            if (!rule.getType().equals(ProguardKeepRuleType.KEEP_CLASS_MEMBERS)) {
+              joiner.addRule(rule);
+            }
+          }
+          if (!joiner.getRules().isEmpty()) {
+            workList.enqueueMarkMethodKeptAction(
+                defaultInitializer,
+                graphReporter.reportCompatKeepDefaultInitializer(defaultInitializer));
+            applyMinimumKeepInfoWhenLiveOrTargeted(
+                defaultInitializer, joiner.disallowOptimization());
+          }
         }
         if (clazz.isExternalizable(appView)) {
           workList.enqueueMarkMethodLiveAction(defaultInitializer, defaultInitializer, witness);
@@ -2049,7 +2060,8 @@ public class Enqueuer {
             || appView.appInfo().getMainDexInfo().isTracedRoot(clazz, appView.getSyntheticItems())
         : "Class " + clazz.toSourceString() + " was not a main dex root in the first round";
 
-    assert !appView.unboxedEnums().isUnboxedEnum(clazz);
+    assert !appView.unboxedEnums().isUnboxedEnum(clazz)
+        : "Enum " + clazz.toSourceString() + " has been unboxed but is still in the program.";
 
     if (options.isGeneratingClassFiles() && clazz.hasPermittedSubclassAttributes()) {
       throw new CompilationError(
