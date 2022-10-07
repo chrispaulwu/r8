@@ -39,7 +39,7 @@ public class DexOutputBuffer {
     if (byteBuffer.remaining() < bytes) {
       int newSize = byteBuffer.capacity() + Math.max(byteBuffer.capacity(), bytes * 2);
       CompatByteBuffer newBuffer = allocateByteBuffer(newSize);
-      System.arraycopy(byteBuffer.array(), 0, newBuffer.array(), 0, position());
+      System.arraycopy(byteBuffer.array(), 0, newBuffer.array(), 0, byteBuffer.capacity());
       newBuffer.position(byteBuffer.position());
       freeByteBuffer(byteBuffer);
       byteBuffer = newBuffer;
@@ -124,6 +124,14 @@ public class DexOutputBuffer {
   public void putInt(int anInteger) {
     ensureSpaceFor(Integer.BYTES);
     byteBuffer.putInt(anInteger);
+  }
+
+  public boolean assertZero() {
+    int pos = byteBuffer.position();
+    int i = byteBuffer.getInt();
+    assert i == 0;
+    byteBuffer.position(pos);
+    return true;
   }
 
   /**

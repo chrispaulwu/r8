@@ -148,7 +148,7 @@ public class FoundClassSubject extends ClassSubject {
   }
 
   @Override
-  public MethodSubject uniqueMethodWithName(String name) {
+  public MethodSubject uniqueMethodWithOriginalName(String name) {
     MethodSubject methodSubject = null;
     for (FoundMethodSubject candidate : allMethods()) {
       if (candidate.getOriginalName(false).equals(name)) {
@@ -219,13 +219,14 @@ public class FoundClassSubject extends ClassSubject {
   }
 
   @Override
-  public FieldSubject uniqueFieldWithName(String name) {
-    return uniqueFieldWithName(name, null);
+  public FieldSubject uniqueFieldWithOriginalName(String name) {
+    return uniqueFieldWithOriginalName(name, null);
   }
 
   // TODO(b/169882658): This should be removed when we have identity mappings for ambiguous cases.
-  public FieldSubject uniqueFieldWithName(String name, TypeReference originalType) {
+  public FieldSubject uniqueFieldWithOriginalName(String name, TypeReference originalType) {
     Retracer retracer = codeInspector.retrace();
+    ClassReference finalReference = getFinalReference();
     Set<FoundFieldSubject> candidates = Sets.newIdentityHashSet();
     Set<FoundFieldSubject> sameTypeCandidates = Sets.newIdentityHashSet();
     for (FoundFieldSubject candidate : allFields()) {
@@ -238,7 +239,8 @@ public class FoundClassSubject extends ClassSubject {
         }
       }
       retracer
-          .retraceField(fieldReference)
+          .retraceClass(finalReference)
+          .lookupField(candidate.getFinalName())
           .forEach(
               element -> {
                 RetracedFieldReference field = element.getField();

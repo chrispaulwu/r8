@@ -95,6 +95,7 @@ public class ApplicationWriter {
 
   public final AppView<?> appView;
   public final InternalOptions options;
+
   private final CodeToKeep desugaredLibraryCodeToKeep;
   private final Predicate<DexType> isTypeMissing;
   private final Optional<Marker> currentMarker;
@@ -174,11 +175,7 @@ public class ApplicationWriter {
     }
   }
 
-  public ApplicationWriter(AppView<?> appView, Marker marker) {
-    this(appView, marker, null);
-  }
-
-  public ApplicationWriter(AppView<?> appView, Marker marker, DexIndexedConsumer consumer) {
+  protected ApplicationWriter(AppView<?> appView, Marker marker, DexIndexedConsumer consumer) {
     this.appView = appView;
     this.options = appView.options();
     this.desugaredLibraryCodeToKeep = CodeToKeep.createCodeToKeep(appView);
@@ -189,8 +186,25 @@ public class ApplicationWriter {
     this.previousMarkers = appView.dexItemFactory().extractMarkers();
   }
 
+  public static ApplicationWriter create(AppView<?> appView, Marker marker) {
+    return ApplicationWriter.create(appView, marker, null);
+  }
+
+  public static ApplicationWriter create(
+      AppView<?> appView, Marker marker, DexIndexedConsumer consumer) {
+    if (appView.options().testing.dexContainerExperiment) {
+      return new ApplicationWriterExperimental(appView, marker, consumer);
+    } else {
+      return new ApplicationWriter(appView, marker, consumer);
+    }
+  }
+
   private NamingLens getNamingLens() {
     return appView.getNamingLens();
+  }
+
+  public CodeToKeep getDesugaredLibraryCodeToKeep() {
+    return desugaredLibraryCodeToKeep;
   }
 
   private List<VirtualFile> distribute(ExecutorService executorService)
@@ -283,6 +297,52 @@ public class ApplicationWriter {
     write(executorService, null);
   }
 
+  protected Timing rewriteJumboStringsAndComputeDebugRepresentation(
+      VirtualFile virtualFile, List<LazyDexString> lazyDexStrings) {
+    Timing fileTiming = Timing.create("VirtualFile " + virtualFile.getId(), options);
+    computeOffsetMappingAndRewriteJumboStrings(virtualFile, lazyDexStrings, fileTiming);
+    DebugRepresentation.computeForFile(appView, virtualFile);
+    fileTiming.end();
+    return fileTiming;
+  }
+
+  protected Collection<Timing> rewriteJumboStringsAndComputeDebugRepresentation(
+      ExecutorService executorService,
+      List<VirtualFile> virtualFiles,
+      List<LazyDexString> lazyDexStrings)
+      throws ExecutionException {
+    return ThreadUtils.processItemsWithResults(
+        virtualFiles,
+        virtualFile ->
+            rewriteJumboStringsAndComputeDebugRepresentation(virtualFile, lazyDexStrings),
+        executorService);
+  }
+
+  protected void writeVirtualFiles(
+      ExecutorService executorService,
+      List<VirtualFile> virtualFiles,
+      List<DexString> forcedStrings,
+      Timing timing)
+      throws ExecutionException {
+    TimingMerger merger =
+        timing.beginMerger("Write files", ThreadUtils.getNumberOfThreads(executorService));
+    Collection<Timing> timings =
+        ThreadUtils.processItemsWithResults(
+            virtualFiles,
+            virtualFile -> {
+              Timing fileTiming = Timing.create("VirtualFile " + virtualFile.getId(), options);
+              writeVirtualFile(virtualFile, fileTiming, forcedStrings);
+              fileTiming.end();
+              return fileTiming;
+            },
+            executorService);
+    merger.add(timings);
+    merger.end();
+    if (globalsSyntheticsConsumer != null) {
+      globalsSyntheticsConsumer.finished(appView);
+    }
+  }
+
   public void write(ExecutorService executorService, AndroidApp inputApp)
       throws IOException, ExecutionException {
     Timing timing = appView.appInfo().app().timing;
@@ -337,17 +397,8 @@ public class ApplicationWriter {
         TimingMerger merger =
             timing.beginMerger("Pre-write phase", ThreadUtils.getNumberOfThreads(executorService));
         Collection<Timing> timings =
-            ThreadUtils.processItemsWithResults(
-                virtualFiles,
-                virtualFile -> {
-                  Timing fileTiming = Timing.create("VirtualFile " + virtualFile.getId(), options);
-                  computeOffsetMappingAndRewriteJumboStrings(
-                      virtualFile, lazyDexStrings, fileTiming);
-                  DebugRepresentation.computeForFile(appView, virtualFile);
-                  fileTiming.end();
-                  return fileTiming;
-                },
-                executorService);
+            rewriteJumboStringsAndComputeDebugRepresentation(
+                executorService, virtualFiles, lazyDexStrings);
         merger.add(timings);
         merger.end();
       }
@@ -370,26 +421,8 @@ public class ApplicationWriter {
       }
       timing.end();
 
-      {
-        // Write the actual dex code.
-        TimingMerger merger =
-            timing.beginMerger("Write files", ThreadUtils.getNumberOfThreads(executorService));
-        Collection<Timing> timings =
-            ThreadUtils.processItemsWithResults(
-                virtualFiles,
-                virtualFile -> {
-                  Timing fileTiming = Timing.create("VirtualFile " + virtualFile.getId(), options);
-                  writeVirtualFile(virtualFile, fileTiming, forcedStrings);
-                  fileTiming.end();
-                  return fileTiming;
-                },
-                executorService);
-        merger.add(timings);
-        merger.end();
-        if (globalsSyntheticsConsumer != null) {
-          globalsSyntheticsConsumer.finished(appView);
-        }
-      }
+      // Write the actual dex code.
+      writeVirtualFiles(executorService, virtualFiles, forcedStrings, timing);
 
       // A consumer can manage the generated keep rules.
       if (options.desugaredLibraryKeepRuleConsumer != null && !desugaredLibraryCodeToKeep.isNop()) {
@@ -881,7 +914,7 @@ public class ApplicationWriter {
    * <p>If run multiple times on a class, the lowest index that is required to be a JumboString will
    * be used.
    */
-  private void rewriteCodeWithJumboStrings(
+  protected void rewriteCodeWithJumboStrings(
       ObjectToOffsetMapping mapping,
       Collection<DexProgramClass> classes,
       DexApplication application) {
@@ -923,7 +956,7 @@ public class ApplicationWriter {
     // Collect the non-fixed sections.
     timing.time("collect", fileWriter::collect);
     // Generate and write the bytes.
-    return timing.time("generate", fileWriter::generate);
+    return timing.time("generate", () -> fileWriter.generate());
   }
 
   private static String mapMainDexListName(DexType type, NamingLens namingLens) {
@@ -956,7 +989,7 @@ public class ApplicationWriter {
     }
   }
 
-  private void printItemUseInfo(VirtualFile virtualFile) {
+  protected void printItemUseInfo(VirtualFile virtualFile) {
     if (options.testing.calculateItemUseCountInDex) {
       synchronized (System.out) {
         System.out.print("\"Item\"");

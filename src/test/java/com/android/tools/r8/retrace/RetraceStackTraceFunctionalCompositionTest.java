@@ -11,6 +11,7 @@ import static org.junit.Assume.assumeTrue;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
 
 import com.android.tools.r8.CompilationMode;
+import com.android.tools.r8.JdkClassFileProvider;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Supplier;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -155,6 +157,7 @@ public class RetraceStackTraceFunctionalCompositionTest extends TestBase {
     return rewrittenR8Jar;
   }
 
+  @Ignore("b/251677184: Failing since update to target 11")
   @Test
   public void testR8RetraceAndComposition() throws Exception {
     Path rewrittenR8Jar = getRewrittenR8Jar();
@@ -244,6 +247,7 @@ public class RetraceStackTraceFunctionalCompositionTest extends TestBase {
     testForR8(Backend.CF)
         .setMode(CompilationMode.RELEASE)
         .addProgramFiles(r8Input)
+        .addLibraryProvider(JdkClassFileProvider.fromSystemJdk())
         .addKeepRuleFiles(MAIN_KEEP)
         // TODO(b/241763080): Remove when stable version is default.
         .enableExperimentalMapFileVersion()
@@ -262,6 +266,7 @@ public class RetraceStackTraceFunctionalCompositionTest extends TestBase {
     testForD8(Backend.CF)
         .setMode(CompilationMode.RELEASE)
         .addProgramFiles(r8Input)
+        .addLibraryProvider(JdkClassFileProvider.fromSystemJdk())
         .enableExperimentalMapFileVersion()
         // TODO(b/241763080): Enable CF PC test mapping for this compilation.
         .addOptionsModification(

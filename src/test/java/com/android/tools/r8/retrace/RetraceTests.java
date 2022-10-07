@@ -100,7 +100,7 @@ public class RetraceTests extends TestBase {
   @Parameters(name = "{0}, external: {1}, verbose: {2}, stream: {3}")
   public static Collection<Object[]> data() {
     return buildParameters(
-        getTestParameters().withCfRuntimes().build(),
+        getTestParameters().withSystemRuntime().build(),
         BooleanUtils.values(),
         BooleanUtils.values(),
         BooleanUtils.values());
@@ -210,7 +210,7 @@ public class RetraceTests extends TestBase {
   }
 
   @Test
-  public void testAmbiguousMissingLine() throws Exception {
+  public void testAmbiguousWithSignatureStackTrace() throws Exception {
     runRetraceTest(new AmbiguousWithSignatureStackTrace());
   }
 
