@@ -5,7 +5,6 @@
 package com.android.tools.r8.apimodel;
 
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForClass;
-import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForDefaultInstanceInitializer;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.verifyThat;
 import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
@@ -48,8 +47,7 @@ public class ApiModelMockClassLoadingTest extends TestBase {
         .addDefaultRuntimeLibrary(parameters)
         .setMinApi(parameters.getApiLevel())
         .apply(ApiModelingTestHelper::enableStubbingOfClasses)
-        .apply(setMockApiLevelForClass(LibraryClass.class, mockLevel))
-        .apply(setMockApiLevelForDefaultInstanceInitializer(LibraryClass.class, mockLevel));
+        .apply(setMockApiLevelForClass(LibraryClass.class, mockLevel));
   }
 
   @Test
@@ -113,7 +111,7 @@ public class ApiModelMockClassLoadingTest extends TestBase {
   // Only present form api level 23.
   public static class LibraryClass {
 
-    public static void foo() {
+    public void foo() {
       System.out.println("Hello World");
     }
   }
@@ -121,7 +119,7 @@ public class ApiModelMockClassLoadingTest extends TestBase {
   public static class Main {
 
     public static void main(String[] args) {
-      LibraryClass.foo();
+      new LibraryClass().foo();
     }
   }
 }

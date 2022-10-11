@@ -115,9 +115,6 @@ public class ApiModelMockDalvikVerifyErrorTest extends TestBase {
   private void checkOutput(SingleTestRunResult<?> runResult) {
     if (isGreaterOrEqualToMockLevel()) {
       runResult.assertFailureWithErrorThatThrows(ClassCastException.class);
-    } else if (parameters.isDexRuntime() && parameters.getDexRuntimeVersion().isDalvik()) {
-      // TODO(b/252558440): Should not cause verify error on dalvik devices.
-      runResult.assertFailureWithErrorThatThrows(VerifyError.class);
     } else {
       runResult.assertSuccessWithOutputLines("Hello World!");
     }
