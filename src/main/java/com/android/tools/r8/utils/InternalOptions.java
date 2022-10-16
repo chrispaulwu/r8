@@ -1329,7 +1329,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public class CallSiteOptimizationOptions {
 
-    private boolean enabled = true;
+    private boolean enabled = false;
     private boolean enableMethodStaticizing = true;
 
     private boolean forceSyntheticsForInstanceInitializers = false;
