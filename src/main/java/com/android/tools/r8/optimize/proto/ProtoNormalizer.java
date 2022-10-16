@@ -179,7 +179,7 @@ public class ProtoNormalizer {
           Map<DexMethodSignature, DexMethodSignatureSet> collisions = new HashMap<>();
           clazz.forEachProgramMethod(
               method -> {
-                DexTypeList methodParametersSorted = method.getParameters().getSorted();
+                DexTypeList methodParametersSorted = method.getParameters();
                 computeReservationsFromMethod(
                     method,
                     methodParametersSorted,
@@ -427,7 +427,7 @@ public class ProtoNormalizer {
     }
 
     DexTypeList getReservedParameters(DexMethodSignature methodSignature) {
-      DexTypeList sortedParameters = methodSignature.getParameters().getSorted();
+      DexTypeList sortedParameters = methodSignature.getParameters();
       return reservedParameters.getOrDefault(sortedParameters, sortedParameters);
     }
 
