@@ -44,6 +44,12 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -272,6 +278,11 @@ public class VirtualFile {
     if (!isFull()) {
       return;
     }
+//    try {
+//      transaction.printAllMethodRefs();
+//    } catch (FileNotFoundException e) {
+//      e.printStackTrace();
+//    }
     throw reporter.fatalError(
         new DexFileOverflowDiagnostic(
             hasMainDexList, transaction.getNumberOfMethods(), transaction.getNumberOfFields()));
@@ -1057,6 +1068,30 @@ public class VirtualFile {
 
     int getNumberOfClasses() {
       return classes.size() + base.classes.size();
+    }
+
+    void printAllMethodRefs() throws FileNotFoundException {
+      PrintStream ps = null;
+      try {
+        File outputFile = new File("/Users/chrispaulwu/Desktop/toolkit-box/toolkit-box-samples/testproguard/dex_test/error.txt");
+        if (!outputFile.exists()) {
+          outputFile.getParentFile().mkdirs();
+          outputFile.createNewFile();
+        }
+        ps = new PrintStream(new FileOutputStream(outputFile));
+        for (DexMethod method : methods) {
+          ps.println(method.toString());
+        }
+        for (DexMethod method : base.methods) {
+          ps.println(method.toString());
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      } finally {
+        if (ps != null) {
+          ps.close();
+        }
+      }
     }
 
     int getNumberOfFields() {
