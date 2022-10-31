@@ -126,11 +126,11 @@ public class ConvertExportReadTest extends DesugaredLibraryTestBase {
   private void testMultiLevelUsingMain(LibraryDesugaringSpecification spec) throws IOException {
     Assume.assumeTrue(ToolHelper.isLocalDevelopment());
 
-    Path output = temp.newFile().toPath();
-    DesugaredLibraryConverter.convertMultiLevelAnythingToMachineSpecification(
-        spec.getSpecification(), spec.getDesugarJdkLibs(), spec.getLibraryFiles(), output);
-
     InternalOptions options = new InternalOptions();
+
+    Path output = temp.newFile().toPath();
+    convertMultiLevelAnythingToMachineSpecification(spec, output, options);
+
     MachineDesugaredLibrarySpecification machineSpecParsed =
         new MachineDesugaredLibrarySpecificationParser(
                 options.dexItemFactory(),
@@ -140,6 +140,33 @@ public class ConvertExportReadTest extends DesugaredLibraryTestBase {
                 new SyntheticNaming())
             .parse(StringResource.fromFile(output));
     assertFalse(machineSpecParsed.getRewriteType().isEmpty());
+  }
+
+  public void convertMultiLevelAnythingToMachineSpecification(
+      LibraryDesugaringSpecification spec, Path output, InternalOptions options)
+      throws IOException {
+
+    MultiAPILevelHumanDesugaredLibrarySpecification humanSpec =
+        DesugaredLibraryConverter.convertMultiLevelAnythingToMachineSpecification(
+            spec.getSpecification(),
+            spec.getDesugarJdkLibs(),
+            spec.getLibraryFiles(),
+            output,
+            options);
+
+    if (humanSpec == null) {
+      return;
+    }
+
+    // Validate the written spec is the read spec.
+    Box<String> json = new Box<>();
+    MultiAPILevelHumanDesugaredLibrarySpecificationJsonExporter.export(
+        humanSpec, ((string, handler) -> json.set(string)));
+    MultiAPILevelHumanDesugaredLibrarySpecification writtenHumanSpec =
+        new MultiAPILevelHumanDesugaredLibrarySpecificationParser(
+                options.dexItemFactory(), options.reporter)
+            .parseMultiLevelConfiguration(StringResource.fromString(json.get(), Origin.unknown()));
+    assertSpecEquals(humanSpec, writtenHumanSpec);
   }
 
   @Test

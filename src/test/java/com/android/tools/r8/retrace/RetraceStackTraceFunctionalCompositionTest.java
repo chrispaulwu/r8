@@ -157,7 +157,7 @@ public class RetraceStackTraceFunctionalCompositionTest extends TestBase {
     return rewrittenR8Jar;
   }
 
-  @Ignore("b/251677184: Failing since update to target 11")
+  @Ignore("b/255292908")
   @Test
   public void testR8RetraceAndComposition() throws Exception {
     Path rewrittenR8Jar = getRewrittenR8Jar();

@@ -48,12 +48,18 @@ public class KotlinStdLibCompilationTest extends TestBase {
     testForD8()
         .addProgramFiles(kotlinTestParameters.getCompiler().getKotlinStdlibJar())
         .setMinApi(parameters.getApiLevel())
-        // TODO(b/248244467): Remove if fixed.
         .compileWithExpectedDiagnostics(
-            diagnostics ->
+            diagnostics -> {
+              if (kotlinTestParameters.isKotlinDev()
+                  && parameters.isDexRuntime()
+                  && parameters.getApiLevel().isLessThan(AndroidApiLevel.N)) {
+                diagnostics.assertWarningsCount(2);
                 diagnostics.assertAllWarningsMatch(
-                    DiagnosticsMatcher.diagnosticType(
-                        InterfaceDesugarMissingTypeDiagnostic.class)));
+                    DiagnosticsMatcher.diagnosticType(InterfaceDesugarMissingTypeDiagnostic.class));
+              } else {
+                diagnostics.assertNoMessages();
+              }
+            });
   }
 
   @Test

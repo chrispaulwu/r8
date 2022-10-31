@@ -57,6 +57,7 @@ import com.android.tools.r8.ir.desugar.LambdaDescriptor;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.apiconversion.DesugaredLibraryAPIConverter;
 import com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper;
 import com.android.tools.r8.naming.SeedMapper;
+import com.android.tools.r8.repackaging.RepackagingUtils;
 import com.android.tools.r8.shaking.KeepInfo.Joiner;
 import com.android.tools.r8.synthesis.CommittedItems;
 import com.android.tools.r8.utils.CollectionUtils;
@@ -64,7 +65,6 @@ import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.ListUtils;
 import com.android.tools.r8.utils.PredicateSet;
 import com.android.tools.r8.utils.ThreadUtils;
-import com.android.tools.r8.utils.TraversalContinuation;
 import com.android.tools.r8.utils.Visibility;
 import com.android.tools.r8.utils.WorkList;
 import com.android.tools.r8.utils.collections.ProgramMethodSet;
@@ -1089,22 +1089,14 @@ public class AppInfoWithLiveness extends AppInfoWithClassHierarchy
     if (!options().isRepackagingEnabled()) {
       return false;
     }
-    if (!keepInfo.getInfo(clazz).isRepackagingAllowed(clazz, options())) {
+    if (!keepInfo.getInfo(clazz).isRepackagingAllowed(options())) {
+      return false;
+    }
+    if (RepackagingUtils.isPackageNameKept(clazz, appView.options())) {
       return false;
     }
     SeedMapper applyMappingSeedMapper = appView.getApplyMappingSeedMapper();
-    if (applyMappingSeedMapper != null && applyMappingSeedMapper.hasMapping(clazz.type)) {
-      return false;
-    }
-    return clazz
-        .traverseProgramMembers(
-            member -> {
-              if (keepInfo.getInfo(member).isRepackagingAllowed(member, options())) {
-                return TraversalContinuation.doContinue();
-              }
-              return TraversalContinuation.doBreak();
-            })
-        .shouldContinue();
+    return applyMappingSeedMapper == null || !applyMappingSeedMapper.hasMapping(clazz.type);
   }
 
   public boolean isPinned(DexReference reference) {

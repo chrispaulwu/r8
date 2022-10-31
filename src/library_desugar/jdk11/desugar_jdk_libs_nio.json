@@ -6,6 +6,22 @@
   "support_all_callbacks_from_library": true,
   "common_flags": [
     {
+      "api_level_below_or_equal": 10000,
+      "api_level_greater_or_equal": 24,
+      "rewrite_prefix": {
+        "java.util.stream.DesugarDoubleStream": "j$.util.stream.DesugarDoubleStream",
+        "java.util.stream.DesugarIntStream": "j$.util.stream.DesugarIntStream",
+        "java.util.stream.DesugarLongStream": "j$.util.stream.DesugarLongStream",
+        "java.util.stream.DesugarStream": "j$.util.stream.DesugarStream"
+      },
+      "retarget_method": {
+        "java.util.stream.DoubleStream java.util.stream.DoubleStream#iterate(double, java.util.function.DoublePredicate, java.util.function.DoubleUnaryOperator)":  "java.util.stream.DesugarDoubleStream",
+        "java.util.stream.IntStream java.util.stream.IntStream#iterate(int, java.util.function.IntPredicate, java.util.function.IntUnaryOperator)":  "java.util.stream.DesugarIntStream",
+        "java.util.stream.LongStream java.util.stream.LongStream#iterate(long, java.util.function.LongPredicate, java.util.function.LongUnaryOperator)":  "java.util.stream.DesugarLongStream",
+        "java.util.stream.Stream java.util.stream.Stream#iterate(java.lang.Object, java.util.function.Predicate, java.util.function.UnaryOperator)":  "java.util.stream.DesugarStream"
+      }
+    },
+    {
       "api_level_below_or_equal": 32,
       "rewrite_prefix": {
         "java.net.URLDecoder": "j$.net.URLDecoder",
@@ -152,6 +168,7 @@
         "java.nio.file.ClosedWatchServiceException",
         "java.nio.file.DirectoryIteratorException",
         "java.nio.file.DirectoryNotEmptyException",
+        "java.nio.file.DirectoryStream",
         "java.nio.file.FileAlreadyExistsException",
         "java.nio.file.FileSystemAlreadyExistsException",
         "java.nio.file.FileSystemException",
@@ -173,6 +190,7 @@
         "java.nio.file.ClosedWatchServiceException",
         "java.nio.file.DirectoryIteratorException",
         "java.nio.file.DirectoryNotEmptyException",
+        "java.nio.file.DirectoryStream",
         "java.nio.file.FileAlreadyExistsException",
         "java.nio.file.FileSystemAlreadyExistsException",
         "java.nio.file.FileSystemException",
@@ -199,7 +217,10 @@
         "java.nio.file.attribute.BasicFileAttributes java.nio.file.spi.FileSystemProvider#readAttributes(java.nio.file.Path, java.lang.Class, java.nio.file.LinkOption[])": [1, "java.lang.Class java.nio.file.FileApiFlips#flipFileAttributes(java.lang.Class)"],
         "java.util.Set java.nio.file.attribute.PosixFileAttributes#permissions()": [-1, "java.util.Set java.nio.file.FileApiFlips#flipPosixPermissionSet(java.util.Set)"],
         "void java.nio.file.attribute.PosixFileAttributeView#setPermissions(java.util.Set)": [0, "java.util.Set java.nio.file.FileApiFlips#flipPosixPermissionSet(java.util.Set)"],
-        "java.util.Map java.nio.file.spi.FileSystemProvider#readAttributes(java.nio.file.Path, java.lang.String, java.nio.file.LinkOption[])" : [-1, "java.util.Map java.nio.file.FileApiFlips#flipMapWithMaybeFileTimeValues(java.util.Map)"]
+        "java.util.Map java.nio.file.spi.FileSystemProvider#readAttributes(java.nio.file.Path, java.lang.String, java.nio.file.LinkOption[])" : [-1, "java.util.Map java.nio.file.FileApiFlips#flipMapWithMaybeFileTimeValues(java.util.Map)"],
+        "java.lang.Iterable java.nio.file.FileSystem#getRootDirectories()": [-1, "java.lang.Iterable java.nio.file.PathApiFlips#flipIterablePath(java.lang.Iterable)"],
+        "java.util.Iterator java.nio.file.Path#iterator()": [-1, "java.util.Iterator java.nio.file.PathApiFlips#flipIteratorPath(java.util.Iterator)"],
+        "java.nio.file.DirectoryStream java.nio.file.spi.FileSystemProvider#newDirectoryStream(java.nio.file.Path, java.nio.file.DirectoryStream$Filter)": [-1, "java.nio.file.DirectoryStream java.nio.file.PathApiFlips#flipDirectoryStreamPath(java.nio.file.DirectoryStream)", 1, "java.nio.file.DirectoryStream$Filter java.nio.file.PathApiFlips#flipDirectoryStreamFilterPath(java.nio.file.DirectoryStream$Filter)"]
       },
       "wrapper_conversion": [
         "java.nio.channels.CompletionHandler",
@@ -219,13 +240,12 @@
         "java.nio.file.StandardOpenOption",
         "java.nio.file.LinkOption",
         "java.nio.file.CopyOption",
+        "java.nio.file.StandardCopyOption",
         "java.nio.file.attribute.GroupPrincipal",
         "java.nio.file.attribute.FileAttribute",
         "java.nio.file.attribute.UserPrincipal",
         "java.nio.file.FileStore",
         "java.nio.file.attribute.FileStoreAttributeView",
-        "java.nio.file.DirectoryStream$Filter",
-        "java.nio.file.DirectoryStream",
         "java.nio.file.attribute.PosixFilePermission",
         "java.nio.file.attribute.BasicFileAttributes",
         "java.nio.file.attribute.PosixFileAttributes",
@@ -374,6 +394,15 @@
   ],
   "program_flags": [
     {
+      "api_level_below_or_equal": 10000,
+      "amend_library_method": [
+        "public static java.util.stream.DoubleStream java.util.stream.DoubleStream#iterate(double, java.util.function.DoublePredicate, java.util.function.DoubleUnaryOperator)",
+        "public static java.util.stream.IntStream java.util.stream.IntStream#iterate(int, java.util.function.IntPredicate, java.util.function.IntUnaryOperator)",
+        "public static java.util.stream.LongStream java.util.stream.LongStream#iterate(long, java.util.function.LongPredicate, java.util.function.LongUnaryOperator)",
+        "public static java.util.stream.Stream java.util.stream.Stream#iterate(java.lang.Object, java.util.function.Predicate, java.util.function.UnaryOperator)"
+      ]
+    },
+    {
       "api_level_below_or_equal": 33,
       "amend_library_method": [
         "public java.lang.Object[] java.util.Collection#toArray(java.util.function.IntFunction)"
@@ -416,12 +445,6 @@
         "long java.util.concurrent.atomic.AtomicLong#getAndUpdate(java.util.function.LongUnaryOperator)": "java.util.concurrent.atomic.DesugarAtomicLong",
         "long java.util.concurrent.atomic.AtomicLong#updateAndGet(java.util.function.LongUnaryOperator)": "java.util.concurrent.atomic.DesugarAtomicLong"
       }
-    },
-    {
-      "api_level_below_or_equal": 19,
-      "dont_retarget": [
-        "android.support.multidex.MultiDexExtractor$ExtractedDex"
-      ]
     },
     {
       "api_level_below_or_equal": 18,
@@ -555,6 +578,11 @@
       "api_level_below_or_equal": 18,
       "rewrite_prefix": {
         "java.lang.DesugarCharacter": "j$.lang.DesugarCharacter"
+      },
+      "retarget_method" : {
+        "boolean java.lang.Character#isSurrogate(char)" : "java.lang.DesugarCharacter",
+        "char java.lang.Character#highSurrogate(int)" : "java.lang.DesugarCharacter",
+        "char java.lang.Character#lowSurrogate(int)" : "java.lang.DesugarCharacter"
       },
       "retarget_static_field": {
         "sun.nio.cs.US_ASCII sun.nio.cs.US_ASCII#INSTANCE": "java.nio.charset.Charset java.nio.charset.StandardCharsets#US_ASCII",
