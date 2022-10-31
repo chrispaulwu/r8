@@ -32,9 +32,9 @@ public class DexMethod extends DexMember<DexEncodedMethod, DexMethod> {
           "Method name '" + name + "' in class '" + holder.toSourceString() +
               "' cannot be represented in dex format.");
     }
-    if (name.toString().contains("smoothScroll$")) {
-       System.out.printf("smoothScroll: %s, stack: %s", name.toSourceString(), StringUtils.stacktraceAsString(new Throwable()));
-    }
+//    if (name.toString().contains("smoothScroll$")) {
+//       System.out.printf("smoothScroll: %s, stack: %s", name.toSourceString(), StringUtils.stacktraceAsString(new Throwable()));
+//    }
   }
 
   private static void specify(StructuralSpecification<DexMethod, ?> spec) {

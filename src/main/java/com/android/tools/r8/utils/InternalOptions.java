@@ -1427,7 +1427,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   public static class OutlineOptions {
-    public boolean enabled = true;
+    public boolean enabled = false;
     public int minSize = 3;
     public int maxSize = 99;
     public int threshold = 20;
