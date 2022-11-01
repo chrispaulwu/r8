@@ -13,13 +13,13 @@ ext {
 }
 
 dependencies {
-    implementation group: 'com.google.guava', name: 'guava', version: '30.1.1-jre'
-    implementation group: 'org.smali', name: 'smali', version: '2.2b4'
-    implementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
-    implementation group: 'org.ow2.asm', name: 'asm-commons', version: asmVersion
-    implementation group: 'org.ow2.asm', name: 'asm-tree', version: asmVersion
-    implementation group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
-    implementation group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
+    api group: 'com.google.guava', name: 'guava', version: '30.1.1-jre'
+    api group: 'org.smali', name: 'smali', version: '2.2b4'
+    api group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    api group: 'org.ow2.asm', name: 'asm-commons', version: asmVersion
+    api group: 'org.ow2.asm', name: 'asm-tree', version: asmVersion
+    api group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
+    api group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8

@@ -253,36 +253,36 @@ dependencies {
     main17Implementation group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
     main17Implementation group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
 
-    examplesTestNGRunnerCompile group: 'org.testng', name: 'testng', version: testngVersion
+    examplesTestNGRunnerImplementation group: 'org.testng', name: 'testng', version: testngVersion
 
-    testCompile sourceSets.examples.output
-    testCompile "junit:junit:$junitVersion"
-    testCompile "com.google.guava:guava:$guavaVersion"
-    testCompile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    testCompile "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
-    testCompile group: 'org.smali', name: 'smali', version: smaliVersion
-    testCompile files('third_party/jasmin/jasmin-2.4.jar')
-    testCompile files('third_party/jdwp-tests/apache-harmony-jdwp-tests-host.jar')
-    testCompile files('third_party/ddmlib/ddmlib.jar')
-    testCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-commons', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-tree', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
-    testCompile group: 'it.unimi.dsi', name: 'fastutil', version: fastutilVersion
-    testCompile group: 'org.javassist', name: 'javassist', version: javassistVersion
+    testImplementation sourceSets.examples.output
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "com.google.guava:guava:$guavaVersion"
+    testImplementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+    testImplementation "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
+    testImplementation group: 'org.smali', name: 'smali', version: smaliVersion
+    testImplementation files('third_party/jasmin/jasmin-2.4.jar')
+    testImplementation files('third_party/jdwp-tests/apache-harmony-jdwp-tests-host.jar')
+    testImplementation files('third_party/ddmlib/ddmlib.jar')
+    testImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-commons', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-tree', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
+    testImplementation group: 'it.unimi.dsi', name: 'fastutil', version: fastutilVersion
+    testImplementation group: 'org.javassist', name: 'javassist', version: javassistVersion
 
-    examplesAndroidOCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
-    examplesAndroidPCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    examplesAndroidOImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    examplesAndroidPImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
     // Import Guava for @Nullable annotation
-    examplesCompile "com.google.guava:guava:$guavaVersion"
-    examplesCompile "junit:junit:$junitVersion"
-    examplesCompile "org.mockito:mockito-core:$mockitoVersion"
+    examplesImplementation "com.google.guava:guava:$guavaVersion"
+    examplesImplementation "junit:junit:$junitVersion"
+    examplesImplementation "org.mockito:mockito-core:$mockitoVersion"
     supportLibs "com.android.support:support-v4:$androidSupportVersion"
     supportLibs "junit:junit:$junitVersion"
     supportLibs "com.android.support.test.espresso:espresso-core:$espressoVersion"
-    apiUsageSampleCompile sourceSets.main.output
-    apiUsageSampleCompile "com.google.guava:guava:$guavaVersion"
+    apiUsageSampleImplementation sourceSets.main.output
+    apiUsageSampleImplementation "com.google.guava:guava:$guavaVersion"
     kotlinR8TestResourcesCompileOnly "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     errorprone("com.google.errorprone:error_prone_core:$errorproneVersion")
 
@@ -813,10 +813,11 @@ task repackageDeps(type: Jar) {
     archiveFileName = 'deps_all.jar'
 }
 
+project.configurations.testImplementation.setCanBeResolved(true)
 task repackageTestDeps(type: Jar) {
     dependsOn downloadCloudDeps
-    dependsOn project.configurations.testCompile
-    project.configurations.testCompile.forEach {
+    dependsOn project.configurations.testImplementation
+    project.configurations.testImplementation.forEach {
         from repackageDepFile(it)
     }
     archiveFileName = 'test_deps_all.jar'
@@ -1351,8 +1352,8 @@ task buildExampleJars {
         proguardScript = "third_party/proguard/proguard5.2.1/bin/proguard.sh"
     }
     task extractExamplesRuntime(type: Sync) {
-        dependsOn configurations.examplesRuntime
-        from { configurations.examplesRuntime.collect { zipTree(it) } }
+        dependsOn configurations.examplesImplementation
+        from { configurations.examplesImplementation.collect { zipTree(it) } }
         include "**/*.class"
         includeEmptyDirs false
         into "$buildDir/runtime/examples/"
@@ -2423,9 +2424,9 @@ task javadocR8(type: Javadoc) {
 }
 
 task copyMavenDeps(type: Copy) {
-    from configurations.compile into "$buildDir/deps"
+    from configurations.implementation into "$buildDir/deps"
     from configurations.compileClasspath into "$buildDir/deps"
-    from configurations.testCompile into "$buildDir/deps"
+    from configurations.testImplementation into "$buildDir/deps"
 }
 
 task printMavenDeps {
