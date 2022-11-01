@@ -4,6 +4,8 @@
 
 package com.android.tools.r8.dex;
 
+import static com.android.tools.r8.ir.desugar.desugaredlibrary.apiconversion.DesugaredLibraryAPIConverter.isVivifiedType;
+
 import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexField;
@@ -96,7 +98,7 @@ public abstract class CodeToKeep {
       DexType baseType = method.holder.toBaseType(appView.dexItemFactory());
       if (shouldKeep(baseType)) {
         keepClass(baseType);
-        if (!method.holder.isArrayType()) {
+        if (!method.holder.isArrayType() && !isVivifiedType(baseType)) {
           toKeep.get(method.holder).methods.add(method);
         }
       }
@@ -115,7 +117,7 @@ public abstract class CodeToKeep {
       DexType baseType = field.holder.toBaseType(appView.dexItemFactory());
       if (shouldKeep(baseType)) {
         keepClass(baseType);
-        if (!field.holder.isArrayType()) {
+        if (!field.holder.isArrayType() && !isVivifiedType(baseType)) {
           toKeep.get(field.holder).fields.add(field);
         }
       }
