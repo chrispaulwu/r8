@@ -511,7 +511,7 @@ public class Enqueuer {
     liveFields = new LiveFieldsSet(graphReporter::registerField);
     if (mode.isInitialTreeShaking()) {
       desugaring = CfInstructionDesugaringCollection.create(appView, appView.apiLevelCompute());
-      interfaceProcessor = new InterfaceProcessor(appView);
+      interfaceProcessor = InterfaceProcessor.create(appView);
     } else {
       desugaring = CfInstructionDesugaringCollection.empty();
       interfaceProcessor = null;
@@ -4063,6 +4063,7 @@ public class Enqueuer {
 
     // Move the pending methods and mark them live and ready for tracing.
     for (ProgramMethod method : pendingMethodMove) {
+      assert interfaceProcessor != null;
       ProgramMethod companion =
           interfaceProcessor
               .getHelper()
