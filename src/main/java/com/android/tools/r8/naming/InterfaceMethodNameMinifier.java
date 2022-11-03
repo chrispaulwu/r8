@@ -588,7 +588,7 @@ class InterfaceMethodNameMinifier {
       }
       DexEncodedMethod key = interfaceMethodGroup.get();
       MethodNamingState<?> keyNamingState = minifierState.getNamingState(key.getHolderType());
-      DexString existingRenaming = keyNamingState.newOrReservedNameFor(key);
+      DexString existingRenaming = keyNamingState.newOrReservedNameFor(key, minifierState);
       assert existingRenaming != null;
       for (DexEncodedMethod collidingMethod : groupState.callSiteCollidingMethods) {
         DexString newNameInGroup = newNameInGroup(collidingMethod, keyNamingState, groupState);
@@ -612,7 +612,7 @@ class InterfaceMethodNameMinifier {
     // Check if the name is available in all states.
     DexString newName =
         namingState.newOrReservedNameFor(
-            method, (candidate, ignore) -> groupState.isAvailable(candidate));
+            method, minifierState, (candidate, ignore) -> groupState.isAvailable(candidate));
     groupState.addRenaming(newName, minifierState);
     return newName;
   }

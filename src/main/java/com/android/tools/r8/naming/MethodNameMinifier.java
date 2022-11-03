@@ -236,7 +236,7 @@ class MethodNameMinifier {
               DexClass holder = appView.definitionFor(type);
               if (holder != null && strategy.allowMemberRenaming(holder)) {
                 for (DexEncodedMethod method : holder.allMethodsSorted()) {
-                  assignNameToMethod(holder, method, namingState);
+                  assignNameToMethod(holder, method, namingState, minifierState);
                 }
               }
             });
@@ -259,7 +259,7 @@ class MethodNameMinifier {
   }
 
   private void assignNameToMethod(
-      DexClass holder, DexEncodedMethod method, MethodNamingState<?> state) {
+      DexClass holder, DexEncodedMethod method, MethodNamingState<?> state, State minifierState) {
     if (method.isInitializer()) {
       return;
     }
@@ -268,7 +268,7 @@ class MethodNameMinifier {
     // renaming tracked by the state.
     DexString newName = strategy.getReservedName(method, holder);
     if (newName == null || newName == method.getName()) {
-      newName = state.newOrReservedNameFor(method);
+      newName = state.newOrReservedNameFor(method, minifierState, holder);
     }
     if (method.getName() != newName) {
       renaming.put(method.getReference(), newName);

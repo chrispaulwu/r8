@@ -3,9 +3,11 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.naming;
 
+import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexEncodedMethod;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexString;
+import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.naming.MethodNamingState.InternalNewNameState;
 import com.android.tools.r8.utils.MethodSignatureEquivalence;
 import com.google.common.base.Equivalence.Wrapper;
@@ -45,12 +47,26 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
         this, this.keyTransform, this.namingStrategy, frontierReservationState);
   }
 
-  DexString newOrReservedNameFor(DexEncodedMethod method) {
-    return newOrReservedNameFor(method, this::isAvailable);
+  DexString newOrReservedNameFor(DexEncodedMethod method, MethodNameMinifier.State minifierState, DexClass holder) {
+    return newOrReservedNameFor(method, minifierState, this::isAvailable, holder);
+  }
+
+  DexString newOrReservedNameFor(DexEncodedMethod method, MethodNameMinifier.State minifierState) {
+    return newOrReservedNameFor(method, minifierState, this::isAvailable);
   }
 
   DexString newOrReservedNameFor(
-      DexEncodedMethod method, BiPredicate<DexString, DexMethod> isAvailable) {
+          DexEncodedMethod method, MethodNameMinifier.State minifierState, BiPredicate<DexString, DexMethod> isAvailable) {
+    return newOrReservedNameFor(method, minifierState, isAvailable, null);
+  }
+
+  DexString newOrReservedNameFor(
+          DexEncodedMethod method, MethodNameMinifier.State minifierState, BiPredicate<DexString, DexMethod> isAvailable, DexClass holder) {
+
+//    if (method.getReference().holder.toSourceString().contains("FinderBulletUIC")) {
+//      System.out.printf("----------------- method: %s, stack:%s\n", method.getReference().toSourceString(), StringUtils.stacktraceAsString(new Throwable()));
+//    }
+
     DexString newName = getAssignedName(method.getReference());
     if (newName != null) {
       return newName;
@@ -66,8 +82,28 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
       if (isAvailable(candidate, method.getReference())) {
         return candidate;
       }
+    } else if (holder != null && reservedNamesFor != null && reservedNamesFor.size() > 1) {
+      for (DexString candidate : reservedNamesFor) {
+        if (isAvailableForInterface(candidate, holder, method, minifierState) && isAvailable(candidate, method.getReference())) {
+           System.out.printf("isAvailableForInterface, candidate: %s, holder: %s, method: %s%n", candidate.toString(), method.getReference().toSourceString(), holder.getSimpleName());
+           return candidate;
+        }
+      }
     }
     return nextName(method, isAvailable);
+  }
+
+  boolean isAvailableForInterface(DexString candidate, DexClass holder, DexEncodedMethod method, MethodNameMinifier.State minifierState) {
+    return holder.getInterfaces().stream().anyMatch(iface -> isMatched(iface, candidate, method, minifierState));
+  }
+
+  private boolean isMatched(DexType iface, DexString candidate, DexEncodedMethod method, MethodNameMinifier.State minifierState) {
+    MethodReservationState<?> state = minifierState.getReservationState(iface);
+    if (state != null) {
+      Set<DexString> candidates = state.getReservedNamesFor(method.getReference());
+      return candidates != null && candidates.contains(candidate);
+    }
+    return false;
   }
 
   DexString nextName(DexEncodedMethod method, BiPredicate<DexString, DexMethod> isAvailable) {

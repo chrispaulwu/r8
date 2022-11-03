@@ -9,6 +9,7 @@ import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.naming.MethodReservationState.InternalReservationState;
 import com.android.tools.r8.utils.MethodSignatureEquivalence;
+//import com.android.tools.r8.utils.StringUtils;
 import com.google.common.base.Equivalence.Wrapper;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -93,6 +94,9 @@ class MethodReservationState<KeyType>
     }
 
     void reserveName(DexEncodedMethod method, DexString name) {
+//      if ((method.getReference().toSourceString().contains("FinderShareGuidePopupTipUIC") || method.getReference().toSourceString().contains("IFinderBulletUIC")) && method.getName().toString().contains("dismiss")) {
+//         System.out.printf("----------------- method: %s, name:%s, stack:%s\n", method.getReference().toSourceString(), name.toString(), StringUtils.stacktraceAsString(new Throwable()));
+//      }
       if (reservedNames == null) {
         assert originalToReservedNames == null;
         originalToReservedNames = new HashMap<>();
