@@ -9,7 +9,6 @@ import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.desugar.CfPostProcessingDesugaring;
 import com.android.tools.r8.ir.desugar.CfPostProcessingDesugaringEventConsumer;
-import com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper.InterfaceMethodDesugaringMode;
 import com.android.tools.r8.ir.desugar.itf.InterfaceMethodRewriter.Flavor;
 import com.android.tools.r8.utils.ThreadUtils;
 import com.google.common.collect.Iterables;
@@ -29,13 +28,11 @@ public class InterfaceMethodProcessorFacade implements CfPostProcessingDesugarin
       AppView<?> appView,
       Flavor flavour,
       Predicate<ProgramMethod> isLiveMethod,
-      InterfaceProcessor interfaceProcessor,
-      InterfaceMethodDesugaringMode desugaringMode) {
+      InterfaceProcessor interfaceProcessor) {
     this.appView = appView;
     this.flavour = flavour;
-    assert interfaceProcessor != null;
     this.interfaceProcessor = interfaceProcessor;
-    this.classProcessor = new ClassProcessor(appView, isLiveMethod, desugaringMode);
+    this.classProcessor = new ClassProcessor(appView, isLiveMethod);
   }
 
   private boolean shouldProcess(DexProgramClass clazz, Flavor flavour) {

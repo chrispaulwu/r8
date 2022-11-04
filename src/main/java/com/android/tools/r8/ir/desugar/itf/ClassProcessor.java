@@ -4,8 +4,6 @@
 
 package com.android.tools.r8.ir.desugar.itf;
 
-import static com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper.InterfaceMethodDesugaringMode.EMULATED_INTERFACE_ONLY;
-
 import com.android.tools.r8.cf.code.CfInvoke;
 import com.android.tools.r8.cf.code.CfNew;
 import com.android.tools.r8.cf.code.CfStackInstruction;
@@ -31,7 +29,6 @@ import com.android.tools.r8.graph.MethodAccessFlags;
 import com.android.tools.r8.graph.MethodResolutionResult;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.machinespecification.DerivedMethod;
-import com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper.InterfaceMethodDesugaringMode;
 import com.android.tools.r8.position.MethodPosition;
 import com.android.tools.r8.utils.BooleanBox;
 import com.android.tools.r8.utils.BooleanUtils;
@@ -377,12 +374,7 @@ final class ClassProcessor {
   private final Map<DexProgramClass, List<ClassTypeSignature>> newExtraInterfaceSignatures =
       new ConcurrentHashMap<>();
 
-  private final InterfaceMethodDesugaringMode desugaringMode;
-
-  ClassProcessor(
-      AppView<?> appView,
-      Predicate<ProgramMethod> isLiveMethod,
-      InterfaceMethodDesugaringMode desugaringMode) {
+  ClassProcessor(AppView<?> appView, Predicate<ProgramMethod> isLiveMethod) {
     this.appView = appView;
     this.dexItemFactory = appView.dexItemFactory();
     this.helper = new InterfaceDesugaringSyntheticHelper(appView);
@@ -390,7 +382,6 @@ final class ClassProcessor {
         !appView.options().canUseDefaultAndStaticInterfaceMethods()
             && !appView.options().machineDesugaredLibrarySpecification.isEmpty();
     this.isLiveMethod = isLiveMethod;
-    this.desugaringMode = desugaringMode;
   }
 
   private boolean isLiveMethod(DexClassAndMethod method) {
@@ -449,9 +440,6 @@ final class ClassProcessor {
     assert iface.isInterface();
     assert iface.superType == dexItemFactory.objectType;
     assert !helper.isEmulatedInterface(iface.type);
-    if (desugaringMode == EMULATED_INTERFACE_ONLY) {
-      return SignaturesInfo.EMPTY;
-    }
     // Add non-library default methods as well as those for desugared library classes.
     if (!iface.isLibraryClass() || (needsLibraryInfo() && helper.isInDesugaredLibrary(iface))) {
       MethodSignatures signatures = getDefaultMethods(iface);

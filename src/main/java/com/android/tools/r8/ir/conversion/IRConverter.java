@@ -346,7 +346,10 @@ public class IRConverter {
     workaroundAbstractMethodOnNonAbstractClassVerificationBug(executor);
     DexApplication application = appView.appInfo().app();
     D8MethodProcessor methodProcessor = new D8MethodProcessor(this, executor);
-    InterfaceProcessor interfaceProcessor = InterfaceProcessor.create(appView);
+    InterfaceProcessor interfaceProcessor =
+        appView.options().isInterfaceMethodDesugaringEnabled()
+            ? new InterfaceProcessor(appView)
+            : null;
 
     timing.begin("IR conversion");
 
