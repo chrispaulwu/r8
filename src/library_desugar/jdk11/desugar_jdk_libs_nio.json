@@ -7,6 +7,13 @@
   "common_flags": [
     {
       "api_level_below_or_equal": 10000,
+      "amend_library_method": [
+        "public static java.nio.file.Path java.nio.file.Path#of(java.lang.String, java.lang.String[])",
+        "public static java.nio.file.Path java.nio.file.Path#of(java.net.URI)"
+      ]
+    },
+    {
+      "api_level_below_or_equal": 10000,
       "api_level_greater_or_equal": 24,
       "rewrite_prefix": {
         "java.util.stream.DesugarDoubleStream": "j$.util.stream.DesugarDoubleStream",
@@ -35,13 +42,15 @@
         "long java.util.concurrent.TimeUnit#convert(java.time.Duration)": "java.util.concurrent.DesugarTimeUnit"
       },
       "retarget_method_with_emulated_dispatch": {
-        "long java.io.InputStream#transferTo(java.io.OutputStream)": "java.io.DesugarInputStream"
+        "long java.io.InputStream#transferTo(java.io.OutputStream)": "java.io.DesugarInputStream",
+        "long java.io.ByteArrayInputStream#transferTo(java.io.OutputStream)": "long java.io.DesugarInputStream#transferTo(java.io.InputStream, java.io.OutputStream)"
       },
       "amend_library_method": [
         "public static java.util.concurrent.TimeUnit java.util.concurrent.TimeUnit#of(java.time.temporal.ChronoUnit)",
         "public java.time.temporal.ChronoUnit java.util.concurrent.TimeUnit#toChronoUnit()",
         "public long java.util.concurrent.TimeUnit#convert(java.time.Duration)",
-        "public long java.io.InputStream#transferTo(java.io.OutputStream)"
+        "public long java.io.InputStream#transferTo(java.io.OutputStream)",
+        "public long java.io.ByteArrayInputStream#transferTo(java.io.OutputStream)"
       ]
     },
     {
@@ -220,7 +229,8 @@
         "java.util.Map java.nio.file.spi.FileSystemProvider#readAttributes(java.nio.file.Path, java.lang.String, java.nio.file.LinkOption[])" : [-1, "java.util.Map java.nio.file.FileApiFlips#flipMapWithMaybeFileTimeValues(java.util.Map)"],
         "java.lang.Iterable java.nio.file.FileSystem#getRootDirectories()": [-1, "java.lang.Iterable java.nio.file.PathApiFlips#flipIterablePath(java.lang.Iterable)"],
         "java.util.Iterator java.nio.file.Path#iterator()": [-1, "java.util.Iterator java.nio.file.PathApiFlips#flipIteratorPath(java.util.Iterator)"],
-        "java.nio.file.DirectoryStream java.nio.file.spi.FileSystemProvider#newDirectoryStream(java.nio.file.Path, java.nio.file.DirectoryStream$Filter)": [-1, "java.nio.file.DirectoryStream java.nio.file.PathApiFlips#flipDirectoryStreamPath(java.nio.file.DirectoryStream)", 1, "java.nio.file.DirectoryStream$Filter java.nio.file.PathApiFlips#flipDirectoryStreamFilterPath(java.nio.file.DirectoryStream$Filter)"]
+        "java.nio.file.DirectoryStream java.nio.file.spi.FileSystemProvider#newDirectoryStream(java.nio.file.Path, java.nio.file.DirectoryStream$Filter)": [-1, "java.nio.file.DirectoryStream java.nio.file.PathApiFlips#flipDirectoryStreamPath(java.nio.file.DirectoryStream)", 1, "java.nio.file.DirectoryStream$Filter java.nio.file.PathApiFlips#flipDirectoryStreamFilterPath(java.nio.file.DirectoryStream$Filter)"],
+        "void java.nio.file.spi.FileSystemProvider#setAttribute(java.nio.file.Path, java.lang.String, java.lang.Object, java.nio.file.LinkOption[])": [2, "java.lang.Object java.nio.file.FileApiFlips#flipMaybeFileTime(java.lang.Object)"]
       },
       "wrapper_conversion": [
         "java.nio.channels.CompletionHandler",
@@ -401,6 +411,14 @@
         "public static java.util.stream.LongStream java.util.stream.LongStream#iterate(long, java.util.function.LongPredicate, java.util.function.LongUnaryOperator)",
         "public static java.util.stream.Stream java.util.stream.Stream#iterate(java.lang.Object, java.util.function.Predicate, java.util.function.UnaryOperator)"
       ]
+    },
+    {
+      "api_level_below_or_equal": 10000,
+      "api_level_greater_or_equal": 26,
+      "retarget_method": {
+        "java.nio.file.Path java.nio.file.Path#of(java.lang.String, java.lang.String[])": "java.nio.file.Path java.nio.file.Paths#get(java.lang.String, java.lang.String[])",
+        "java.nio.file.Path java.nio.file.Path#of(java.net.URI)": "java.nio.file.Path java.nio.file.Paths#get(java.net.URI)"
+      }
     },
     {
       "api_level_below_or_equal": 33,

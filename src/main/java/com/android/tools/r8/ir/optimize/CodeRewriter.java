@@ -2220,8 +2220,7 @@ public class CodeRewriter {
       InstructionListIterator it = block.listIterator(code);
       while (it.hasNext()) {
         Instruction instruction = it.next();
-        if (instruction.getLocalInfo() != null
-            || !allowNewFilledArrayConstruction(instruction)) {
+        if (instruction.getLocalInfo() != null || !allowNewFilledArrayConstruction(instruction)) {
           continue;
         }
         NewArrayEmpty newArray = instruction.asNewArrayEmpty();
