@@ -3,12 +3,14 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.keepanno.asm;
 
-import com.android.tools.r8.keepanno.annotations.KeepConstants;
 import com.android.tools.r8.keepanno.annotations.KeepConstants.Edge;
 import com.android.tools.r8.keepanno.annotations.KeepConstants.Target;
 import com.android.tools.r8.keepanno.ast.KeepConsequences;
 import com.android.tools.r8.keepanno.ast.KeepEdge;
-import com.android.tools.r8.keepanno.ast.KeepMethodNamePattern;
+import com.android.tools.r8.keepanno.ast.KeepItemPattern;
+import com.android.tools.r8.keepanno.ast.KeepMembersPattern;
+import com.android.tools.r8.keepanno.ast.KeepMethodNamePattern.KeepMethodNameExactPattern;
+import com.android.tools.r8.keepanno.ast.KeepMethodPattern;
 import com.android.tools.r8.keepanno.ast.KeepPreconditions;
 import com.android.tools.r8.keepanno.ast.KeepQualifiedClassNamePattern;
 import com.android.tools.r8.keepanno.utils.Unimplemented;
@@ -45,68 +47,58 @@ public class KeepEdgeWriter implements Opcodes {
   private void writeConsequences(AnnotationVisitor visitor, KeepConsequences consequences) {
     assert !consequences.isEmpty();
     String ignoredArrayValueName = null;
-    AnnotationVisitor arrayVisitor = visitor.visitArray(KeepConstants.Edge.consequences);
+    AnnotationVisitor arrayVisitor = visitor.visitArray(Edge.consequences);
     consequences.forEachTarget(
         target -> {
           AnnotationVisitor targetVisitor =
-              arrayVisitor.visitAnnotation(ignoredArrayValueName, KeepConstants.Target.DESCRIPTOR);
+              arrayVisitor.visitAnnotation(ignoredArrayValueName, Target.DESCRIPTOR);
           // No options imply keep all.
           if (!target.getOptions().isKeepAll()) {
             throw new Unimplemented();
           }
-          target
-              .getItem()
-              .match(
-                  () -> {
-                    throw new Unimplemented();
-                  },
-                  clazz -> {
-                    KeepQualifiedClassNamePattern namePattern = clazz.getClassNamePattern();
-                    if (namePattern.isExact()) {
-                      Type typeConstant = Type.getType(namePattern.getExactDescriptor());
-                      targetVisitor.visit(KeepConstants.Target.classConstant, typeConstant);
-                    } else {
-                      throw new Unimplemented();
-                    }
-                    if (!clazz.getExtendsPattern().isAny()) {
-                      throw new Unimplemented();
-                    }
-                    if (clazz.getMembersPattern().isNone()) {
-                      // Default is "no methods".
-                    } else if (clazz.getMembersPattern().isAll()) {
-                      throw new Unimplemented();
-                    } else {
-                      clazz
-                          .getMembersPattern()
-                          .forEach(
-                              field -> {
-                                throw new Unimplemented();
-                              },
-                              method -> {
-                                KeepMethodNamePattern methodNamePattern = method.getNamePattern();
-                                methodNamePattern.match(
-                                    () -> {
-                                      throw new Unimplemented();
-                                    },
-                                    exactMethodName -> {
-                                      targetVisitor.visit(Target.methodName, exactMethodName);
-                                      return null;
-                                    });
-                                if (!method.getAccessPattern().isAny()) {
-                                  throw new Unimplemented();
-                                }
-                                if (!method.getReturnTypePattern().isAny()) {
-                                  throw new Unimplemented();
-                                }
-                                if (!method.getParametersPattern().isAny()) {
-                                  throw new Unimplemented();
-                                }
-                              });
-                    }
-                    return null;
-                  });
+          KeepItemPattern item = target.getItem();
+          if (item.isAny()) {
+            throw new Unimplemented();
+          }
+          KeepQualifiedClassNamePattern namePattern = item.getClassNamePattern();
+          if (namePattern.isExact()) {
+            Type typeConstant = Type.getType(namePattern.getExactDescriptor());
+            targetVisitor.visit(Target.classConstant, typeConstant);
+          } else {
+            throw new Unimplemented();
+          }
+          if (!item.getExtendsPattern().isAny()) {
+            throw new Unimplemented();
+          }
+          writeMembers(item.getMembersPattern(), targetVisitor);
           targetVisitor.visitEnd();
         });
     arrayVisitor.visitEnd();
+  }
+
+  private void writeMembers(KeepMembersPattern membersPattern, AnnotationVisitor targetVisitor) {
+    if (membersPattern.isNone()) {
+      // Default is "no methods".
+      return;
+    }
+    if (membersPattern.isAll()) {
+      throw new Unimplemented();
+    }
+    KeepMethodPattern method = membersPattern.asMethod();
+    KeepMethodNameExactPattern exactMethodName = method.getNamePattern().asExact();
+    if (exactMethodName != null) {
+      targetVisitor.visit(Target.methodName, exactMethodName.getName());
+    } else {
+      throw new Unimplemented();
+    }
+    if (!method.getAccessPattern().isAny()) {
+      throw new Unimplemented();
+    }
+    if (!method.getReturnTypePattern().isAny()) {
+      throw new Unimplemented();
+    }
+    if (!method.getParametersPattern().isAny()) {
+      throw new Unimplemented();
+    }
   }
 }

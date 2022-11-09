@@ -3,93 +3,28 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.keepanno.ast;
 
-import com.android.tools.r8.keepanno.utils.Unimplemented;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public abstract class KeepMembersPattern {
 
-  public static Builder builder() {
-    return new Builder();
-  }
-
   public static KeepMembersPattern none() {
-    return KeepMembersNonePattern.getInstance();
+    return None.getInstance();
   }
 
   public static KeepMembersPattern all() {
-    return KeepMembersAllPattern.getInstance();
+    return All.getInstance();
   }
 
-  public static class Builder {
+  private static class All extends KeepMembersPattern {
 
-    private boolean anyMethod = false;
-    private boolean anyField = false;
-    private List<KeepMethodPattern> methods = new ArrayList<>();
-    private List<KeepFieldPattern> fields = new ArrayList<>();
+    private static final All INSTANCE = new All();
 
-    public Builder addMethodPattern(KeepMethodPattern methodPattern) {
-      if (anyMethod) {
-        return this;
-      }
-      if (methodPattern.isAnyMethod()) {
-        methods.clear();
-        anyMethod = true;
-      }
-      methods.add(methodPattern);
-      return this;
-    }
-
-    public Builder addFieldPattern(KeepFieldPattern fieldPattern) {
-      if (anyField) {
-        return this;
-      }
-      if (fieldPattern.isAnyField()) {
-        fields.clear();
-        anyField = true;
-      }
-      fields.add(fieldPattern);
-      return this;
-    }
-
-    public KeepMembersPattern build() {
-      if (methods.isEmpty() && fields.isEmpty()) {
-        return KeepMembersPattern.none();
-      }
-      if (anyMethod && anyField) {
-        return KeepMembersPattern.all();
-      }
-      return new KeepMembersSomePattern(methods, fields);
-    }
-  }
-
-  private static class KeepMembersAllPattern extends KeepMembersPattern {
-
-    private static KeepMembersAllPattern INSTANCE = null;
-
-    public static KeepMembersAllPattern getInstance() {
-      if (INSTANCE == null) {
-        INSTANCE = new KeepMembersAllPattern();
-      }
+    public static All getInstance() {
       return INSTANCE;
     }
 
     @Override
     public boolean isAll() {
       return true;
-    }
-
-    @Override
-    public boolean isNone() {
-      return true;
-    }
-
-    @Override
-    public void forEach(Consumer<KeepFieldPattern> onField, Consumer<KeepMethodPattern> onMethod) {
-      throw new Unimplemented("Should this include all and none?");
     }
 
     @Override
@@ -108,30 +43,17 @@ public abstract class KeepMembersPattern {
     }
   }
 
-  private static class KeepMembersNonePattern extends KeepMembersPattern {
+  private static class None extends KeepMembersPattern {
 
-    private static KeepMembersNonePattern INSTANCE = null;
+    private static final None INSTANCE = new None();
 
-    public static KeepMembersNonePattern getInstance() {
-      if (INSTANCE == null) {
-        INSTANCE = new KeepMembersNonePattern();
-      }
+    public static None getInstance() {
       return INSTANCE;
-    }
-
-    @Override
-    public boolean isAll() {
-      return false;
     }
 
     @Override
     public boolean isNone() {
       return true;
-    }
-
-    @Override
-    public void forEach(Consumer<KeepFieldPattern> onField, Consumer<KeepMethodPattern> onMethod) {
-      throw new Unimplemented("Should this include all and none?");
     }
 
     @Override
@@ -150,69 +72,21 @@ public abstract class KeepMembersPattern {
     }
   }
 
-  private static class KeepMembersSomePattern extends KeepMembersPattern {
+  KeepMembersPattern() {}
 
-    private final List<KeepMethodPattern> methods;
-    private final List<KeepFieldPattern> fields;
-
-    private KeepMembersSomePattern(List<KeepMethodPattern> methods, List<KeepFieldPattern> fields) {
-      assert !methods.isEmpty() || !fields.isEmpty();
-      this.methods = methods;
-      this.fields = fields;
-    }
-
-    @Override
-    public boolean isAll() {
-      // Since there is at least one none-all field or method this is not a match all.
-      return false;
-    }
-
-    @Override
-    public boolean isNone() {
-      // Since there is at least one field or method this is not a match none.
-      return false;
-    }
-
-    @Override
-    public void forEach(Consumer<KeepFieldPattern> onField, Consumer<KeepMethodPattern> onMethod) {
-      fields.forEach(onField);
-      methods.forEach(onMethod);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (obj == null || getClass() != obj.getClass()) {
-        return false;
-      }
-      KeepMembersSomePattern that = (KeepMembersSomePattern) obj;
-      return methods.equals(that.methods) && fields.equals(that.fields);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(methods, fields);
-    }
-
-    @Override
-    public String toString() {
-      return "KeepMembersSomePattern{"
-          + "methods={"
-          + methods.stream().map(Object::toString).collect(Collectors.joining(", "))
-          + "}, fields={"
-          + fields.stream().map(Object::toString).collect(Collectors.joining(", "))
-          + "}}";
-    }
+  public boolean isAll() {
+    return false;
   }
 
-  private KeepMembersPattern() {}
+  public boolean isNone() {
+    return false;
+  }
 
-  public abstract boolean isAll();
+  public final boolean isMethod() {
+    return asMethod() != null;
+  }
 
-  public abstract boolean isNone();
-
-  public abstract void forEach(
-      Consumer<KeepFieldPattern> onField, Consumer<KeepMethodPattern> onMethod);
+  public KeepMethodPattern asMethod() {
+    return null;
+  }
 }
