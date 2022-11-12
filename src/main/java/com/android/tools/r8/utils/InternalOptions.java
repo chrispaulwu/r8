@@ -363,7 +363,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   public boolean enableVerticalClassMerging = false;
   public boolean enableUnusedInterfaceRemoval = true;
   public boolean enableDevirtualization = true;
-  public boolean enableEnumUnboxing = true;
+  public boolean enableEnumUnboxing = false;
   public boolean enableSimpleInliningConstraints = true;
   public final int simpleInliningConstraintThreshold = 0;
   public boolean enableClassInlining = true;
