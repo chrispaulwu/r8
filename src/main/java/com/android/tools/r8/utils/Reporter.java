@@ -75,7 +75,7 @@ public class Reporter implements DiagnosticsHandler {
         clientHandler.info(diagnostic);
         break;
       case WARNING:
-        clientHandler.warning(diagnostic);
+//        clientHandler.warning(diagnostic);
         break;
       case ERROR:
         abort = new AbortException(diagnostic);
