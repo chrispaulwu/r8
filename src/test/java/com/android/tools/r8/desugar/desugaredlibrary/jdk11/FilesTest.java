@@ -50,10 +50,7 @@ public class FilesTest extends DesugaredLibraryTestBase {
           "null",
           "true",
           "unsupported",
-          "j$.nio.file.attribute",
-          "tmp",
-          "/",
-          "true");
+          "j$.nio.file.attribute");
   private static final String EXPECTED_RESULT_PLATFORM_FILE_SYSTEM_DESUGARING =
       StringUtils.lines(
           "bytes written: 11",
