@@ -2,13 +2,12 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-package desugar.sun.nio.fs;
+package com.android.tools.r8.retrace;
 
-import java.nio.file.spi.FileSystemProvider;
+import com.android.tools.r8.Keep;
 
-public class DesugarDefaultFileSystemProvider {
+@Keep
+public interface RetraceTypeElement extends RetraceElement<RetraceTypeResult> {
 
-  public static FileSystemProvider instance() {
-    return null;
-  }
+  RetracedTypeReference getType();
 }

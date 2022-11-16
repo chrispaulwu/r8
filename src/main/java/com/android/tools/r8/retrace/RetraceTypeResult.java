@@ -5,21 +5,6 @@
 package com.android.tools.r8.retrace;
 
 import com.android.tools.r8.Keep;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 @Keep
-public interface RetraceTypeResult {
-
-  Stream<Element> stream();
-
-  RetraceTypeResult forEach(Consumer<Element> resultConsumer);
-
-  boolean isAmbiguous();
-
-  @Keep
-  interface Element {
-
-    RetracedTypeReference getType();
-  }
-}
+public interface RetraceTypeResult extends RetraceResult<RetraceTypeElement> {}

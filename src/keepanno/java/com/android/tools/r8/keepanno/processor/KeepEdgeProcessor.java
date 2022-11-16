@@ -15,6 +15,7 @@ import com.android.tools.r8.keepanno.asm.KeepEdgeWriter;
 import com.android.tools.r8.keepanno.ast.KeepConsequences;
 import com.android.tools.r8.keepanno.ast.KeepEdge;
 import com.android.tools.r8.keepanno.ast.KeepEdge.Builder;
+import com.android.tools.r8.keepanno.ast.KeepEdgeException;
 import com.android.tools.r8.keepanno.ast.KeepItemPattern;
 import com.android.tools.r8.keepanno.ast.KeepMethodNamePattern;
 import com.android.tools.r8.keepanno.ast.KeepMethodPattern;
@@ -125,17 +126,31 @@ public class KeepEdgeProcessor extends AbstractProcessor {
     edgeBuilder.setConsequences(consequencesBuilder.build());
   }
 
+  private String getTypeNameForClassConstantElement(DeclaredType type) {
+    // The processor API does not expose the descriptor or typename, so we need to depend on the
+    // sun.tools internals to extract it. If not, this code will not work for inner classes as
+    // we cannot recover the $ separator.
+    try {
+      Object tsym = type.getClass().getField("tsym").get(type);
+      Object flatname = tsym.getClass().getField("flatname").get(tsym);
+      return flatname.toString();
+    } catch (NoSuchFieldException | IllegalAccessException e) {
+      throw new KeepEdgeException("Unable to obtain the class type name for: " + type);
+    }
+  }
+
   private void processTarget(KeepTarget.Builder builder, AnnotationMirror mirror) {
     KeepItemPattern.Builder itemBuilder = KeepItemPattern.builder();
     AnnotationValue classConstantValue = getAnnotationValue(mirror, Target.classConstant);
     if (classConstantValue != null) {
       DeclaredType type = AnnotationClassValueVisitor.getType(classConstantValue);
-      itemBuilder.setClassPattern(KeepQualifiedClassNamePattern.exact(type.toString()));
+      String typeName = getTypeNameForClassConstantElement(type);
+      itemBuilder.setClassPattern(KeepQualifiedClassNamePattern.exact(typeName));
     }
     AnnotationValue methodNameValue = getAnnotationValue(mirror, Target.methodName);
     if (methodNameValue != null) {
       String methodName = AnnotationStringValueVisitor.getString(methodNameValue);
-      itemBuilder.setMembersPattern(
+      itemBuilder.setMemberPattern(
           KeepMethodPattern.builder()
               .setNamePattern(KeepMethodNamePattern.exact(methodName))
               .build());
