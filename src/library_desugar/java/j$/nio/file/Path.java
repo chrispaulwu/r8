@@ -6,7 +6,11 @@ package j$.nio.file;
 
 public class Path {
 
-  public static j$.nio.file.Path wrap_convert(java.nio.file.Path path) {
+  public static j$.nio.file.Path inverted_wrap_convert(java.nio.file.Path path) {
+    return null;
+  }
+
+  public static java.nio.file.Path inverted_wrap_convert(j$.nio.file.Path path) {
     return null;
   }
 }
