@@ -40,10 +40,10 @@ public class PathApiFlips {
       return null;
     }
     if (maybePath instanceof java.nio.file.Path) {
-      return (T) j$.nio.file.Path.inverted_wrap_convert((java.nio.file.Path) maybePath);
+      return (T) j$.nio.file.Path.wrap_convert((java.nio.file.Path) maybePath);
     }
     if (maybePath instanceof j$.nio.file.Path) {
-      return (T) j$.nio.file.Path.inverted_wrap_convert((j$.nio.file.Path) maybePath);
+      return (T) j$.nio.file.Path.wrap_convert((j$.nio.file.Path) maybePath);
     }
     return maybePath;
   }

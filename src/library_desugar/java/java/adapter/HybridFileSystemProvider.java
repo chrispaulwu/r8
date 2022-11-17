@@ -27,7 +27,7 @@ public final class HybridFileSystemProvider {
       // On API 26 and above, FileSystems is present.
       j$.nio.file.FileSystem fileSystem = FileSystems.getDefault();
       j$.nio.file.spi.FileSystemProvider provider = fileSystem.provider();
-      return j$.nio.file.spi.FileSystemProvider.inverted_wrap_convert(provider);
+      return j$.nio.file.spi.FileSystemProvider.wrap_convert(provider);
     }
     if (AndroidVersionTest.isHeadfull) {
       // The DesugarDefaultFileSystemProvider requires the ThreadPolicy to be set to work correctly.

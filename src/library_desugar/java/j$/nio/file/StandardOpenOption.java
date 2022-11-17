@@ -4,13 +4,15 @@
 
 package j$.nio.file;
 
-public class Path {
+public class StandardOpenOption extends OpenOption {
 
-  public static j$.nio.file.Path wrap_convert(java.nio.file.Path path) {
+  public static java.nio.file.StandardOpenOption wrap_convert(
+      j$.nio.file.StandardOpenOption option) {
     return null;
   }
 
-  public static java.nio.file.Path wrap_convert(j$.nio.file.Path path) {
+  public static j$.nio.file.StandardOpenOption wrap_convert(
+      java.nio.file.StandardOpenOption option) {
     return null;
   }
 }

@@ -4,6 +4,7 @@
 
 package java.nio.file.attribute;
 
+
 public class FileAttributeConversions {
 
   public static java.nio.file.attribute.FileTime convert(j$.nio.file.attribute.FileTime fileTime) {
@@ -19,5 +20,4 @@ public class FileAttributeConversions {
     }
     return j$.nio.file.attribute.FileTime.fromMillis(fileTime.toMillis());
   }
-
 }
