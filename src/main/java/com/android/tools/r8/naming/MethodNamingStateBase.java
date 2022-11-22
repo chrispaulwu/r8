@@ -11,7 +11,7 @@ import java.util.function.Function;
 
 abstract class MethodNamingStateBase<KeyType, InternalState> {
 
-  final Map<KeyType, InternalState> internalStates;
+  final Map<KeyType, InternalState> internalStates; // method.proto.parameters -> InternalState
   final Function<DexMethod, KeyType> keyTransform;
 
   MethodNamingStateBase(Function<DexMethod, KeyType> keyTransform) {
@@ -25,7 +25,7 @@ abstract class MethodNamingStateBase<KeyType, InternalState> {
   }
 
   final InternalState getOrCreateInternalState(DexMethod method) {
-    KeyType internalStateKey = keyTransform.apply(method);
+    KeyType internalStateKey = keyTransform.apply(method); // key: method.proto.parameters 不是 proto
     return internalStates.computeIfAbsent(internalStateKey, key -> createInternalState(method));
   }
 

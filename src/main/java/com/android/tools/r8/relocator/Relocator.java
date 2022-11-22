@@ -33,26 +33,6 @@ public class Relocator {
   private Relocator() {}
 
   /**
-   * Main API entry for Relocator.
-   *
-   * @param command Relocator command.
-   */
-  public static void run(RelocatorCommand command) throws CompilationFailedException {
-    AndroidApp app = command.getApp();
-    InternalOptions options = command.getInternalOptions();
-    ExecutorService executor = ThreadUtils.getExecutorService(options);
-    ExceptionUtils.withCompilationHandler(
-        command.getReporter(),
-        () -> {
-          try {
-            run(command, executor, app, options);
-          } finally {
-            executor.shutdown();
-          }
-        });
-  }
-
-  /**
    * Main API entry for Relocator with a externally supplied executor service.
    *
    * @param command Relocator command.
@@ -67,6 +47,26 @@ public class Relocator {
         () -> {
           run(command, executor, app, options);
         });
+  }
+
+  /**
+   * Main API entry for Relocator.
+   *
+   * @param command Relocator command.
+   */
+  public static void run(RelocatorCommand command) throws CompilationFailedException {
+    AndroidApp app = command.getApp();
+    InternalOptions options = command.getInternalOptions();
+    ExecutorService executor = ThreadUtils.getExecutorService(options);
+    ExceptionUtils.withCompilationHandler(
+            command.getReporter(),
+            () -> {
+              try {
+                run(command, executor, app, options);
+              } finally {
+                executor.shutdown();
+              }
+            });
   }
 
   private static void run(

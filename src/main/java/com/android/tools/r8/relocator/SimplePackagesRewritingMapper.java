@@ -128,6 +128,11 @@ class SimplePackagesRewritingMapper {
     }
 
     @Override
+    public void recordName(DexMethod method, DexString renamedName) {
+
+    }
+
+    @Override
     public DexString lookupName(DexField field) {
       return field.name;
     }

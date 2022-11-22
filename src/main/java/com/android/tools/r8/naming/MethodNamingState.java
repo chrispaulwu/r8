@@ -11,6 +11,7 @@ import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.naming.MethodNamingState.InternalNewNameState;
 import com.android.tools.r8.utils.MethodSignatureEquivalence;
 import com.google.common.base.Equivalence.Wrapper;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -63,7 +64,7 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
   DexString newOrReservedNameFor(
           DexEncodedMethod method, MethodNameMinifier.State minifierState, BiPredicate<DexString, DexMethod> isAvailable, DexClass holder) {
 
-//    if (method.getReference().holder.toSourceString().contains("FinderBulletUIC")) {
+//    if (method.getReference().holder.toSourceString().contains("com.tencent.thumbplayer.tplayer.plugins.TPPluginManager")) {
 //      System.out.printf("----------------- method: %s, stack:%s\n", method.getReference().toSourceString(), StringUtils.stacktraceAsString(new Throwable()));
 //    }
 
@@ -181,7 +182,7 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
     return nameUsedBy;
   }
 
-  private DexString getAssignedName(DexMethod method) {
+  public DexString getAssignedName(DexMethod method) {
     DexString assignedName = null;
     InternalNewNameState internalState = getInternalState(method);
     if (internalState != null) {

@@ -136,7 +136,7 @@ class InterfaceMethodNameMinifier {
                 }
                 return null;
               });
-      return isReserved == null ? null : method.getName();
+      return isReserved == null ? null : method.getName(); //如果子类存在reverseName, 则无法保留该interface name
     }
 
     void addReservationType(DexType type) {
@@ -173,7 +173,7 @@ class InterfaceMethodNameMinifier {
       forAll(
           s ->
               s.reservationTypes.forEach(
-                  resType -> minifierState.getNamingState(resType).addRenaming(newName, method)));
+                  resType -> addInnerRenaming(resType, newName, method))); //这里获取所有同类型的interface NameState进行remaping校正
     }
 
     <T> void forAll(Consumer<InterfaceReservationState> action) {
@@ -451,7 +451,7 @@ class InterfaceMethodNameMinifier {
     timing.begin("Union-find");
     DisjointSets<Wrapper<DexEncodedMethod>> unification = new DisjointSets<>();
 
-    liveCallSites.forEach(
+    liveCallSites.forEach( //未走到
         callSite -> {
           Set<Wrapper<DexEncodedMethod>> callSiteMethods = new HashSet<>();
           // Don't report errors, as the set of call sites is a conservative estimate, and can
@@ -513,7 +513,7 @@ class InterfaceMethodNameMinifier {
     Map<Wrapper<DexEncodedMethod>, Set<Wrapper<DexEncodedMethod>>> unions =
         unification.collectSets();
 
-    for (Wrapper<DexEncodedMethod> wrapped : unions.keySet()) {
+    for (Wrapper<DexEncodedMethod> wrapped : unions.keySet()) { //未走到
       InterfaceMethodGroupState groupState = globalStateMap.get(wrapped);
       assert groupState != null;
 
@@ -561,7 +561,7 @@ class InterfaceMethodNameMinifier {
     }
     timing.end();
 
-    timing.begin("Rename in groups");
+    timing.begin("Rename in groups"); //对于无法保留的interface Name(比如新增的interface method， 但是子类存在该Name)， 则需要重新进行rename
     for (Wrapper<DexEncodedMethod> interfaceMethodGroup : nonReservedMethodGroups) {
       InterfaceMethodGroupState groupState = globalStateMap.get(interfaceMethodGroup);
       assert groupState != null;
@@ -581,7 +581,7 @@ class InterfaceMethodNameMinifier {
 
     // After all naming is completed for callsites, we must ensure to rename all interface methods
     // that can collide with the callsite method name.
-    for (Wrapper<DexEncodedMethod> interfaceMethodGroup : nonReservedMethodGroups) {
+    for (Wrapper<DexEncodedMethod> interfaceMethodGroup : nonReservedMethodGroups) { //未走到
       InterfaceMethodGroupState groupState = globalStateMap.get(interfaceMethodGroup);
       if (groupState.callSiteCollidingMethods.isEmpty()) {
         continue;
@@ -697,6 +697,12 @@ class InterfaceMethodNameMinifier {
     assert seen.size() == unifiedSeen.size();
     assert unifiedSeen.containsAll(seen);
     return true;
+  }
+
+
+  void addInnerRenaming(DexType resType, DexString newName, DexEncodedMethod method) {
+    minifierState.getNamingState(resType).addRenaming(newName, method); //这里获取所有同类型的interface NameState进行remaping校正
+//         minifierState.getReservationState(resType).fixRenaming(newName, method); //这里获取所有同类型的subType NameState进行remaping校正
   }
 
   private void print(DexMethod method, Set<DexEncodedMethod> sourceMethods, PrintStream out) {

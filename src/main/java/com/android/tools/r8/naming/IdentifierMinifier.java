@@ -16,6 +16,7 @@ import com.android.tools.r8.graph.Code;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexEncodedField;
 import com.android.tools.r8.graph.DexEncodedMethod;
+import com.android.tools.r8.graph.DexReference;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.DexValue;
@@ -28,6 +29,12 @@ import com.android.tools.r8.shaking.ProguardClassFilter;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.ListUtils;
 import com.android.tools.r8.utils.ThreadUtils;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -48,6 +55,11 @@ class IdentifierMinifier {
     this.adaptClassStrings = appView.options().getProguardConfiguration().getAdaptClassStrings();
     this.recordCfToCfRewriter = RecordCfToCfRewriter.create(appView);
     this.lens = lens;
+//    try {
+//      printAllMethodRefs(null);
+//    } catch (FileNotFoundException e) {
+//      e.printStackTrace();
+//    }
   }
 
   void run(ExecutorService executorService) throws ExecutionException {
@@ -158,11 +170,51 @@ class IdentifierMinifier {
     }
   }
 
+  private void printAllMethodRefs(Instruction[] instructions) throws FileNotFoundException {
+    PrintStream ps = null;
+    try {
+      File outputFile = new File("/Users/wuzhengshan/Desktop/amm/toolkit-box/toolkit-box-samples/testproguard/dex_test/error.txt");
+      if (!outputFile.exists()) {
+        outputFile.getParentFile().mkdirs();
+        outputFile.createNewFile();
+      }
+      ps = new PrintStream(new FileOutputStream(outputFile));
+      ps.println(lens.toString());
+      ps.println("===========================================");
+
+      if (instructions != null) {
+        for (int i = 0; i < instructions.length; ++i) {
+          Instruction instruction = instructions[i];
+          if (instruction.isDexItemBasedConstString()) {
+            DexItemBasedConstString cnst = instruction.asDexItemBasedConstString();
+            DexReference rewritten = appView.graphLens().lookupReference( cnst.getItem());
+            if (rewritten != null) {
+              ps.println(rewritten.toSourceString());
+            }
+          }
+        }
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      if (ps != null) {
+        ps.close();
+      }
+    }
+  }
+
   private void replaceDexItemBasedConstStringInMethod(ProgramMethod programMethod) {
     Code code = programMethod.getDefinition().getCode();
     assert code != null;
     if (code.isDexCode()) {
       DexInstruction[] instructions = code.asDexCode().instructions;
+      //if (programMethod.getName().toString().equals("isActiveTimeFull") && "BaseNotificationConfig".equals(programMethod.getHolder().getSimpleName())) {
+//        try {
+//          printAllMethodRefs(instructions);
+//        } catch (FileNotFoundException e) {
+//          e.printStackTrace();
+//        }
+//      }
       for (int i = 0; i < instructions.length; ++i) {
         DexInstruction instruction = instructions[i];
         if (instruction.isDexItemBasedConstString()) {
@@ -173,7 +225,23 @@ class IdentifierMinifier {
           DexConstString constString = new DexConstString(cnst.AA, replacement);
           constString.setOffset(instruction.getOffset());
           instructions[i] = constString;
-        }
+        }/* else if (instruction instanceof InvokeInterface) {
+          DexMethod method = instruction.getMethod();
+          DexString renameName = lens.lookupName(instruction.getMethod());
+          if (renameName == method.name) {
+            MethodResolutionResult resolutionResult =
+                    appView.appInfo().resolveMethodOnClass(method.holder, method);
+            if (resolutionResult.getResolvedMethod() != null) {
+              DexMethod resolutionMethod = resolutionResult.getResolvedMethod().getReference();
+              if (resolutionMethod != null) {
+                renameName = lens.lookupName(resolutionMethod);
+                if (renameName != method.name) {
+                  lens.recordName(method, renameName);
+                }
+              }
+            }
+          }
+        }*/
       }
     } else if (code.isCfCode()) {
       List<CfInstruction> instructions = code.asCfCode().getInstructions();

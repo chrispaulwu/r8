@@ -40,6 +40,7 @@ import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -77,7 +78,7 @@ public class ProguardMapMinifier {
   private final BiMap<DexType, DexString> mappedNames = HashBiMap.create();
   // To keep the order deterministic, we sort the classes by their type, which is a unique key.
   private final Set<ProgramOrClasspathClass> mappedClasses = Sets.newIdentityHashSet();
-  private final Map<DexReference, MemberNaming> memberNames = Maps.newIdentityHashMap();
+  private final Map<DexReference, MemberNaming> memberNames = Maps.newIdentityHashMap(); //记录所有member -> memberNaming
   private final Map<DexMethod, DexString> defaultInterfaceMethodImplementationNames =
       Maps.newIdentityHashMap();
   private final Map<DexMethod, DexString> additionalMethodNamings = Maps.newIdentityHashMap();
@@ -135,6 +136,9 @@ public class ProguardMapMinifier {
     MethodRenaming methodRenaming =
         new MethodNameMinifier(appView, nameStrategy)
             .computeRenaming(interfaces, subtypingInfo, executorService, timing);
+
+    filterAdditionalMethodNamings(methodRenaming.keepRenaming);
+
     // Amend the method renamings with the default interface methods.
     methodRenaming.renaming.putAll(defaultInterfaceMethodImplementationNames);
     methodRenaming.renaming.putAll(additionalMethodNamings);
@@ -160,6 +164,10 @@ public class ProguardMapMinifier {
     return lens;
   }
 
+  private void filterAdditionalMethodNamings(Map<DexMethod, DexString> keepRenaming) {
+    additionalMethodNamings.replaceAll(keepRenaming::getOrDefault);
+  }
+
   private void computeMapping(
       DexType type,
       Deque<Map<DexReference, MemberNaming>> buildUpNames,
@@ -175,10 +183,10 @@ public class ProguardMapMinifier {
 
     Map<DexReference, MemberNaming> nonPrivateMembers = new IdentityHashMap<>();
 
-    if (classNaming != null && (clazz == null || !clazz.isLibraryClass())) {
-      DexString mappedName = factory.createString(classNaming.renamedName);
+    if (classNaming != null && (clazz == null || !clazz.isLibraryClass())) { //如果在applyMapping能找到，并且是programClass
+      DexString mappedName = factory.createString(classNaming.renamedName); // 获取renamedName
       checkAndAddMappedNames(type, mappedName, classNaming.position);
-      classNaming.forAllMemberNaming(
+      classNaming.forAllMemberNaming( // 获取all member 进行Naming
           memberNaming -> addMemberNamings(type, memberNaming, nonPrivateMembers, false));
     } else {
       // We have to ensure we do not rename to an existing member, that cannot be renamed.
@@ -186,17 +194,17 @@ public class ProguardMapMinifier {
         notMappedReferences.add(type);
       } else if (appView.options().isMinifying()
           && !appView.appInfo().isMinificationAllowed(type)) {
-        notMappedReferences.add(type);
+        notMappedReferences.add(type); // notMappedReferences 记录的是不需要Mapped的class
       }
     }
 
     for (Map<DexReference, MemberNaming> parentMembers : buildUpNames) {
-      for (DexReference key : parentMembers.keySet()) {
-        if (key.isDexMethod()) {
+      for (DexReference key : parentMembers.keySet()) { // 遍历所有的member
+        if (key.isDexMethod()) { //如果member为method
           DexMethod parentReference = key.asDexMethod();
           DexMethod parentReferenceOnCurrentType =
-              factory.createMethod(type, parentReference.proto, parentReference.name);
-          if (!memberNames.containsKey(parentReferenceOnCurrentType)) {
+              factory.createMethod(type, parentReference.proto, parentReference.name); //创建临时method
+          if (!memberNames.containsKey(parentReferenceOnCurrentType)) { //如果memberNames不存在，有可能当前的type extend super interface
             addMemberNaming(
                 parentReferenceOnCurrentType, parentMembers.get(key), additionalMethodNamings);
           } else if (clazz != null) {
@@ -232,7 +240,7 @@ public class ProguardMapMinifier {
     }
 
     if (nonPrivateMembers.size() > 0) {
-      buildUpNames.addLast(nonPrivateMembers);
+      buildUpNames.addLast(nonPrivateMembers); // 加入deque里面，为了计算subType
       subtypingInfo.forAllImmediateExtendsSubtypes(
           type,
           subType -> computeMapping(subType, buildUpNames, notMappedReferences, subtypingInfo));
@@ -292,7 +300,7 @@ public class ProguardMapMinifier {
     assert !memberNames.containsKey(member)
         || memberNames.get(member).getRenamedName().equals(memberNaming.getRenamedName());
     memberNames.put(member, memberNaming);
-    if (additionalMemberNamings != null) {
+    if (additionalMemberNamings != null) { //if (member.toSourceString().contains("TPPluginManager"))
       DexString renamedName = factory.createString(memberNaming.getRenamedName());
       additionalMemberNamings.put(member, renamedName);
     }
@@ -300,7 +308,7 @@ public class ProguardMapMinifier {
 
   private void checkAndAddMappedNames(DexType type, DexString mappedName, Position position) {
     if (mappedNames.inverse().containsKey(mappedName)
-        && mappedNames.inverse().get(mappedName) != type) {
+        && mappedNames.inverse().get(mappedName) != type) { // 如果已经存在相同对mappedName,但是originType不一样，则报错
       appView
           .options()
           .reporter
@@ -308,7 +316,7 @@ public class ProguardMapMinifier {
               ApplyMappingError.mapToExistingClass(
                   type.toString(), mappedName.toString(), position));
     } else {
-      mappedNames.put(type, mappedName);
+      mappedNames.put(type, mappedName); //反之，加入class -> remapping name
     }
   }
 

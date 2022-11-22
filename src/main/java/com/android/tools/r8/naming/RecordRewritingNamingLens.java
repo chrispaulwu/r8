@@ -67,6 +67,11 @@ public class RecordRewritingNamingLens extends NonIdentityNamingLens {
   }
 
   @Override
+  public void recordName(DexMethod method, DexString renamedName) {
+
+  }
+
+  @Override
   public DexString lookupName(DexField field) {
     // Record rewriting does not influence field name.
     return namingLens.lookupName(field);

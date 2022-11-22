@@ -91,6 +91,11 @@ class MinifiedRenaming extends NonIdentityNamingLens {
   }
 
   @Override
+  public void recordName(DexMethod method, DexString renamedName) {
+    renaming.put(method, renamedName);
+  }
+
+  @Override
   public DexString lookupName(DexField field) {
     return renaming.getOrDefault(field, field.getName());
   }

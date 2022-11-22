@@ -533,6 +533,8 @@ public class ApplicationWriter {
     DexString dexSourceFile =
         sourceFile == null ? null : options.itemFactory.createString(sourceFile);
     appView.appInfo().classes().forEach(clazz -> clazz.setSourceFile(dexSourceFile));
+//    appView.appInfo().classes().stream().filter(clazz -> clazz.getTypeName().equals("com.tencent.tinker.loader.R"))
+//            .collect(Collectors.toList()).forEach(clazz -> clazz.setSourceFile(null));
     return dexSourceFile;
   }
 

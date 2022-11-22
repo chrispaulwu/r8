@@ -21,6 +21,7 @@ import com.android.tools.r8.utils.Timing;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableMap;
+
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -128,13 +129,14 @@ class MethodNameMinifier {
   private final MemberNamingStrategy strategy;
 
   private final Map<DexMethod, DexString> renaming = new IdentityHashMap<>();
+  private final Map<DexMethod, DexString> keepRenaming = new IdentityHashMap<>();
 
   private final State minifierState = new State();
 
   // The use of a bidirectional map allows us to map a naming state to the type it represents,
   // which is useful for debugging.
   private final BiMap<DexType, MethodReservationState<?>> reservationStates = HashBiMap.create();
-  private final Map<DexType, MethodNamingState<?>> namingStates = new IdentityHashMap<>();
+  private final Map<DexType, MethodNamingState<?>> namingStates = new IdentityHashMap<>(); //这里保存的是最终的命名状态
   private final Map<DexType, DexType> frontiers = new IdentityHashMap<>();
 
   private final MethodNamingState<?> rootNamingState;
@@ -172,13 +174,16 @@ class MethodNameMinifier {
   static class MethodRenaming {
 
     final Map<DexMethod, DexString> renaming;
+    final Map<DexMethod, DexString> keepRenaming;
 
-    private MethodRenaming(Map<DexMethod, DexString> renaming) {
+
+    private MethodRenaming(Map<DexMethod, DexString> renaming, Map<DexMethod, DexString> keepRenaming) {
       this.renaming = renaming;
+      this.keepRenaming = keepRenaming;
     }
 
     public static MethodRenaming empty() {
-      return new MethodRenaming(ImmutableMap.of());
+      return new MethodRenaming(ImmutableMap.of(), ImmutableMap.of());
     }
   }
 
@@ -212,7 +217,7 @@ class MethodNameMinifier {
     renameNonReboundReferences(executorService);
     timing.end();
 
-    return new MethodRenaming(renaming);
+    return new MethodRenaming(renaming, keepRenaming);
   }
 
   private void assignNamesToClassesMethods() {
@@ -236,6 +241,9 @@ class MethodNameMinifier {
               DexClass holder = appView.definitionFor(type);
               if (holder != null && strategy.allowMemberRenaming(holder)) {
                 for (DexEncodedMethod method : holder.allMethodsSorted()) {
+//                  if (holder.toSourceString().contains("com.tencent.mm.loader.builder.RequestBuilder")) {
+//                    System.out.printf("----------------- method: %s, stack:%s\n", method.getReference().toSourceString(), StringUtils.stacktraceAsString(new Throwable()));
+//                  }
                   assignNameToMethod(holder, method, namingState, minifierState);
                 }
               }
@@ -269,11 +277,22 @@ class MethodNameMinifier {
     DexString newName = strategy.getReservedName(method, holder);
     if (newName == null || newName == method.getName()) {
       newName = state.newOrReservedNameFor(method, minifierState, holder);
+    } else {
+      DexString assignedName = state.getAssignedName(method.getReference());
+      if (assignedName != null && newName != assignedName && state.isAvailable(assignedName, method.getReference())) {
+        System.out.printf("Found no same assigned and reserved name, method: %s, newName: %s, assignedName:%s\n", method.getReference().toSourceString(), newName, assignedName);
+        newName = assignedName;
+      }
     }
     if (method.getName() != newName) {
       renaming.put(method.getReference(), newName);
+    } else if (!appView.appInfo().isMinificationAllowed(method.getReference())) {
+      keepRenaming.put(method.getReference(), newName);
     }
     state.addRenaming(newName, method);
+//    if (holder.toSourceString().contains("com.tencent.thumbplayer.tplayer.plugins.TPPluginManager")) {
+//      System.out.printf("----------------- method: %s, newName: %s, stack:%s\n", method.getReference().toSourceString(), newName, StringUtils.stacktraceAsString(new Throwable()));
+//    }
   }
 
   private void reserveNamesInClasses() {
@@ -287,9 +306,9 @@ class MethodNameMinifier {
             appView.appInfo().classes(),
             clazz -> {
               DexType type = clazz.type;
-              DexType frontier = frontiers.getOrDefault(clazz.superType, type);
+              DexType frontier = frontiers.getOrDefault(clazz.superType, type); // frontier 即就是 SuperType
               if (frontier != type || clazz.isProgramClass()) {
-                DexType existingValue = frontiers.put(clazz.type, frontier);
+                DexType existingValue = frontiers.put(clazz.type, frontier); // clazzType -> superClazzType
                 assert existingValue == null;
               }
               // If this is not a program class (or effectively a library class as it is missing)
@@ -305,11 +324,11 @@ class MethodNameMinifier {
   private void allocateReservationStateAndReserve(
       DexType type, DexType frontier, MethodReservationState<?> parent) {
     MethodReservationState<?> state =
-        reservationStates.computeIfAbsent(frontier, ignore -> parent.createChild());
+        reservationStates.computeIfAbsent(frontier, ignore -> parent.createChild()); // 如果能从super中找到state，则get，反之创建
     DexClass holder = appView.definitionFor(type);
     if (holder != null) {
       for (DexEncodedMethod method : shuffleMethods(holder.methods(), appView.options())) {
-        DexString reservedName = strategy.getReservedName(method, holder);
+        DexString reservedName = strategy.getReservedName(method, holder); // 如果当前的method 是 library，keep, 或者apply mapping中，则保留名字
         if (reservedName != null) {
 //          if (method.getReference().toSourceString().contains("FinderLiveVisitorGameTogetherWidget") ||
 //                  method.getReference().toSourceString().contains("FinderLiveAnchorGameTogetherWidget")) {

@@ -9,8 +9,8 @@ import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.naming.MethodReservationState.InternalReservationState;
 import com.android.tools.r8.utils.MethodSignatureEquivalence;
-//import com.android.tools.r8.utils.StringUtils;
 import com.google.common.base.Equivalence.Wrapper;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -78,6 +78,11 @@ class MethodReservationState<KeyType>
     return new InternalReservationState();
   }
 
+  void fixRenaming(DexString newName, DexEncodedMethod method) {
+    InternalReservationState internalState = getOrCreateInternalState(method.getReference());
+    internalState.fixRenaming(method, newName);
+  }
+
   static class InternalReservationState {
     private Map<Wrapper<DexMethod>, Set<DexString>> originalToReservedNames = null;
     private Set<DexString> reservedNames = null;
@@ -91,6 +96,18 @@ class MethodReservationState<KeyType>
         return null;
       }
       return originalToReservedNames.get(MethodSignatureEquivalence.get().wrap(method));
+    }
+
+    void fixRenaming(DexEncodedMethod method, DexString newName) {
+      final Wrapper<DexMethod> wrappedMethod = MethodSignatureEquivalence.get().wrap(method.getReference());
+      Set<DexString> oldReservedName = originalToReservedNames.get(wrappedMethod);
+      if (oldReservedName != null && oldReservedName.size() == 1) {
+        reservedNames.remove(oldReservedName.stream().findFirst().get());
+        originalToReservedNames.remove(wrappedMethod);
+
+        originalToReservedNames.computeIfAbsent(wrappedMethod, ignore -> new HashSet<>()).add(newName);
+        reservedNames.add(newName);
+      }
     }
 
     void reserveName(DexEncodedMethod method, DexString name) {
