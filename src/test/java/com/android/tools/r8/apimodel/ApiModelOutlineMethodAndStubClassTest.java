@@ -8,6 +8,8 @@ import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLeve
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForDefaultInstanceInitializer;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForMethod;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.verifyThat;
+import static com.android.tools.r8.utils.codeinspector.Matchers.isAbsent;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.CompilationMode;
@@ -104,7 +106,7 @@ public class ApiModelOutlineMethodAndStubClassTest extends TestBase {
   }
 
   private void inspect(CodeInspector inspector) throws Exception {
-    verifyThat(inspector, parameters, LibraryClass.class).stubbedUntil(libraryClassLevel);
+    assertThat(inspector.clazz(LibraryClass.class), isAbsent());
     verifyThat(inspector, parameters, apiMethod())
         .isOutlinedFromUntil(
             Main.class.getDeclaredMethod("main", String[].class), libraryMethodLevel);
