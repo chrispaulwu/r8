@@ -12,6 +12,7 @@ import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.ir.optimize.inliner.sync.InlineStaticSynchronizedMethodTest.TestClass.RunnableImpl;
+import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import java.lang.Thread.State;
@@ -53,8 +54,16 @@ public class InlineStaticSynchronizedMethodTest extends TestBase {
   private void verifySynchronizedMethodsAreInlined(CodeInspector inspector) {
     ClassSubject classSubject = inspector.clazz(RunnableImpl.class);
     assertThat(classSubject, isPresent());
-    assertThat(classSubject.uniqueMethodWithName("m1"), not(isPresent()));
-    assertThat(classSubject.uniqueMethodWithName("m2"), not(isPresent()));
+    // On M we are seeing issues when inlining code with monitors which will trip up some art
+    // vms. See issue b/238399429 for details.
+    if (parameters.isCfRuntime()
+        || parameters.getApiLevel().isLessThanOrEqualTo(AndroidApiLevel.M)) {
+      assertThat(classSubject.uniqueMethodWithName("m1"), isPresent());
+      assertThat(classSubject.uniqueMethodWithName("m2"), not(isPresent()));
+    } else {
+      assertThat(classSubject.uniqueMethodWithName("m1"), not(isPresent()));
+      assertThat(classSubject.uniqueMethodWithName("m2"), not(isPresent()));
+    }
   }
 
   static class TestClass {

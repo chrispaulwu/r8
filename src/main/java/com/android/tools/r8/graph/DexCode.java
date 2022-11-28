@@ -5,6 +5,7 @@ package com.android.tools.r8.graph;
 
 import com.android.tools.r8.code.CfOrDexInstruction;
 import com.android.tools.r8.code.Instruction;
+import com.android.tools.r8.code.MonitorEnter;
 import com.android.tools.r8.code.ReturnVoid;
 import com.android.tools.r8.code.SwitchPayload;
 import com.android.tools.r8.dex.CodeToKeep;
@@ -364,6 +365,16 @@ public class DexCode extends Code implements DexWritableCode, StructuralItem<Dex
   @Override
   public boolean isEmptyVoidMethod() {
     return instructions.length == 1 && instructions[0] instanceof ReturnVoid;
+  }
+
+  @Override
+  public boolean hasMonitorInstructions() {
+    for (Instruction instruction : instructions) {
+      if (instruction instanceof MonitorEnter) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

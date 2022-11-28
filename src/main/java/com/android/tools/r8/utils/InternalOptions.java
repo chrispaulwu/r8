@@ -2526,4 +2526,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   public boolean canHaveInvokeInterfaceToObjectMethodBug() {
     return isGeneratingDex() && getMinApiLevel().isLessThan(AndroidApiLevel.P);
   }
+
+  // b/238399429 Some art 6 vms have issues with multiple monitors in the same method
+  // Don't inline code with monitors into methods that already have monitors.
+  public boolean canHaveIssueWithInlinedMonitors() {
+    return getMinApiLevel().isLessThan(AndroidApiLevel.N);
+  }
 }
