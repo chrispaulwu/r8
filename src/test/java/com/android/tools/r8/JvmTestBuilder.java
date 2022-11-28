@@ -114,7 +114,8 @@ public class JvmTestBuilder extends TestBuilder<JvmTestRunResult, JvmTestBuilder
           throw new RuntimeException(e);
         }
       } else {
-        throw new Unimplemented("No support for adding file: " + file);
+        assert Files.isDirectory(file);
+        classpath.add(file);
       }
     }
     return self();
