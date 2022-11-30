@@ -30,6 +30,7 @@ public class TraceReferences {
   public static void run(TraceReferencesCommand command) throws CompilationFailedException {
     InternalOptions options = new InternalOptions();
     options.loadAllClassDefinitions = true;
+    options.lookupLibraryBeforeProgram = true;
     ExceptionUtils.withCompilationHandler(
         command.getReporter(), () -> runInternal(command, options));
   }
