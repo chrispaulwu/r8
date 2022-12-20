@@ -1916,6 +1916,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
     public boolean neverReuseCfLocalRegisters = false;
     public boolean roundtripThroughLIR = false;
+    public boolean checkReceiverAlwaysNullInCallSiteOptimization = true;
     private boolean hasReadCheckDeterminism = false;
     private DeterminismChecker determinismChecker = null;
     public boolean usePcEncodingInCfForTesting = false;
