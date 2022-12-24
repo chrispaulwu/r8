@@ -13,18 +13,22 @@ import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndField;
 import com.android.tools.r8.graph.DexClassAndMethod;
+import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexProto;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.InnerClassAttribute;
 import com.android.tools.r8.graph.ProgramOrClasspathClass;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
+import com.android.tools.r8.synthesis.SyntheticNaming;
+import com.android.tools.r8.synthesis.SyntheticProgramClassDefinition;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.Timing;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -89,7 +93,7 @@ class ClassNameMinifier {
     timing.begin("reserve");
     for (ProgramOrClasspathClass clazz : classes) {
       DexString descriptor = classNamingStrategy.reservedDescriptor(clazz.getType());
-      if (descriptor != null) {
+       if (descriptor != null) {
         assert !renaming.containsKey(clazz.getType());
         registerClassAsUsed(clazz.getType(), descriptor);
       }
@@ -102,7 +106,7 @@ class ClassNameMinifier {
 
     timing.begin("rename-classes");
     for (ProgramOrClasspathClass clazz : classes) {
-      if (!renaming.containsKey(clazz.getType())) {
+      if (!renaming.containsKey(clazz.getType())) { //如果是新增的class
         DexString renamed = computeName(clazz.getType());
         renaming.put(clazz.getType(), renamed);
         assert verifyMemberRenamingOfInnerClasses(clazz.asDexClass(), renamed);
@@ -178,7 +182,7 @@ class ClassNameMinifier {
       DexType outerClass = getOutClassForType(type);
       if (outerClass != null) {
         if (!renaming.containsKey(outerClass)
-            && classNamingStrategy.reservedDescriptor(outerClass) == null) {
+            && classNamingStrategy.reservedDescriptor(outerClass) == null) { //如果当前的innerclass的 outerClass也是新增的，没有被keep，则需要keep outer class
           // The outer class was not previously kept and will not be kept.
           // We have to force keep the outer class now.
           registerClassAsUsed(outerClass, outerClass.descriptor);
@@ -224,6 +228,14 @@ class ClassNameMinifier {
           separator = String.valueOf(INNER_CLASS_SEPARATOR);
         }
         state = getStateForOuterClass(outerClass, separator);
+      } else if (appView.app().options.getProguardConfiguration().hasApplyMappingFile()) {
+        DexClass clazz = appView.definitionFor(type);
+        if (clazz instanceof DexProgramClass && SyntheticNaming.isSynthetic(clazz.getClassReference(), SyntheticNaming.Phase.EXTERNAL, new SyntheticNaming().LAMBDA)) {
+          String prefixForExternalSyntheticType = new SyntheticProgramClassDefinition(new SyntheticNaming.SyntheticClassKind(1, "", false), null, (DexProgramClass) clazz).getPrefixForExternalSyntheticType();
+          DexType outerClazzType = appView.dexItemFactory().createType(DescriptorUtils.javaTypeToDescriptor((prefixForExternalSyntheticType)));
+          state = getStateForOuterClass(outerClazzType, SyntheticNaming.SYNTHETIC_CLASS_SEPARATOR);
+          System.out.printf("Found synthetic clazz: %s\n, renaming", clazz.toSourceString());
+        }
       }
     }
     if (state == null) {

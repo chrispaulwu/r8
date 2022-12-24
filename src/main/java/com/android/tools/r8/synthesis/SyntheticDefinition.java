@@ -59,7 +59,7 @@ abstract class SyntheticDefinition<
     return context;
   }
 
-  final String getPrefixForExternalSyntheticType(AppView<?> appView) {
+  public final String getPrefixForExternalSyntheticType(AppView<?> appView) {
     if (!appView.options().intermediate && context.isSyntheticInputClass() && !kind.isGlobal()) {
       // If the input class was a synthetic and the build is non-intermediate, unwind the synthetic
       // name back to the original context (if present in the textual type).

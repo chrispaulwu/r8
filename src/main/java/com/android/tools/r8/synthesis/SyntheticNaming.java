@@ -311,7 +311,7 @@ public class SyntheticNaming {
     }
   }
 
-  private static class SyntheticClassKind extends SyntheticKind {
+  public static class SyntheticClassKind extends SyntheticKind {
 
     // TODO(b/214901256): Remove once fixed.
     private final boolean sharable;
@@ -389,7 +389,7 @@ public class SyntheticNaming {
   }
 
   public static final String COMPANION_CLASS_SUFFIX = "$-CC";
-  private static final String SYNTHETIC_CLASS_SEPARATOR = "$$";
+  public static final String SYNTHETIC_CLASS_SEPARATOR = "$$";
   /**
    * The internal synthetic class separator is only used for representing synthetic items during
    * compilation. In particular, this separator must never be used to write synthetic classes to the
@@ -497,12 +497,12 @@ public class SyntheticNaming {
 
   // Visible via package protection in SyntheticItemsTestUtils.
 
-  enum Phase {
+  public enum Phase {
     INTERNAL,
     EXTERNAL
   }
 
-  static String getPhaseSeparator(Phase phase) {
+  public static String getPhaseSeparator(Phase phase) {
     assert phase != null;
     return phase == Phase.INTERNAL
         ? INTERNAL_SYNTHETIC_CLASS_SEPARATOR
@@ -515,7 +515,7 @@ public class SyntheticNaming {
         createDescriptor(EXTERNAL_SYNTHETIC_CLASS_SEPARATOR, kind, context.getBinaryName(), id));
   }
 
-  static boolean isSynthetic(ClassReference clazz, Phase phase, SyntheticKind kind) {
+  public static boolean isSynthetic(ClassReference clazz, Phase phase, SyntheticKind kind) {
     String typeName = clazz.getTypeName();
     if (kind.isFixedSuffixSynthetic()) {
       assert phase == null;

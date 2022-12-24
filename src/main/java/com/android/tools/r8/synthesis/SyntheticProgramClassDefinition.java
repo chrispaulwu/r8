@@ -14,12 +14,12 @@ import java.util.function.Consumer;
  *
  * <p>This class is internal to the synthetic items collection, thus package-protected.
  */
-class SyntheticProgramClassDefinition
+public class SyntheticProgramClassDefinition
     extends SyntheticClassDefinition<
         SyntheticProgramClassReference, SyntheticProgramClassDefinition, DexProgramClass>
     implements SyntheticProgramDefinition {
 
-  SyntheticProgramClassDefinition(
+  public SyntheticProgramClassDefinition(
       SyntheticKind kind, SynthesizingContext context, DexProgramClass clazz) {
     super(kind, context, clazz);
   }
