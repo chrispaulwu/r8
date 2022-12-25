@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -280,8 +281,19 @@ class MethodNameMinifier {
     } else {
       DexString assignedName = state.getAssignedName(method.getReference());
       if (assignedName != null && newName != assignedName && state.isAvailable(assignedName, method.getReference())) {
-        System.out.printf("Found no same assigned and reserved name, method: %s, newName: %s, assignedName:%s\n", method.getReference().toSourceString(), newName, assignedName);
+        System.out.printf("Found no same assigned and reserved name, method: %s, reservedName: %s, assignedName:%s\n", method.getReference().toSourceString(), newName, assignedName);
         newName = assignedName;
+      } else {
+        Set<DexString> reservedNamesFor = state.getReservedNamesFor(method.getReference());
+        if (holder != null && reservedNamesFor != null && reservedNamesFor.size() > 1) {
+          for (DexString candidate : reservedNamesFor) {
+            if (state.isAvailableForInterface(candidate, holder, method, minifierState) && state.isAvailable(candidate, method.getReference())) {
+              System.out.printf("Found multi reservedNames and match interface's candidate: %s, reservedName: %s, method holder: %s, method: %s\n", candidate.toString(), newName, holder.getSimpleName(), method.getReference().toSourceString());
+              newName = candidate;
+              break;
+            }
+          }
+        }
       }
     }
     if (method.getName() != newName) {

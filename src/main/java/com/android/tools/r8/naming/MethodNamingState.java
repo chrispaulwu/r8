@@ -86,7 +86,7 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
     } else if (holder != null && reservedNamesFor != null && reservedNamesFor.size() > 1) {
       for (DexString candidate : reservedNamesFor) {
         if (isAvailableForInterface(candidate, holder, method, minifierState) && isAvailable(candidate, method.getReference())) {
-           System.out.printf("isAvailableForInterface, candidate: %s, holder: %s, method: %s%n", candidate.toString(), method.getReference().toSourceString(), holder.getSimpleName());
+           System.out.printf("Found multi reservedNames and match interface's candidate: %s, method holder: %s, method: %s\n", candidate.toString(), holder.getSimpleName(), method.getReference().toSourceString());
            return candidate;
         }
       }
@@ -192,6 +192,10 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
       assignedName = parentNamingState.getAssignedName(method);
     }
     return assignedName;
+  }
+
+  Set<DexString> getReservedNamesFor(DexMethod method) {
+     return reservationState.getReservedNamesFor(method);
   }
 
   @Override

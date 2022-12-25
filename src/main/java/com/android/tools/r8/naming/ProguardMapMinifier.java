@@ -246,7 +246,7 @@ public class ProguardMapMinifier {
           subType -> computeMapping(subType, buildUpNames, notMappedReferences, subtypingInfo));
       buildUpNames.removeLast();
     } else {
-      subtypingInfo.forAllImmediateExtendsSubtypes(
+      subtypingInfo.forAllImmediateExtendsSubtypes( //如果改类是接口则获取子类的inteface， 否则获取所有的子类
           type,
           subType -> computeMapping(subType, buildUpNames, notMappedReferences, subtypingInfo));
     }

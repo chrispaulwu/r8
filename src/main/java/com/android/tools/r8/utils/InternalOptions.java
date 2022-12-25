@@ -914,7 +914,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
    */
   public boolean enableInheritanceClassInDexDistributor = true;
 
-  public LineNumberOptimization lineNumberOptimization = LineNumberOptimization.ON;
+  public LineNumberOptimization lineNumberOptimization = LineNumberOptimization.OFF;
 
   public RewriteArrayOptions rewriteArrayOptions() {
     return rewriteArrayOptions;

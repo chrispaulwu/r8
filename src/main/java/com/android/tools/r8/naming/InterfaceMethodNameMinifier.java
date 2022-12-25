@@ -288,7 +288,7 @@ class InterfaceMethodNameMinifier {
       // as possible.
       forEachState(
           (method, state) -> {
-            DexString stateReserved = state.getReservedName(method);
+              DexString stateReserved = state.getReservedName(method);
             if (stateReserved != null) {
               state.reserveName(stateReserved, method);
               minifierState.putRenaming(method, stateReserved);
@@ -560,7 +560,7 @@ class InterfaceMethodNameMinifier {
       }
     }
     timing.end();
-
+//    globalStateMap.values().stream().filter(it -> it.methodStates.keySet().stream().filter(it1 -> it1.toSourceString().contains("FinderWebViewHelper")).collect(Collectors.toList()).size() > 0).collect(Collectors.toList())
     timing.begin("Rename in groups"); //对于无法保留的interface Name(比如新增的interface method， 但是子类存在该Name)， 则需要重新进行rename
     for (Wrapper<DexEncodedMethod> interfaceMethodGroup : nonReservedMethodGroups) {
       InterfaceMethodGroupState groupState = globalStateMap.get(interfaceMethodGroup);
