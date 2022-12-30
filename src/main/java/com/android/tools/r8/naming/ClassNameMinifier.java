@@ -231,7 +231,8 @@ class ClassNameMinifier {
       } else if (appView.app().options.getProguardConfiguration().hasApplyMappingFile()) {
         DexClass clazz = appView.definitionFor(type);
         if (clazz instanceof DexProgramClass && SyntheticNaming.isSynthetic(clazz.getClassReference(), SyntheticNaming.Phase.EXTERNAL, new SyntheticNaming().LAMBDA)) {
-          String prefixForExternalSyntheticType = new SyntheticProgramClassDefinition(new SyntheticNaming.SyntheticClassKind(1, "", false), null, (DexProgramClass) clazz).getPrefixForExternalSyntheticType();
+          String prefixForExternalSyntheticType = new SyntheticProgramClassDefinition(new SyntheticNaming.SyntheticClassKind(1, "", false),
+                  null, (DexProgramClass) clazz).getPrefixForExternalSyntheticType(appView);
           DexType outerClazzType = appView.dexItemFactory().createType(DescriptorUtils.javaTypeToDescriptor((prefixForExternalSyntheticType)));
           state = getStateForOuterClass(outerClazzType, SyntheticNaming.SYNTHETIC_CLASS_SEPARATOR);
           System.out.printf("Found synthetic clazz: %s\n, renaming", clazz.toSourceString());
