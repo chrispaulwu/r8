@@ -914,7 +914,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
    */
   public boolean enableInheritanceClassInDexDistributor = true;
 
-  public LineNumberOptimization lineNumberOptimization = LineNumberOptimization.OFF;
+  public LineNumberOptimization lineNumberOptimization = LineNumberOptimization.ON;
 
   public RewriteArrayOptions rewriteArrayOptions() {
     return rewriteArrayOptions;
@@ -2487,7 +2487,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public boolean canUseNativeDexPcInsteadOfDebugInfo() {
     return canUseDexPc2PcAsDebugInformation()
-        && hasMinApi(AndroidApiLevel.O)
+        /*&& hasMinApi(AndroidApiLevel.O)*/
         && allowDiscardingResidualDebugInfo();
   }
 
