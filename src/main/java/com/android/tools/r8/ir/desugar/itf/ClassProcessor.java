@@ -742,6 +742,11 @@ final class ClassProcessor {
     assert resolutionResult.isSuccessfulMemberResolutionResult();
     LookupMethodTarget lookupMethodTarget =
         resolutionResult.lookupVirtualDispatchTarget(clazz, appInfo);
+    if (lookupMethodTarget == null) {
+      System.err.println("Error: not found method target.");
+      System.err.println(clazz);
+      System.err.println(method);
+    }
     DexClassAndMethod virtualDispatchTarget = lookupMethodTarget.getTarget();
     assert virtualDispatchTarget != null;
 
