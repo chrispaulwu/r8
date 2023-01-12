@@ -2075,7 +2075,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public boolean canUseNativeDexPcInsteadOfDebugInfo() {
     return canUseDexPc2PcAsDebugInformation()
-        && hasMinApi(AndroidApiLevel.O)
+        /*&& hasMinApi(AndroidApiLevel.O)*/
         && allowDiscardingResidualDebugInfo();
   }
 
