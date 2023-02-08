@@ -3902,6 +3902,10 @@ public class Enqueuer {
       assert old == null || old == clazz;
     }
 
+    public Set<DexMethod> getNewlyLiveMethods() {
+      return liveMethods.keySet();
+    }
+
     public void addLiveMethod(ProgramMethod method) {
       DexMethod signature = method.getDefinition().getReference();
       ProgramMethod old = liveMethods.put(signature, method);
@@ -4518,9 +4522,8 @@ public class Enqueuer {
     InterfaceMethodProcessorFacade interfaceDesugaring =
         desugaring.getInterfaceMethodPostProcessingDesugaringR8(
             ExcludeDexResources, liveMethods::contains, interfaceProcessor);
-    CfPostProcessingDesugaringCollection.create(appView, interfaceDesugaring)
-        .postProcessingDesugaring(
-            liveTypes.items, liveMethods::contains, eventConsumer, executorService);
+    CfPostProcessingDesugaringCollection.create(appView, interfaceDesugaring, liveMethods::contains)
+        .postProcessingDesugaring(liveTypes.items, eventConsumer, executorService);
 
     if (syntheticAdditions.isEmpty()) {
       return;

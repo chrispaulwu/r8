@@ -5,6 +5,7 @@ package com.android.tools.r8.ir.desugar;
 
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClasspathClass;
+import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.ProgramMethod;
@@ -15,6 +16,8 @@ import com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper;
 import com.android.tools.r8.ir.desugar.itf.InterfaceProcessingDesugaringEventConsumer;
 import com.android.tools.r8.shaking.Enqueuer.SyntheticAdditions;
 import com.android.tools.r8.utils.collections.ProgramMethodSet;
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 
@@ -39,6 +42,8 @@ public abstract class CfPostProcessingDesugaringEventConsumer
       BiConsumer<DexProgramClass, DexType> missingClassConsumer) {
     return new R8PostProcessingDesugaringEventConsumer(additions, desugaring, missingClassConsumer);
   }
+
+  public abstract Set<DexMethod> getNewlyLiveMethods();
 
   public abstract void finalizeDesugaring() throws ExecutionException;
 
@@ -102,6 +107,11 @@ public abstract class CfPostProcessingDesugaringEventConsumer
     }
 
     @Override
+    public Set<DexMethod> getNewlyLiveMethods() {
+      return Collections.emptySet();
+    }
+
+    @Override
     public void finalizeDesugaring() throws ExecutionException {
       assert methodProcessor.verifyNoPendingMethodProcessing();
       methodProcessor.newWave();
@@ -150,6 +160,13 @@ public abstract class CfPostProcessingDesugaringEventConsumer
     public void warnMissingInterface(
         DexProgramClass context, DexType missing, InterfaceDesugaringSyntheticHelper helper) {
       missingClassConsumer.accept(context, missing);
+    }
+
+    @Override
+    public Set<DexMethod> getNewlyLiveMethods() {
+      // Note: this answers the newly live methods up until the point where this is called.
+      // This has to be called in between post processing to be deterministic.
+      return additions.getNewlyLiveMethods();
     }
 
     @Override
