@@ -1,0 +1,4 @@
+source:
+  third_party_source:
+    filepath_regex: [".*/OverlappingLambdaMethodInSubclassWithSameNameTestA.java",
+                     ".*/OverlappingLambdaMethodInSubclassWithSameNameTestB.java"]
