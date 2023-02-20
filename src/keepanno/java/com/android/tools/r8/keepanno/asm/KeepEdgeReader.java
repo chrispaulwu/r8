@@ -3,14 +3,20 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.keepanno.asm;
 
+import com.android.tools.r8.keepanno.ast.AccessVisibility;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Binding;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Condition;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Edge;
+import com.android.tools.r8.keepanno.ast.AnnotationConstants.FieldAccess;
+import com.android.tools.r8.keepanno.ast.AnnotationConstants.ForApi;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Item;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Kind;
+import com.android.tools.r8.keepanno.ast.AnnotationConstants.MemberAccess;
+import com.android.tools.r8.keepanno.ast.AnnotationConstants.MethodAccess;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Option;
 import com.android.tools.r8.keepanno.ast.AnnotationConstants.Target;
+import com.android.tools.r8.keepanno.ast.AnnotationConstants.UsesReflection;
 import com.android.tools.r8.keepanno.ast.KeepBindings;
 import com.android.tools.r8.keepanno.ast.KeepClassReference;
 import com.android.tools.r8.keepanno.ast.KeepCondition;
@@ -19,13 +25,16 @@ import com.android.tools.r8.keepanno.ast.KeepEdge;
 import com.android.tools.r8.keepanno.ast.KeepEdgeException;
 import com.android.tools.r8.keepanno.ast.KeepEdgeMetaInfo;
 import com.android.tools.r8.keepanno.ast.KeepExtendsPattern;
+import com.android.tools.r8.keepanno.ast.KeepFieldAccessPattern;
 import com.android.tools.r8.keepanno.ast.KeepFieldNamePattern;
 import com.android.tools.r8.keepanno.ast.KeepFieldPattern;
 import com.android.tools.r8.keepanno.ast.KeepFieldTypePattern;
 import com.android.tools.r8.keepanno.ast.KeepItemKind;
 import com.android.tools.r8.keepanno.ast.KeepItemPattern;
 import com.android.tools.r8.keepanno.ast.KeepItemReference;
+import com.android.tools.r8.keepanno.ast.KeepMemberAccessPattern;
 import com.android.tools.r8.keepanno.ast.KeepMemberPattern;
+import com.android.tools.r8.keepanno.ast.KeepMethodAccessPattern;
 import com.android.tools.r8.keepanno.ast.KeepMethodNamePattern;
 import com.android.tools.r8.keepanno.ast.KeepMethodParametersPattern;
 import com.android.tools.r8.keepanno.ast.KeepMethodPattern;
@@ -42,6 +51,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
@@ -102,6 +112,9 @@ public class KeepEdgeReader implements Opcodes {
                 .setClassPattern(KeepQualifiedClassNamePattern.exact(className))
                 .build();
         return new UsesReflectionVisitor(parent, this::setContext, classItem);
+      }
+      if (descriptor.equals(AnnotationConstants.ForApi.DESCRIPTOR)) {
+        return new ForApiClassVisitor(parent, this::setContext, className);
       }
       return null;
     }
@@ -173,6 +186,9 @@ public class KeepEdgeReader implements Opcodes {
       if (descriptor.equals(AnnotationConstants.UsesReflection.DESCRIPTOR)) {
         return new UsesReflectionVisitor(parent, this::setContext, createItemContext());
       }
+      if (descriptor.equals(AnnotationConstants.ForApi.DESCRIPTOR)) {
+        return new ForApiMemberVisitor(parent, this::setContext, createItemContext());
+      }
       return null;
     }
 
@@ -227,6 +243,9 @@ public class KeepEdgeReader implements Opcodes {
       if (descriptor.equals(AnnotationConstants.UsesReflection.DESCRIPTOR)) {
         return new UsesReflectionVisitor(parent, this::setContext, createItemContext());
       }
+      if (descriptor.equals(AnnotationConstants.ForApi.DESCRIPTOR)) {
+        return new ForApiMemberVisitor(parent, this::setContext, createItemContext());
+      }
       return null;
     }
   }
@@ -242,24 +261,31 @@ public class KeepEdgeReader implements Opcodes {
       super(ASM_VERSION);
     }
 
+    public abstract String getAnnotationName();
+
+    private String errorMessagePrefix() {
+      return " @" + getAnnotationName() + ": ";
+    }
+
     @Override
     public void visit(String name, Object value) {
-      throw new KeepEdgeException("Unexpected value in @KeepEdge: " + name + " = " + value);
+      throw new KeepEdgeException(
+          "Unexpected value in" + errorMessagePrefix() + name + " = " + value);
     }
 
     @Override
     public AnnotationVisitor visitAnnotation(String name, String descriptor) {
-      throw new KeepEdgeException("Unexpected annotation in @KeepEdge: " + name);
+      throw new KeepEdgeException("Unexpected annotation in" + errorMessagePrefix() + name);
     }
 
     @Override
     public void visitEnum(String name, String descriptor, String value) {
-      throw new KeepEdgeException("Unexpected enum in @KeepEdge: " + name);
+      throw new KeepEdgeException("Unexpected enum in" + errorMessagePrefix() + name);
     }
 
     @Override
     public AnnotationVisitor visitArray(String name) {
-      throw new KeepEdgeException("Unexpected array in @KeepEdge: " + name);
+      throw new KeepEdgeException("Unexpected array in" + errorMessagePrefix() + name);
     }
   }
 
@@ -274,6 +300,11 @@ public class KeepEdgeReader implements Opcodes {
     }
 
     @Override
+    public String getAnnotationName() {
+      return "KeepEdge";
+    }
+
+    @Override
     public void visit(String name, Object value) {
       if (name.equals(Edge.description) && value instanceof String) {
         metaInfoBuilder.setDescription((String) value);
@@ -285,13 +316,13 @@ public class KeepEdgeReader implements Opcodes {
     @Override
     public AnnotationVisitor visitArray(String name) {
       if (name.equals(Edge.bindings)) {
-        return new KeepBindingsVisitor(builder::setBindings);
+        return new KeepBindingsVisitor(getAnnotationName(), builder::setBindings);
       }
       if (name.equals(Edge.preconditions)) {
-        return new KeepPreconditionsVisitor(builder::setPreconditions);
+        return new KeepPreconditionsVisitor(getAnnotationName(), builder::setPreconditions);
       }
       if (name.equals(Edge.consequences)) {
-        return new KeepConsequencesVisitor(builder::setConsequences);
+        return new KeepConsequencesVisitor(getAnnotationName(), builder::setConsequences);
       }
       return super.visitArray(name);
     }
@@ -299,6 +330,156 @@ public class KeepEdgeReader implements Opcodes {
     @Override
     public void visitEnd() {
       parent.accept(builder.setMetaInfo(metaInfoBuilder.build()).build());
+    }
+  }
+
+  /**
+   * Parsing of @KeepForApi on a class context.
+   *
+   * <p>When used on a class context the annotation allows the member related content of a normal
+   * item. This parser extends the base item visitor and throws an error if any class specific
+   * properties are encountered.
+   */
+  private static class ForApiClassVisitor extends KeepItemVisitorBase {
+    private final String className;
+    private final Parent<KeepEdge> parent;
+    private final KeepEdge.Builder builder = KeepEdge.builder();
+    private final KeepConsequences.Builder consequences = KeepConsequences.builder();
+    private final KeepEdgeMetaInfo.Builder metaInfoBuilder = KeepEdgeMetaInfo.builder();
+
+    ForApiClassVisitor(
+        Parent<KeepEdge> parent, Consumer<KeepEdgeMetaInfo.Builder> addContext, String className) {
+      this.className = className;
+      this.parent = parent;
+      addContext.accept(metaInfoBuilder);
+      // The class context/holder is the annotated class.
+      visit(Item.className, className);
+      // The default kind is to target the class and its members.
+      visitEnum(null, Kind.DESCRIPTOR, Kind.CLASS_AND_MEMBERS);
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return ForApi.CLASS.getSimpleName();
+    }
+
+    @Override
+    public void visit(String name, Object value) {
+      if (name.equals(Edge.description) && value instanceof String) {
+        metaInfoBuilder.setDescription((String) value);
+        return;
+      }
+      super.visit(name, value);
+    }
+
+    @Override
+    public AnnotationVisitor visitArray(String name) {
+      if (name.equals(ForApi.additionalTargets)) {
+        return new KeepConsequencesVisitor(
+            getAnnotationName(),
+            additionalConsequences -> {
+              additionalConsequences.forEachTarget(consequences::addTarget);
+            });
+      }
+      return super.visitArray(name);
+    }
+
+    @Override
+    public void visitEnd() {
+      if (!getKind().equals(KeepItemKind.ONLY_CLASS) && isDefaultMemberDeclaration()) {
+        // If no member declarations have been made, set public & protected as the default.
+        AnnotationVisitor v = visitArray(Item.memberAccess);
+        v.visitEnum(null, MemberAccess.DESCRIPTOR, MemberAccess.PUBLIC);
+        v.visitEnum(null, MemberAccess.DESCRIPTOR, MemberAccess.PROTECTED);
+      }
+      super.visitEnd();
+      KeepItemReference item = getItemReference();
+      if (item.isBindingReference()) {
+        throw new KeepEdgeException("@KeepForApi cannot reference bindings");
+      }
+      KeepItemPattern itemPattern = item.asItemPattern();
+      String descriptor = AnnotationConstants.getDescriptorFromClassTypeName(className);
+      String itemDescriptor =
+          itemPattern.getClassReference().asClassNamePattern().getExactDescriptor();
+      if (!descriptor.equals(itemDescriptor)) {
+        throw new KeepEdgeException("@KeepForApi must reference its class context " + className);
+      }
+      if (itemPattern.getKind().equals(KeepItemKind.ONLY_MEMBERS)) {
+        throw new KeepEdgeException("@KeepForApi kind must include its class");
+      }
+      if (!itemPattern.getExtendsPattern().isAny()) {
+        throw new KeepEdgeException("@KeepForApi cannot define an 'extends' pattern.");
+      }
+      consequences.addTarget(KeepTarget.builder().setItemPattern(itemPattern).build());
+      parent.accept(
+          builder
+              .setMetaInfo(metaInfoBuilder.build())
+              .setConsequences(consequences.build())
+              .build());
+    }
+  }
+
+  /**
+   * Parsing of @KeepForApi on a member context.
+   *
+   * <p>When used on a member context the annotation does not allow member related patterns.
+   */
+  private static class ForApiMemberVisitor extends AnnotationVisitorBase {
+    private final Parent<KeepEdge> parent;
+    private final KeepEdge.Builder builder = KeepEdge.builder();
+    private final KeepEdgeMetaInfo.Builder metaInfoBuilder = KeepEdgeMetaInfo.builder();
+
+    private final KeepConsequences.Builder consequences = KeepConsequences.builder();
+
+    ForApiMemberVisitor(
+        Parent<KeepEdge> parent,
+        Consumer<KeepEdgeMetaInfo.Builder> addContext,
+        KeepItemPattern context) {
+      this.parent = parent;
+      addContext.accept(metaInfoBuilder);
+      consequences.addTarget(
+          KeepTarget.builder()
+              .setItemPattern(
+                  KeepItemPattern.builder()
+                      .copyFrom(context)
+                      .setKind(KeepItemKind.CLASS_AND_MEMBERS)
+                      .build())
+              .build());
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return ForApi.CLASS.getSimpleName();
+    }
+
+    @Override
+    public void visit(String name, Object value) {
+      if (name.equals(Edge.description) && value instanceof String) {
+        metaInfoBuilder.setDescription((String) value);
+        return;
+      }
+      super.visit(name, value);
+    }
+
+    @Override
+    public AnnotationVisitor visitArray(String name) {
+      if (name.equals(ForApi.additionalTargets)) {
+        return new KeepConsequencesVisitor(
+            getAnnotationName(),
+            additionalConsequences -> {
+              additionalConsequences.forEachTarget(consequences::addTarget);
+            });
+      }
+      return super.visitArray(name);
+    }
+
+    @Override
+    public void visitEnd() {
+      parent.accept(
+          builder
+              .setMetaInfo(metaInfoBuilder.build())
+              .setConsequences(consequences.build())
+              .build());
     }
   }
 
@@ -318,6 +499,11 @@ public class KeepEdgeReader implements Opcodes {
     }
 
     @Override
+    public String getAnnotationName() {
+      return UsesReflection.CLASS.getSimpleName();
+    }
+
+    @Override
     public void visit(String name, Object value) {
       if (name.equals(Edge.description) && value instanceof String) {
         metaInfoBuilder.setDescription((String) value);
@@ -329,10 +515,11 @@ public class KeepEdgeReader implements Opcodes {
     @Override
     public AnnotationVisitor visitArray(String name) {
       if (name.equals(AnnotationConstants.UsesReflection.value)) {
-        return new KeepConsequencesVisitor(builder::setConsequences);
+        return new KeepConsequencesVisitor(getAnnotationName(), builder::setConsequences);
       }
       if (name.equals(AnnotationConstants.UsesReflection.additionalPreconditions)) {
         return new KeepPreconditionsVisitor(
+            getAnnotationName(),
             additionalPreconditions -> {
               additionalPreconditions.forEach(preconditions::addCondition);
             });
@@ -351,11 +538,18 @@ public class KeepEdgeReader implements Opcodes {
   }
 
   private static class KeepBindingsVisitor extends AnnotationVisitorBase {
+    private final String annotationName;
     private final Parent<KeepBindings> parent;
     private final KeepBindings.Builder builder = KeepBindings.builder();
 
-    public KeepBindingsVisitor(Parent<KeepBindings> parent) {
+    public KeepBindingsVisitor(String annotationName, Parent<KeepBindings> parent) {
+      this.annotationName = annotationName;
       this.parent = parent;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return annotationName;
     }
 
     @Override
@@ -373,11 +567,18 @@ public class KeepEdgeReader implements Opcodes {
   }
 
   private static class KeepPreconditionsVisitor extends AnnotationVisitorBase {
+    private final String annotationName;
     private final Parent<KeepPreconditions> parent;
     private final KeepPreconditions.Builder builder = KeepPreconditions.builder();
 
-    public KeepPreconditionsVisitor(Parent<KeepPreconditions> parent) {
+    public KeepPreconditionsVisitor(String annotationName, Parent<KeepPreconditions> parent) {
+      this.annotationName = annotationName;
       this.parent = parent;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return annotationName;
     }
 
     @Override
@@ -395,11 +596,18 @@ public class KeepEdgeReader implements Opcodes {
   }
 
   private static class KeepConsequencesVisitor extends AnnotationVisitorBase {
+    private final String annotationName;
     private final Parent<KeepConsequences> parent;
     private final KeepConsequences.Builder builder = KeepConsequences.builder();
 
-    public KeepConsequencesVisitor(Parent<KeepConsequences> parent) {
+    public KeepConsequencesVisitor(String annotationName, Parent<KeepConsequences> parent) {
+      this.annotationName = annotationName;
       this.parent = parent;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return annotationName;
     }
 
     @Override
@@ -418,6 +626,8 @@ public class KeepEdgeReader implements Opcodes {
 
   private abstract static class Declaration<T> {
     abstract String kind();
+
+    abstract boolean isDefault();
 
     abstract T getValue();
 
@@ -441,6 +651,11 @@ public class KeepEdgeReader implements Opcodes {
 
     AnnotationVisitor parseArray(String name, Consumer<T> setValue) {
       return null;
+    }
+
+    @Override
+    boolean isDefault() {
+      return !hasDeclaration();
     }
 
     private boolean hasDeclaration() {
@@ -551,8 +766,13 @@ public class KeepEdgeReader implements Opcodes {
   }
 
   private static class MethodDeclaration extends Declaration<KeepMethodPattern> {
-
+    private final String annotationName;
+    private KeepMethodAccessPattern.Builder accessBuilder = null;
     private KeepMethodPattern.Builder builder = null;
+
+    private MethodDeclaration(String annotationName) {
+      this.annotationName = annotationName;
+    }
 
     private KeepMethodPattern.Builder getBuilder() {
       if (builder == null) {
@@ -567,7 +787,15 @@ public class KeepEdgeReader implements Opcodes {
     }
 
     @Override
+    boolean isDefault() {
+      return accessBuilder == null && builder == null;
+    }
+
+    @Override
     KeepMethodPattern getValue() {
+      if (accessBuilder != null) {
+        getBuilder().setAccessPattern(accessBuilder.build());
+      }
       return builder != null ? builder.build() : null;
     }
 
@@ -593,8 +821,13 @@ public class KeepEdgeReader implements Opcodes {
 
     @Override
     AnnotationVisitor tryParseArray(String name, Consumer<KeepMethodPattern> ignored) {
+      if (name.equals(Item.methodAccess)) {
+        accessBuilder = KeepMethodAccessPattern.builder();
+        return new MethodAccessVisitor(annotationName, accessBuilder);
+      }
       if (name.equals(Item.methodParameters)) {
         return new StringArrayVisitor(
+            annotationName,
             params -> {
               if (Arrays.asList(Item.methodParametersDefaultValue).equals(params)) {
                 return;
@@ -612,8 +845,13 @@ public class KeepEdgeReader implements Opcodes {
   }
 
   private static class FieldDeclaration extends Declaration<KeepFieldPattern> {
-
+    private final String annotationName;
+    private KeepFieldAccessPattern.Builder accessBuilder = null;
     private KeepFieldPattern.Builder builder = null;
+
+    public FieldDeclaration(String annotationName) {
+      this.annotationName = annotationName;
+    }
 
     private KeepFieldPattern.Builder getBuilder() {
       if (builder == null) {
@@ -628,7 +866,15 @@ public class KeepEdgeReader implements Opcodes {
     }
 
     @Override
+    boolean isDefault() {
+      return accessBuilder == null && builder == null;
+    }
+
+    @Override
     KeepFieldPattern getValue() {
+      if (accessBuilder != null) {
+        getBuilder().setAccessPattern(accessBuilder.build());
+      }
       return builder != null ? builder.build() : null;
     }
 
@@ -653,12 +899,28 @@ public class KeepEdgeReader implements Opcodes {
       }
       return false;
     }
+
+    @Override
+    AnnotationVisitor tryParseArray(String name, Consumer<KeepFieldPattern> onValue) {
+      if (name.equals(Item.fieldAccess)) {
+        accessBuilder = KeepFieldAccessPattern.builder();
+        return new FieldAccessVisitor(annotationName, accessBuilder);
+      }
+      return super.tryParseArray(name, onValue);
+    }
   }
 
   private static class MemberDeclaration extends Declaration<KeepMemberPattern> {
+    private final String annotationName;
+    private KeepMemberAccessPattern.Builder accessBuilder = null;
+    private final MethodDeclaration methodDeclaration;
+    private final FieldDeclaration fieldDeclaration;
 
-    private MethodDeclaration methodDeclaration = new MethodDeclaration();
-    private FieldDeclaration fieldDeclaration = new FieldDeclaration();
+    MemberDeclaration(String annotationName) {
+      this.annotationName = annotationName;
+      methodDeclaration = new MethodDeclaration(annotationName);
+      fieldDeclaration = new FieldDeclaration(annotationName);
+    }
 
     @Override
     String kind() {
@@ -666,9 +928,21 @@ public class KeepEdgeReader implements Opcodes {
     }
 
     @Override
+    public boolean isDefault() {
+      return accessBuilder == null && methodDeclaration.isDefault() && fieldDeclaration.isDefault();
+    }
+
+    @Override
     public KeepMemberPattern getValue() {
       KeepMethodPattern method = methodDeclaration.getValue();
       KeepFieldPattern field = fieldDeclaration.getValue();
+      if (accessBuilder != null) {
+        if (method != null || field != null) {
+          throw new KeepEdgeException(
+              "Cannot define common member access as well as field or method pattern");
+        }
+        return KeepMemberPattern.memberBuilder().setAccessPattern(accessBuilder.build()).build();
+      }
       if (method != null && field != null) {
         throw new KeepEdgeException("Cannot define both a field and a method pattern");
       }
@@ -688,6 +962,10 @@ public class KeepEdgeReader implements Opcodes {
 
     @Override
     AnnotationVisitor tryParseArray(String name, Consumer<KeepMemberPattern> ignored) {
+      if (name.equals(Item.memberAccess)) {
+        accessBuilder = KeepMemberAccessPattern.memberBuilder();
+        return new MemberAccessVisitor(annotationName, accessBuilder);
+      }
       AnnotationVisitor visitor = methodDeclaration.tryParseArray(name, v -> {});
       if (visitor != null) {
         return visitor;
@@ -697,23 +975,32 @@ public class KeepEdgeReader implements Opcodes {
   }
 
   private abstract static class KeepItemVisitorBase extends AnnotationVisitorBase {
-    private Parent<KeepItemReference> parent;
     private String memberBindingReference = null;
     private KeepItemKind kind = null;
     private final ClassDeclaration classDeclaration = new ClassDeclaration();
     private final ExtendsDeclaration extendsDeclaration = new ExtendsDeclaration();
-    private final MemberDeclaration memberDeclaration = new MemberDeclaration();
+    private final MemberDeclaration memberDeclaration;
 
-    public KeepItemVisitorBase(Parent<KeepItemReference> parent) {
-      setParent(parent);
+    // Constructed item available once visitEnd has been called.
+    private KeepItemReference itemReference = null;
+
+    KeepItemVisitorBase() {
+      memberDeclaration = new MemberDeclaration(getAnnotationName());
     }
 
-    public KeepItemVisitorBase() {}
+    public KeepItemReference getItemReference() {
+      if (itemReference == null) {
+        throw new KeepEdgeException("Item reference not finalized. Missing call to visitEnd()");
+      }
+      return itemReference;
+    }
 
-    void setParent(Parent<KeepItemReference> parent) {
-      assert parent != null;
-      assert this.parent == null;
-      this.parent = parent;
+    public KeepItemKind getKind() {
+      return kind;
+    }
+
+    public boolean isDefaultMemberDeclaration() {
+      return memberDeclaration.isDefault();
     }
 
     @Override
@@ -772,7 +1059,7 @@ public class KeepEdgeReader implements Opcodes {
           throw new KeepEdgeException(
               "Cannot define an item explicitly and via a member-binding reference");
         }
-        parent.accept(KeepItemReference.fromBindingReference(memberBindingReference));
+        itemReference = KeepItemReference.fromBindingReference(memberBindingReference);
       } else {
         KeepMemberPattern memberPattern = memberDeclaration.getValue();
         // If the kind is not set (default) then the content of the members determines the kind.
@@ -783,14 +1070,14 @@ public class KeepEdgeReader implements Opcodes {
         if (!kind.equals(KeepItemKind.ONLY_CLASS) && memberPattern.isNone()) {
           memberPattern = KeepMemberPattern.allMembers();
         }
-        parent.accept(
+        itemReference =
             KeepItemReference.fromItemPattern(
                 KeepItemPattern.builder()
                     .setKind(kind)
                     .setClassReference(classDeclaration.getValue())
                     .setExtendsPattern(extendsDeclaration.getValue())
                     .setMemberPattern(memberPattern)
-                    .build()));
+                    .build());
       }
     }
   }
@@ -799,24 +1086,14 @@ public class KeepEdgeReader implements Opcodes {
 
     private final KeepBindings.Builder builder;
     private String bindingName;
-    private KeepItemPattern item;
 
     public KeepBindingVisitor(KeepBindings.Builder builder) {
       this.builder = builder;
-      setParent(
-          item -> {
-            // The language currently disallows aliasing bindings, thus a binding should directly be
-            // defined by a reference to another binding.
-            if (item.isBindingReference()) {
-              throw new KeepEdgeException(
-                  "Invalid binding reference to '"
-                      + item.asBindingReference()
-                      + "' in binding definition of '"
-                      + bindingName
-                      + "'");
-            }
-            this.item = item.asItemPattern();
-          });
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return Binding.CLASS.getSimpleName();
     }
 
     @Override
@@ -831,17 +1108,34 @@ public class KeepEdgeReader implements Opcodes {
     @Override
     public void visitEnd() {
       super.visitEnd();
-      builder.addBinding(bindingName, item);
+      KeepItemReference item = getItemReference();
+      // The language currently disallows aliasing bindings, thus a binding should directly be
+      // defined by a reference to another binding.
+      if (item.isBindingReference()) {
+        throw new KeepEdgeException(
+            "Invalid binding reference to '"
+                + item.asBindingReference()
+                + "' in binding definition of '"
+                + bindingName
+                + "'");
+      }
+      builder.addBinding(bindingName, item.asItemPattern());
     }
   }
 
   private static class StringArrayVisitor extends AnnotationVisitorBase {
-
+    private final String annotationName;
     private final Consumer<List<String>> fn;
     private final List<String> strings = new ArrayList<>();
 
-    public StringArrayVisitor(Consumer<List<String>> fn) {
+    public StringArrayVisitor(String annotationName, Consumer<List<String>> fn) {
+      this.annotationName = annotationName;
       this.fn = fn;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return annotationName;
     }
 
     @Override
@@ -862,6 +1156,12 @@ public class KeepEdgeReader implements Opcodes {
 
   private static class OptionsDeclaration extends SingleDeclaration<KeepOptions> {
 
+    private final String annotationName;
+
+    public OptionsDeclaration(String annotationName) {
+      this.annotationName = annotationName;
+    }
+
     @Override
     String kind() {
       return "options";
@@ -881,10 +1181,12 @@ public class KeepEdgeReader implements Opcodes {
     AnnotationVisitor parseArray(String name, Consumer<KeepOptions> setValue) {
       if (name.equals(AnnotationConstants.Target.disallow)) {
         return new KeepOptionsVisitor(
+            annotationName,
             options -> setValue.accept(KeepOptions.disallowBuilder().addAll(options).build()));
       }
       if (name.equals(AnnotationConstants.Target.allow)) {
         return new KeepOptionsVisitor(
+            annotationName,
             options -> setValue.accept(KeepOptions.allowBuilder().addAll(options).build()));
       }
       return null;
@@ -893,17 +1195,22 @@ public class KeepEdgeReader implements Opcodes {
 
   private static class KeepTargetVisitor extends KeepItemVisitorBase {
 
-    private final KeepTarget.Builder builder;
-    private final OptionsDeclaration optionsDeclaration = new OptionsDeclaration();
+    private final Parent<KeepTarget> parent;
+    private final KeepTarget.Builder builder = KeepTarget.builder();
+    private final OptionsDeclaration optionsDeclaration =
+        new OptionsDeclaration(getAnnotationName());
 
     static KeepTargetVisitor create(Parent<KeepTarget> parent) {
-      KeepTarget.Builder builder = KeepTarget.builder();
-      return new KeepTargetVisitor(parent, builder);
+      return new KeepTargetVisitor(parent);
     }
 
-    private KeepTargetVisitor(Parent<KeepTarget> parent, KeepTarget.Builder builder) {
-      super(item -> parent.accept(builder.setItemReference(item).build()));
-      this.builder = builder;
+    private KeepTargetVisitor(Parent<KeepTarget> parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return Target.CLASS.getSimpleName();
     }
 
     @Override
@@ -914,22 +1221,48 @@ public class KeepEdgeReader implements Opcodes {
       }
       return super.visitArray(name);
     }
+
+    @Override
+    public void visitEnd() {
+      super.visitEnd();
+      parent.accept(builder.setItemReference(getItemReference()).build());
+    }
   }
 
   private static class KeepConditionVisitor extends KeepItemVisitorBase {
 
+    private final Parent<KeepCondition> parent;
+
     public KeepConditionVisitor(Parent<KeepCondition> parent) {
-      super(item -> parent.accept(KeepCondition.builder().setItemReference(item).build()));
+      this.parent = parent;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return Condition.CLASS.getSimpleName();
+    }
+
+    @Override
+    public void visitEnd() {
+      super.visitEnd();
+      parent.accept(KeepCondition.builder().setItemReference(getItemReference()).build());
     }
   }
 
   private static class KeepOptionsVisitor extends AnnotationVisitorBase {
 
+    private final String annotationName;
     private final Parent<Collection<KeepOption>> parent;
     private final Set<KeepOption> options = new HashSet<>();
 
-    public KeepOptionsVisitor(Parent<Collection<KeepOption>> parent) {
+    public KeepOptionsVisitor(String annotationName, Parent<Collection<KeepOption>> parent) {
+      this.annotationName = annotationName;
       this.parent = parent;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return annotationName;
     }
 
     @Override
@@ -965,6 +1298,158 @@ public class KeepEdgeReader implements Opcodes {
     public void visitEnd() {
       parent.accept(options);
       super.visitEnd();
+    }
+  }
+
+  private static class MemberAccessVisitor extends AnnotationVisitorBase {
+    private final String annotationName;
+    KeepMemberAccessPattern.BuilderBase<?, ?> builder;
+
+    public MemberAccessVisitor(
+        String annotationName, KeepMemberAccessPattern.BuilderBase<?, ?> builder) {
+      this.annotationName = annotationName;
+      this.builder = builder;
+    }
+
+    @Override
+    public String getAnnotationName() {
+      return annotationName;
+    }
+
+    static boolean withNormalizedAccessFlag(String flag, BiPredicate<String, Boolean> fn) {
+      boolean allow = !flag.startsWith(MemberAccess.NEGATION_PREFIX);
+      return allow
+          ? fn.test(flag, true)
+          : fn.test(flag.substring(MemberAccess.NEGATION_PREFIX.length()), false);
+    }
+
+    @Override
+    public void visitEnum(String ignore, String descriptor, String value) {
+      if (!descriptor.equals(AnnotationConstants.MemberAccess.DESCRIPTOR)) {
+        super.visitEnum(ignore, descriptor, value);
+      }
+      boolean handled =
+          withNormalizedAccessFlag(
+              value,
+              (flag, allow) -> {
+                AccessVisibility visibility = getAccessVisibilityFromString(flag);
+                if (visibility != null) {
+                  builder.setAccessVisibility(visibility, allow);
+                  return true;
+                }
+                switch (flag) {
+                  case MemberAccess.STATIC:
+                    builder.setStatic(allow);
+                    return true;
+                  case MemberAccess.FINAL:
+                    builder.setFinal(allow);
+                    return true;
+                  case MemberAccess.SYNTHETIC:
+                    builder.setSynthetic(allow);
+                    return true;
+                  default:
+                    return false;
+                }
+              });
+      if (!handled) {
+        super.visitEnum(ignore, descriptor, value);
+      }
+    }
+
+    private AccessVisibility getAccessVisibilityFromString(String value) {
+      switch (value) {
+        case MemberAccess.PUBLIC:
+          return AccessVisibility.PUBLIC;
+        case MemberAccess.PROTECTED:
+          return AccessVisibility.PROTECTED;
+        case MemberAccess.PACKAGE_PRIVATE:
+          return AccessVisibility.PACKAGE_PRIVATE;
+        case MemberAccess.PRIVATE:
+          return AccessVisibility.PRIVATE;
+        default:
+          return null;
+      }
+    }
+  }
+
+  private static class MethodAccessVisitor extends MemberAccessVisitor {
+
+    KeepMethodAccessPattern.Builder builder;
+
+    public MethodAccessVisitor(String annotationName, KeepMethodAccessPattern.Builder builder) {
+      super(annotationName, builder);
+      this.builder = builder;
+    }
+
+    @Override
+    public void visitEnum(String ignore, String descriptor, String value) {
+      if (!descriptor.equals(AnnotationConstants.MethodAccess.DESCRIPTOR)) {
+        super.visitEnum(ignore, descriptor, value);
+      }
+      boolean handled =
+          withNormalizedAccessFlag(
+              value,
+              (flag, allow) -> {
+                switch (flag) {
+                  case MethodAccess.SYNCHRONIZED:
+                    builder.setSynchronized(allow);
+                    return true;
+                  case MethodAccess.BRIDGE:
+                    builder.setBridge(allow);
+                    return true;
+                  case MethodAccess.NATIVE:
+                    builder.setNative(allow);
+                    return true;
+                  case MethodAccess.ABSTRACT:
+                    builder.setAbstract(allow);
+                    return true;
+                  case MethodAccess.STRICT_FP:
+                    builder.setStrictFp(allow);
+                    return true;
+                  default:
+                    return false;
+                }
+              });
+      if (!handled) {
+        // Continue visitation with the "member" descriptor to allow matching the common values.
+        super.visitEnum(ignore, MemberAccess.DESCRIPTOR, value);
+      }
+    }
+  }
+
+  private static class FieldAccessVisitor extends MemberAccessVisitor {
+
+    KeepFieldAccessPattern.Builder builder;
+
+    public FieldAccessVisitor(String annotationName, KeepFieldAccessPattern.Builder builder) {
+      super(annotationName, builder);
+      this.builder = builder;
+    }
+
+    @Override
+    public void visitEnum(String ignore, String descriptor, String value) {
+      if (!descriptor.equals(AnnotationConstants.FieldAccess.DESCRIPTOR)) {
+        super.visitEnum(ignore, descriptor, value);
+      }
+      boolean handled =
+          withNormalizedAccessFlag(
+              value,
+              (flag, allow) -> {
+                switch (flag) {
+                  case FieldAccess.VOLATILE:
+                    builder.setVolatile(allow);
+                    return true;
+                  case FieldAccess.TRANSIENT:
+                    builder.setTransient(allow);
+                    return true;
+                  default:
+                    return false;
+                }
+              });
+      if (!handled) {
+        // Continue visitation with the "member" descriptor to allow matching the common values.
+        super.visitEnum(ignore, MemberAccess.DESCRIPTOR, value);
+      }
     }
   }
 }

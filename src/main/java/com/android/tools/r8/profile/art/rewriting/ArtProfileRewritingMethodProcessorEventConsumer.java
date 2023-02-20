@@ -4,8 +4,10 @@
 
 package com.android.tools.r8.profile.art.rewriting;
 
+import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.conversion.MethodProcessorEventConsumer;
+import com.android.tools.r8.shaking.AppInfoWithLiveness;
 
 public class ArtProfileRewritingMethodProcessorEventConsumer extends MethodProcessorEventConsumer {
 
@@ -20,6 +22,17 @@ public class ArtProfileRewritingMethodProcessorEventConsumer extends MethodProce
   }
 
   public static MethodProcessorEventConsumer attach(
+      AppView<?> appView, MethodProcessorEventConsumer eventConsumer) {
+    ArtProfileCollectionAdditions additionsCollection =
+        ArtProfileCollectionAdditions.create(appView);
+    if (additionsCollection.isNop()) {
+      return eventConsumer;
+    }
+    return new ArtProfileRewritingMethodProcessorEventConsumer(
+        additionsCollection.asConcrete(), eventConsumer);
+  }
+
+  public static MethodProcessorEventConsumer attach(
       ArtProfileCollectionAdditions artProfileCollectionAdditions,
       MethodProcessorEventConsumer eventConsumer) {
     if (artProfileCollectionAdditions.isNop()) {
@@ -30,9 +43,15 @@ public class ArtProfileRewritingMethodProcessorEventConsumer extends MethodProce
   }
 
   @Override
+  public void acceptAssertionErrorCreateMethod(ProgramMethod method, ProgramMethod context) {
+    additionsCollection.addMethodAndHolderIfContextIsInProfile(method, context);
+    parent.acceptAssertionErrorCreateMethod(method, context);
+  }
+
+  @Override
   public void acceptEnumUnboxerCheckNotZeroContext(ProgramMethod method, ProgramMethod context) {
     additionsCollection.applyIfContextIsInProfile(
-        context, additionsBuilder -> additionsBuilder.addRule(method));
+        context, additionsBuilder -> additionsBuilder.addRule(method).addRule(method.getHolder()));
     parent.acceptEnumUnboxerCheckNotZeroContext(method, context);
   }
 
@@ -61,6 +80,12 @@ public class ArtProfileRewritingMethodProcessorEventConsumer extends MethodProce
     additionsCollection.applyIfContextIsInProfile(
         context, additionsBuilder -> additionsBuilder.addRule(method).addRule(method.getHolder()));
     parent.acceptInstanceInitializerOutline(method, context);
+  }
+
+  @Override
+  public void acceptServiceLoaderLoadUtilityMethod(ProgramMethod method, ProgramMethod context) {
+    additionsCollection.addMethodAndHolderIfContextIsInProfile(method, context);
+    parent.acceptServiceLoaderLoadUtilityMethod(method, context);
   }
 
   @Override
@@ -108,5 +133,11 @@ public class ArtProfileRewritingMethodProcessorEventConsumer extends MethodProce
     additionsCollection.applyIfContextIsInProfile(
         context, additionsBuilder -> additionsBuilder.addRule(method).addRule(method.getHolder()));
     parent.acceptUtilityThrowRuntimeExceptionWithMessageMethod(method, context);
+  }
+
+  @Override
+  public void finished(AppView<AppInfoWithLiveness> appView) {
+    additionsCollection.commit(appView);
+    parent.finished(appView);
   }
 }

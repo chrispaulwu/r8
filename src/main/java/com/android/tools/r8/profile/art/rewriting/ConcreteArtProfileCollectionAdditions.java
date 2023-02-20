@@ -5,12 +5,15 @@
 package com.android.tools.r8.profile.art.rewriting;
 
 import com.android.tools.r8.graph.AppView;
-import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexMethod;
+import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexType;
+import com.android.tools.r8.graph.ProgramDefinition;
+import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.profile.art.ArtProfile;
 import com.android.tools.r8.profile.art.ArtProfileCollection;
+import com.android.tools.r8.profile.art.ArtProfileMethodRuleInfoImpl;
 import com.android.tools.r8.profile.art.NonEmptyArtProfileCollection;
 import com.android.tools.r8.profile.art.rewriting.ArtProfileAdditions.ArtProfileAdditionsBuilder;
 import com.google.common.collect.Iterables;
@@ -24,6 +27,8 @@ public class ConcreteArtProfileCollectionAdditions extends ArtProfileCollectionA
 
   private final List<ArtProfileAdditions> additionsCollection;
 
+  private boolean committed = false;
+
   private ConcreteArtProfileCollectionAdditions(List<ArtProfileAdditions> additionsCollection) {
     this.additionsCollection = additionsCollection;
   }
@@ -36,8 +41,50 @@ public class ConcreteArtProfileCollectionAdditions extends ArtProfileCollectionA
     assert !additionsCollection.isEmpty();
   }
 
+  @Override
+  public void addMethodIfContextIsInProfile(ProgramMethod method, ProgramMethod context) {
+    applyIfContextIsInProfile(context, additionsBuilder -> additionsBuilder.addRule(method));
+  }
+
+  public void addMethodIfContextIsInProfile(
+      ProgramMethod method,
+      DexClassAndMethod context,
+      Consumer<ArtProfileMethodRuleInfoImpl.Builder> methodRuleInfoBuilderConsumer) {
+    if (context.isProgramMethod()) {
+      applyIfContextIsInProfile(
+          context.asProgramMethod(), additionsBuilder -> additionsBuilder.addRule(method));
+    } else {
+      apply(
+          artProfileAdditions ->
+              artProfileAdditions.addMethodRule(method, methodRuleInfoBuilderConsumer));
+    }
+  }
+
+  public void addMethodAndHolderIfContextIsInProfile(ProgramMethod method, ProgramMethod context) {
+    applyIfContextIsInProfile(
+        context, additionsBuilder -> additionsBuilder.addRule(method).addRule(method.getHolder()));
+  }
+
+  void apply(Consumer<ArtProfileAdditions> additionsConsumer) {
+    for (ArtProfileAdditions artProfileAdditions : additionsCollection) {
+      additionsConsumer.accept(artProfileAdditions);
+    }
+  }
+
   void applyIfContextIsInProfile(
-      DexClass context, Consumer<ArtProfileAdditions> additionsConsumer) {
+      ProgramDefinition context,
+      Consumer<ArtProfileAdditions> additionsConsumer,
+      Consumer<ArtProfileAdditionsBuilder> additionsBuilderConsumer) {
+    if (context.isProgramClass()) {
+      applyIfContextIsInProfile(context.asProgramClass(), additionsConsumer);
+    } else {
+      assert context.isProgramMethod();
+      applyIfContextIsInProfile(context.asProgramMethod(), additionsBuilderConsumer);
+    }
+  }
+
+  void applyIfContextIsInProfile(
+      DexProgramClass context, Consumer<ArtProfileAdditions> additionsConsumer) {
     applyIfContextIsInProfile(context.getType(), additionsConsumer);
   }
 
@@ -48,7 +95,7 @@ public class ConcreteArtProfileCollectionAdditions extends ArtProfileCollectionA
   }
 
   public void applyIfContextIsInProfile(
-      DexClassAndMethod context, Consumer<ArtProfileAdditionsBuilder> builderConsumer) {
+      ProgramMethod context, Consumer<ArtProfileAdditionsBuilder> builderConsumer) {
     applyIfContextIsInProfile(context.getReference(), builderConsumer);
   }
 
@@ -67,9 +114,11 @@ public class ConcreteArtProfileCollectionAdditions extends ArtProfileCollectionA
 
   @Override
   public void commit(AppView<?> appView) {
+    assert !committed;
     if (hasAdditions()) {
       appView.setArtProfileCollection(createNewArtProfileCollection());
     }
+    committed = true;
   }
 
   private ArtProfileCollection createNewArtProfileCollection() {
@@ -105,5 +154,11 @@ public class ConcreteArtProfileCollectionAdditions extends ArtProfileCollectionA
       additions.setArtProfile(artProfileIterator.next());
     }
     return this;
+  }
+
+  @Override
+  public boolean verifyIsCommitted() {
+    assert committed;
+    return true;
   }
 }

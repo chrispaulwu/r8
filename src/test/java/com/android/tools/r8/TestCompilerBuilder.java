@@ -57,6 +57,7 @@ public abstract class TestCompilerBuilder<
         options.testing.allowUnnecessaryDontWarnWildcards = false;
         options.horizontalClassMergerOptions().enable();
         options.horizontalClassMergerOptions().setEnableInterfaceMerging();
+        options.getArtProfileOptions().setEnableCompletenessCheckForTesting(true);
         options
             .getCfCodeAnalysisOptions()
             .setAllowUnreachableCfBlocks(false)
@@ -479,6 +480,11 @@ public abstract class TestCompilerBuilder<
   public T addLibraryProvider(ClassFileResourceProvider provider) {
     useDefaultRuntimeLibrary = false;
     return super.addLibraryProvider(provider);
+  }
+
+  public T setUseDefaultRuntimeLibrary(boolean useDefaultRuntimeLibrary) {
+    this.useDefaultRuntimeLibrary = useDefaultRuntimeLibrary;
+    return self();
   }
 
   @Override

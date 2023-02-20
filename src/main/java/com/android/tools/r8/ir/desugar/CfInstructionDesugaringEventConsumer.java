@@ -8,8 +8,10 @@ import com.android.tools.r8.graph.AppInfoWithClassHierarchy;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexClasspathClass;
+import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexReference;
+import com.android.tools.r8.graph.ProgramDefinition;
 import com.android.tools.r8.graph.ProgramField;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.conversion.ClassConverterResult;
@@ -71,11 +73,14 @@ public abstract class CfInstructionDesugaringEventConsumer
       ArtProfileCollectionAdditions artProfileCollectionAdditions,
       ClassConverterResult.Builder classConverterResultBuilder,
       D8MethodProcessor methodProcessor) {
-    CfInstructionDesugaringEventConsumer eventConsumer =
+    D8CfInstructionDesugaringEventConsumer eventConsumer =
         new D8CfInstructionDesugaringEventConsumer(
             appView, classConverterResultBuilder, methodProcessor);
-    return ArtProfileRewritingCfInstructionDesugaringEventConsumer.attach(
-        appView, artProfileCollectionAdditions, eventConsumer);
+    CfInstructionDesugaringEventConsumer outermostEventConsumer =
+        ArtProfileRewritingCfInstructionDesugaringEventConsumer.attach(
+            appView, artProfileCollectionAdditions, eventConsumer);
+    eventConsumer.setOutermostEventConsumer(outermostEventConsumer);
+    return outermostEventConsumer;
   }
 
   public static CfInstructionDesugaringEventConsumer createForR8(
@@ -114,6 +119,8 @@ public abstract class CfInstructionDesugaringEventConsumer
     private final List<LambdaClass> synthesizedLambdaClasses = new ArrayList<>();
     private final List<ConstantDynamicClass> synthesizedConstantDynamicClasses = new ArrayList<>();
 
+    private CfInstructionDesugaringEventConsumer outermostEventConsumer = this;
+
     private D8CfInstructionDesugaringEventConsumer(
         AppView<?> appView,
         ClassConverterResult.Builder classConverterResultBuilder,
@@ -121,6 +128,11 @@ public abstract class CfInstructionDesugaringEventConsumer
       this.appView = appView;
       this.classConverterResultBuilder = classConverterResultBuilder;
       this.methodProcessor = methodProcessor;
+    }
+
+    public void setOutermostEventConsumer(
+        CfInstructionDesugaringEventConsumer outermostEventConsumer) {
+      this.outermostEventConsumer = outermostEventConsumer;
     }
 
     @Override
@@ -151,25 +163,27 @@ public abstract class CfInstructionDesugaringEventConsumer
     }
 
     @Override
-    public void acceptCollectionConversion(ProgramMethod arrayConversion) {
-      methodProcessor.scheduleMethodForProcessing(arrayConversion, this);
+    public void acceptCollectionConversion(ProgramMethod arrayConversion, ProgramMethod context) {
+      methodProcessor.scheduleMethodForProcessing(arrayConversion, outermostEventConsumer);
     }
 
     @Override
-    public void acceptCovariantRetargetMethod(ProgramMethod method) {
-      methodProcessor.scheduleMethodForProcessing(method, this);
+    public void acceptCovariantRetargetMethod(ProgramMethod method, ProgramMethod context) {
+      methodProcessor.scheduleMethodForProcessing(method, outermostEventConsumer);
     }
 
     @Override
     public void acceptBackportedMethod(ProgramMethod backportedMethod, ProgramMethod context) {
-      methodProcessor.scheduleMethodForProcessing(backportedMethod, this);
+      methodProcessor.scheduleMethodForProcessing(backportedMethod, outermostEventConsumer);
     }
 
     @Override
     public void acceptBackportedClass(DexProgramClass backportedClass, ProgramMethod context) {
       backportedClass
           .programMethods()
-          .forEach(method -> methodProcessor.scheduleMethodForProcessing(method, this));
+          .forEach(
+              method ->
+                  methodProcessor.scheduleMethodForProcessing(method, outermostEventConsumer));
     }
 
     @Override
@@ -215,7 +229,15 @@ public abstract class CfInstructionDesugaringEventConsumer
     public void acceptVarHandleDesugaringClass(DexProgramClass clazz) {
       clazz
           .programMethods()
-          .forEach(method -> methodProcessor.scheduleMethodForProcessing(method, this));
+          .forEach(
+              method ->
+                  methodProcessor.scheduleMethodForProcessing(method, outermostEventConsumer));
+    }
+
+    @Override
+    public void acceptVarHandleDesugaringClassContext(
+        DexProgramClass clazz, ProgramDefinition context) {
+      // Intentionally empty.
     }
 
     @Override
@@ -231,6 +253,12 @@ public abstract class CfInstructionDesugaringEventConsumer
       synchronized (synthesizedConstantDynamicClasses) {
         synthesizedConstantDynamicClasses.add(constantDynamicClass);
       }
+    }
+
+    @Override
+    public void acceptConstantDynamicRewrittenBootstrapMethod(
+        ProgramMethod bootstrapMethod, DexMethod oldSignature) {
+      // Intentionally empty.
     }
 
     @Override
@@ -262,7 +290,7 @@ public abstract class CfInstructionDesugaringEventConsumer
 
     @Override
     public void acceptTwrCloseResourceMethod(ProgramMethod closeMethod, ProgramMethod context) {
-      methodProcessor.scheduleMethodForProcessing(closeMethod, this);
+      methodProcessor.scheduleMethodForProcessing(closeMethod, outermostEventConsumer);
     }
 
     @Override
@@ -326,7 +354,7 @@ public abstract class CfInstructionDesugaringEventConsumer
     }
 
     @Override
-    public void acceptAPIConversion(ProgramMethod method) {
+    public void acceptAPIConversionOutline(ProgramMethod method, ProgramMethod context) {
       methodProcessor.scheduleDesugaredMethodForProcessing(method);
     }
 
@@ -385,7 +413,7 @@ public abstract class CfInstructionDesugaringEventConsumer
 
     private void finalizeConstantDynamicDesugaring(Consumer<ProgramMethod> needsProcessing) {
       for (ConstantDynamicClass constantDynamicClass : synthesizedConstantDynamicClasses) {
-        constantDynamicClass.rewriteBootstrapMethodSignatureIfNeeded();
+        constantDynamicClass.rewriteBootstrapMethodSignatureIfNeeded(outermostEventConsumer);
         constantDynamicClass.getConstantDynamicProgramClass().forEachProgramMethod(needsProcessing);
       }
       synthesizedConstantDynamicClasses.clear();
@@ -488,7 +516,13 @@ public abstract class CfInstructionDesugaringEventConsumer
     }
 
     @Override
-    public void acceptCollectionConversion(ProgramMethod arrayConversion) {
+    public void acceptVarHandleDesugaringClassContext(
+        DexProgramClass clazz, ProgramDefinition context) {
+      // Intentionally empty.
+    }
+
+    @Override
+    public void acceptCollectionConversion(ProgramMethod arrayConversion, ProgramMethod context) {
       // Intentionally empty. The method will be hit by tracing if required.
     }
 
@@ -514,7 +548,7 @@ public abstract class CfInstructionDesugaringEventConsumer
     }
 
     @Override
-    public void acceptCovariantRetargetMethod(ProgramMethod method) {
+    public void acceptCovariantRetargetMethod(ProgramMethod method, ProgramMethod context) {
       // Intentionally empty. The method will be hit by tracing if required.
     }
 
@@ -580,7 +614,7 @@ public abstract class CfInstructionDesugaringEventConsumer
     }
 
     @Override
-    public void acceptAPIConversion(ProgramMethod method) {
+    public void acceptAPIConversionOutline(ProgramMethod method, ProgramMethod context) {
       // Intentionally empty. The method will be hit by tracing if required.
     }
 
@@ -620,6 +654,12 @@ public abstract class CfInstructionDesugaringEventConsumer
       // TODO(b/180091213): Remove the recording of the synthesizing context when this is accessible
       //  from synthetic items.
       constantDynamicClassConsumer.accept(constantDynamicClass, context);
+    }
+
+    @Override
+    public void acceptConstantDynamicRewrittenBootstrapMethod(
+        ProgramMethod bootstrapMethod, DexMethod oldSignature) {
+      // Intentionally empty.
     }
 
     @Override

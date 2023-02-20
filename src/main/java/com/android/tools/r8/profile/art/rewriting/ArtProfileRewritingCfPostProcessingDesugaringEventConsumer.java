@@ -4,15 +4,22 @@
 
 package com.android.tools.r8.profile.art.rewriting;
 
+import static com.android.tools.r8.utils.ConsumerUtils.emptyConsumer;
+
+import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexClasspathClass;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexType;
+import com.android.tools.r8.graph.MethodResolutionResult.FailedResolutionResult;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.desugar.CfPostProcessingDesugaringEventConsumer;
+import com.android.tools.r8.ir.desugar.desugaredlibrary.machinespecification.EmulatedDispatchMethodDescriptor;
 import com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper;
+import com.android.tools.r8.profile.art.ArtProfileOptions;
+import com.android.tools.r8.utils.BooleanBox;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
@@ -20,38 +27,48 @@ public class ArtProfileRewritingCfPostProcessingDesugaringEventConsumer
     extends CfPostProcessingDesugaringEventConsumer {
 
   private final ConcreteArtProfileCollectionAdditions additionsCollection;
+  private final ArtProfileOptions options;
   private final CfPostProcessingDesugaringEventConsumer parent;
 
   private ArtProfileRewritingCfPostProcessingDesugaringEventConsumer(
       ConcreteArtProfileCollectionAdditions additionsCollection,
+      ArtProfileOptions options,
       CfPostProcessingDesugaringEventConsumer parent) {
     this.additionsCollection = additionsCollection;
+    this.options = options;
     this.parent = parent;
   }
 
   public static CfPostProcessingDesugaringEventConsumer attach(
+      AppView<?> appView,
       ArtProfileCollectionAdditions artProfileCollectionAdditions,
       CfPostProcessingDesugaringEventConsumer eventConsumer) {
     if (artProfileCollectionAdditions.isNop()) {
       return eventConsumer;
     }
     return new ArtProfileRewritingCfPostProcessingDesugaringEventConsumer(
-        artProfileCollectionAdditions.asConcrete(), eventConsumer);
+        artProfileCollectionAdditions.asConcrete(),
+        appView.options().getArtProfileOptions(),
+        eventConsumer);
   }
 
   @Override
-  public void acceptAPIConversionCallback(ProgramMethod method) {
-    parent.acceptAPIConversionCallback(method);
+  public void acceptAPIConversionCallback(
+      ProgramMethod callbackMethod, ProgramMethod convertedMethod) {
+    additionsCollection.addMethodIfContextIsInProfile(callbackMethod, convertedMethod);
+    parent.acceptAPIConversionCallback(callbackMethod, convertedMethod);
   }
 
   @Override
-  public void acceptCollectionConversion(ProgramMethod arrayConversion) {
-    parent.acceptCollectionConversion(arrayConversion);
+  public void acceptCollectionConversion(ProgramMethod arrayConversion, ProgramMethod context) {
+    additionsCollection.addMethodAndHolderIfContextIsInProfile(arrayConversion, context);
+    parent.acceptCollectionConversion(arrayConversion, context);
   }
 
   @Override
-  public void acceptCovariantRetargetMethod(ProgramMethod method) {
-    parent.acceptCovariantRetargetMethod(method);
+  public void acceptCovariantRetargetMethod(ProgramMethod method, ProgramMethod context) {
+    additionsCollection.addMethodAndHolderIfContextIsInProfile(context, method);
+    parent.acceptCovariantRetargetMethod(method, context);
   }
 
   @Override
@@ -60,8 +77,12 @@ public class ArtProfileRewritingCfPostProcessingDesugaringEventConsumer
   }
 
   @Override
-  public void acceptDesugaredLibraryRetargeterForwardingMethod(ProgramMethod method) {
-    parent.acceptDesugaredLibraryRetargeterForwardingMethod(method);
+  public void acceptDesugaredLibraryRetargeterForwardingMethod(
+      ProgramMethod method, EmulatedDispatchMethodDescriptor descriptor) {
+    if (options.isIncludingDesugaredLibraryRetargeterForwardingMethodsUnconditionally()) {
+      additionsCollection.apply(additions -> additions.addMethodRule(method, emptyConsumer()));
+    }
+    parent.acceptDesugaredLibraryRetargeterForwardingMethod(method, descriptor);
   }
 
   @Override
@@ -88,14 +109,29 @@ public class ArtProfileRewritingCfPostProcessingDesugaringEventConsumer
   @Override
   public void acceptInterfaceMethodDesugaringForwardingMethod(
       ProgramMethod method, DexClassAndMethod baseMethod) {
-    additionsCollection.applyIfContextIsInProfile(
-        baseMethod, additionsBuilder -> additionsBuilder.addRule(method));
+    additionsCollection.addMethodIfContextIsInProfile(method, baseMethod, emptyConsumer());
     parent.acceptInterfaceMethodDesugaringForwardingMethod(method, baseMethod);
   }
 
   @Override
-  public void acceptThrowingMethod(ProgramMethod method, DexType errorType) {
-    parent.acceptThrowingMethod(method, errorType);
+  public void acceptThrowingMethod(
+      ProgramMethod method, DexType errorType, FailedResolutionResult resolutionResult) {
+    if (options.isIncludingThrowingMethods()) {
+      BooleanBox seenMethodCausingError = new BooleanBox();
+      resolutionResult.forEachFailureDependency(
+          emptyConsumer(),
+          methodCausingError -> {
+            additionsCollection.applyIfContextIsInProfile(
+                methodCausingError.getReference(),
+                additionsBuilder -> additionsBuilder.addRule(method));
+            seenMethodCausingError.set();
+          });
+      if (seenMethodCausingError.isFalse()) {
+        additionsCollection.applyIfContextIsInProfile(
+            method.getHolder(), additions -> additions.addMethodRule(method, emptyConsumer()));
+      }
+    }
+    parent.acceptThrowingMethod(method, errorType, resolutionResult);
   }
 
   @Override

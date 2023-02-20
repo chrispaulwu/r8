@@ -5,6 +5,7 @@
 package com.android.tools.r8.dump;
 
 import com.android.tools.r8.CompilationMode;
+import com.android.tools.r8.dex.Marker.Backend;
 import com.android.tools.r8.dex.Marker.Tool;
 import com.android.tools.r8.features.FeatureSplitConfiguration;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecification;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeMap;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class DumpOptions {
@@ -28,6 +30,7 @@ public class DumpOptions {
   // The following keys and values should not be changed to keep the dump utility backward
   // compatible with previous versions. They are also used by the python script compileDump and
   // the corresponding CompileDumpCompatR8 java class.
+  private static final String BACKEND_KEY = "backend";
   private static final String TOOL_KEY = "tool";
   private static final String MODE_KEY = "mode";
   private static final String DEBUG_MODE_VALUE = "debug";
@@ -42,12 +45,13 @@ public class DumpOptions {
   private static final String TREE_SHAKING_KEY = "tree-shaking";
   private static final String MINIFICATION_KEY = "minification";
   private static final String FORCE_PROGUARD_COMPATIBILITY_KEY = "force-proguard-compatibility";
-  private static final String SYSTEM_PROPERTY_PREFIX = "system-property-";
+  public static final String SYSTEM_PROPERTY_PREFIX = "system-property-";
   private static final String ENABLE_MISSING_LIBRARY_API_MODELING =
       "enable-missing-library-api-modeling";
   private static final String ANDROID_PLATFORM_BUILD = "android-platform-build";
   private static final String TRACE_REFERENCES_CONSUMER = "trace_references_consumer";
 
+  private final Backend backend;
   private final Tool tool;
   private final CompilationMode compilationMode;
   private final int minApi;
@@ -78,6 +82,7 @@ public class DumpOptions {
   private final boolean dumpInputToFile;
 
   private DumpOptions(
+      Backend backend,
       Tool tool,
       CompilationMode compilationMode,
       int minAPI,
@@ -99,6 +104,7 @@ public class DumpOptions {
       Map<String, String> systemProperties,
       boolean dumpInputToFile,
       String traceReferencesConsumer) {
+    this.backend = backend;
     this.tool = tool;
     this.compilationMode = compilationMode;
     this.minApi = minAPI;
@@ -137,6 +143,7 @@ public class DumpOptions {
     }
     if (tool != Tool.TraceReferences) {
       // We keep the following values for backward compatibility.
+      addDumpEntry(buildProperties, BACKEND_KEY, backend.name());
       addDumpEntry(
           buildProperties,
           MODE_KEY,
@@ -183,6 +190,9 @@ public class DumpOptions {
 
   private static void parseKeyValue(Builder builder, String key, String value) {
     switch (key) {
+      case BACKEND_KEY:
+        builder.setBackend(Backend.valueOf(value));
+        return;
       case TOOL_KEY:
         builder.setTool(Tool.valueOf(value));
         return;
@@ -303,6 +313,8 @@ public class DumpOptions {
   }
 
   public static class Builder {
+    // Initialize backend to DEX for backwards compatibility.
+    private Backend backend = Backend.DEX;
     private Tool tool;
     private CompilationMode compilationMode;
     private int minApi;
@@ -332,6 +344,11 @@ public class DumpOptions {
     private boolean dumpInputToFile;
 
     public Builder() {}
+
+    public Builder setBackend(Backend backend) {
+      this.backend = backend;
+      return this;
+    }
 
     public Builder setTool(Tool tool) {
       this.tool = tool;
@@ -442,21 +459,29 @@ public class DumpOptions {
     }
 
     public Builder readCurrentSystemProperties() {
+      getCurrentSystemProperties().forEach(this::setSystemProperty);
+      return this;
+    }
+
+    public static Map<String, String> getCurrentSystemProperties() {
+      Map<String, String> systemProperties = new TreeMap<>();
       System.getProperties()
           .stringPropertyNames()
           .forEach(
               name -> {
                 if (name.startsWith("com.android.tools.r8.")) {
                   String value = System.getProperty(name);
-                  setSystemProperty(name, value);
+                  systemProperties.put(name, value);
                 }
               });
-      return this;
+      return systemProperties;
     }
 
     public DumpOptions build() {
       assert tool != null;
+      assert tool == Tool.TraceReferences || backend != null;
       return new DumpOptions(
+          backend,
           tool,
           compilationMode,
           minApi,

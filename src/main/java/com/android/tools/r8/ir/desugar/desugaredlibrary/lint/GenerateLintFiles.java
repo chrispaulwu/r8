@@ -76,7 +76,7 @@ public class GenerateLintFiles extends AbstractGenerateFiles {
   }
 
   private void addMethodsToHeaderJar(
-      DexApplication.Builder builder, DexClass clazz, List<DexEncodedMethod> methods) {
+      DexApplication.Builder builder, DexClass clazz, Collection<DexEncodedMethod> methods) {
     if (methods.size() == 0) {
       return;
     }
@@ -244,7 +244,7 @@ public class GenerateLintFiles extends AbstractGenerateFiles {
     AndroidApiLevel compilationLevel =
         desugaredLibrarySpecification.getRequiredCompilationApiLevel();
     SupportedClasses supportedMethods =
-        new SupportedMethodsGenerator(options)
+        new SupportedClassesGenerator(options)
             .run(desugaredLibraryImplementation, desugaredLibrarySpecificationPath);
     System.out.println("Generating lint files for compile API " + compilationLevel);
     generateLintFiles(compilationLevel, AndroidApiLevel.B, supportedMethods);

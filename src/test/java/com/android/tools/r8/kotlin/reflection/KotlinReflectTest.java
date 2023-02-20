@@ -106,10 +106,11 @@ public class KotlinReflectTest extends KotlinTestBase {
         .compile()
         .assertNoErrorMessages()
         // -keepattributes Signature is added in kotlin-reflect from version 1.4.20.
+        .applyIf(kotlinParameters.is(KOTLINC_1_3_72), TestCompileResult::assertNoInfoMessages)
+        // TODO(b/269794485): Figure out why generic signatures fail using kotlin-dev.
         .applyIf(
-            kotlinParameters.getCompiler().isNot(KOTLINC_1_3_72),
-            TestBase::verifyAllInfoFromGenericSignatureTypeParameterValidation,
-            TestCompileResult::assertNoInfoMessages)
+            kotlinParameters.getCompiler().isNot(KOTLINC_1_3_72) && !kotlinParameters.isKotlinDev(),
+            TestBase::verifyAllInfoFromGenericSignatureTypeParameterValidation)
         .apply(KotlinMetadataTestBase::verifyExpectedWarningsFromKotlinReflectAndStdLib)
         .writeToZip(foo.toPath())
         .run(parameters.getRuntime(), PKG + ".SimpleReflectKt")

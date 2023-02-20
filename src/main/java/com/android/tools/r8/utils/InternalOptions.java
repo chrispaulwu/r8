@@ -154,7 +154,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public static final int SUPPORTED_DEX_VERSION =
       AndroidApiLevel.LATEST.getDexVersion().getIntValue();
-  public static final int EXPERIMENTAL_DEX_VERSION = DexVersion.V40.getIntValue();
+  public static final int EXPERIMENTAL_DEX_VERSION = DexVersion.V41.getIntValue();
 
   public static final int ASM_VERSION = Opcodes.ASM9;
 
@@ -839,7 +839,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   private final ApiModelTestingOptions apiModelTestingOptions = new ApiModelTestingOptions();
   private final DesugarSpecificOptions desugarSpecificOptions = new DesugarSpecificOptions();
   private final MappingComposeOptions mappingComposeOptions = new MappingComposeOptions();
-  private final ArtProfileOptions artProfileOptions = new ArtProfileOptions();
+  private final ArtProfileOptions artProfileOptions = new ArtProfileOptions(this);
   private final StartupOptions startupOptions = new StartupOptions();
   private final StartupInstrumentationOptions startupInstrumentationOptions =
       new StartupInstrumentationOptions();
@@ -1909,18 +1909,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     public void disableStubbingOfClasses() {
       enableStubbingOfClasses = false;
     }
-
-    private boolean isThrowable(AppView<?> appView, DexLibraryClass libraryClass) {
-      DexClass current = libraryClass;
-      while (current.getSuperType() != null) {
-        DexType superType = current.getSuperType();
-        if (superType == appView.dexItemFactory().throwableType) {
-          return true;
-        }
-        current = appView.definitionFor(current.getSuperType());
-      }
-      return false;
-    }
   }
 
   public static class ProtoShrinkingOptions {
@@ -1972,12 +1960,14 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     // If false, use the desugared library implementation when desugared library is enabled.
     public boolean alwaysBackportListSetMapMethods = true;
     public boolean neverReuseCfLocalRegisters = false;
-    public boolean roundtripThroughLIR = false;
+    public boolean roundtripThroughLir = false;
     public boolean checkReceiverAlwaysNullInCallSiteOptimization = true;
     public boolean forceInlineAPIConversions = false;
     private boolean hasReadCheckDeterminism = false;
     private DeterminismChecker determinismChecker = null;
     public boolean usePcEncodingInCfForTesting = false;
+    public boolean dexVersion40FromApiLevel30 =
+        System.getProperty("com.android.tools.r8.dexVersion40ForApiLevel30") != null;
     public boolean dexContainerExperiment =
         System.getProperty("com.android.tools.r8.dexContainerExperiment") != null;
 

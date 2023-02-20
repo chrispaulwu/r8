@@ -163,7 +163,7 @@ public class R8 {
     if (options.printMemory) {
       System.gc();
     }
-    timing = Timing.create("R8", options);
+    timing = Timing.create("R8 " + Version.LABEL, options);
   }
 
   /**
@@ -303,13 +303,11 @@ public class R8 {
           appView.dexItemFactory());
 
       // Upfront desugaring generation: Generates new program classes to be added in the app.
-      ArtProfileCollectionAdditions artProfileCollectionAdditions =
-          ArtProfileCollectionAdditions.create(appView);
       CfClassSynthesizerDesugaringEventConsumer classSynthesizerEventConsumer =
-          CfClassSynthesizerDesugaringEventConsumer.create(artProfileCollectionAdditions);
+          CfClassSynthesizerDesugaringEventConsumer.createForR8(appView);
       CfClassSynthesizerDesugaringCollection.create(appView)
           .synthesizeClasses(executorService, classSynthesizerEventConsumer);
-      artProfileCollectionAdditions.commit(appView);
+      classSynthesizerEventConsumer.finished(appView);
       if (appView.getSyntheticItems().hasPendingSyntheticClasses()) {
         appView.setAppInfo(
             appView
@@ -333,11 +331,14 @@ public class R8 {
                     options.itemFactory, options.getMinApiLevel()));
           }
         }
+        ArtProfileCollectionAdditions artProfileCollectionAdditions =
+            ArtProfileCollectionAdditions.create(appView);
         AssumeInfoCollection.Builder assumeInfoCollectionBuilder = AssumeInfoCollection.builder();
         SubtypingInfo subtypingInfo = SubtypingInfo.create(appView);
         appView.setRootSet(
             RootSet.builder(
                     appView,
+                    artProfileCollectionAdditions,
                     subtypingInfo,
                     Iterables.concat(
                         options.getProguardConfiguration().getRules(), synthesizedProguardRules))
@@ -351,7 +352,11 @@ public class R8 {
           assert appView.graphLens().isIdentityLens();
           // Find classes which may have code executed before secondary dex files installation.
           MainDexRootSet mainDexRootSet =
-              MainDexRootSet.builder(appView, subtypingInfo, options.mainDexKeepRules)
+              MainDexRootSet.builder(
+                      appView,
+                      artProfileCollectionAdditions,
+                      subtypingInfo,
+                      options.mainDexKeepRules)
                   .build(executorService);
           appView.setMainDexRootSet(mainDexRootSet);
           appView.appInfo().unsetObsolete();
@@ -366,6 +371,7 @@ public class R8 {
                 annotationRemoverBuilder,
                 executorService,
                 appView,
+                artProfileCollectionAdditions,
                 subtypingInfo,
                 classMergingEnqueuerExtensionBuilder);
         timing.end();
@@ -473,7 +479,7 @@ public class R8 {
       // should therefore be run after the publicizer.
       new NestReducer(appViewWithLiveness).run(executorService, timing);
 
-      appView.setGraphLens(new MemberRebindingAnalysis(appViewWithLiveness).run(executorService));
+      new MemberRebindingAnalysis(appViewWithLiveness).run(executorService);
       appView.appInfo().withLiveness().getFieldAccessInfoCollection().restrictToProgram(appView);
 
       boolean isKotlinLibraryCompilationWithInlinePassThrough =
@@ -961,12 +967,14 @@ public class R8 {
       AnnotationRemover.Builder annotationRemoverBuilder,
       ExecutorService executorService,
       AppView<AppInfoWithClassHierarchy> appView,
+      ArtProfileCollectionAdditions artProfileCollectionAdditions,
       SubtypingInfo subtypingInfo,
       RuntimeTypeCheckInfo.Builder classMergingEnqueuerExtensionBuilder)
       throws ExecutionException {
     timing.begin("Set up enqueuer");
     Enqueuer enqueuer =
-        EnqueuerFactory.createForInitialTreeShaking(appView, executorService, subtypingInfo);
+        EnqueuerFactory.createForInitialTreeShaking(
+            appView, artProfileCollectionAdditions, executorService, subtypingInfo);
     enqueuer.setAnnotationRemoverBuilder(annotationRemoverBuilder);
     if (appView.options().enableInitializedClassesInInstanceMethodsAnalysis) {
       enqueuer.registerAnalysis(new InitializedClassesInInstanceMethodsAnalysis(appView));
@@ -986,6 +994,7 @@ public class R8 {
     timing.begin("Trace application");
     EnqueuerResult enqueuerResult =
         enqueuer.traceApplication(appView.rootSet(), executorService, timing);
+    assert artProfileCollectionAdditions.verifyIsCommitted();
     timing.end();
     timing.begin("Finalize enqueuer result");
     AppView<AppInfoWithLiveness> appViewWithLiveness =

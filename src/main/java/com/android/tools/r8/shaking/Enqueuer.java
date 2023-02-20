@@ -473,6 +473,7 @@ public class Enqueuer {
 
   Enqueuer(
       AppView<? extends AppInfoWithClassHierarchy> appView,
+      ArtProfileCollectionAdditions artProfileCollectionAdditions,
       ExecutorService executorService,
       SubtypingInfo subtypingInfo,
       GraphConsumer keptGraphConsumer,
@@ -481,7 +482,7 @@ public class Enqueuer {
     InternalOptions options = appView.options();
     this.appInfo = appView.appInfo();
     this.appView = appView.withClassHierarchy();
-    this.artProfileCollectionAdditions = ArtProfileCollectionAdditions.create(appView);
+    this.artProfileCollectionAdditions = artProfileCollectionAdditions;
     this.deferredTracing = EnqueuerDeferredTracing.create(appView, this, mode);
     this.executorService = executorService;
     this.subtypingInfo = subtypingInfo;
@@ -529,6 +530,10 @@ public class Enqueuer {
 
   private AppInfoWithClassHierarchy appInfo() {
     return appView.appInfo();
+  }
+
+  public ArtProfileCollectionAdditions getArtProfileCollectionAdditions() {
+    return artProfileCollectionAdditions;
   }
 
   public Mode getMode() {
@@ -4010,7 +4015,7 @@ public class Enqueuer {
     // registered first and no dependencies may exist among them.
     SyntheticAdditions additions = new SyntheticAdditions(appView.createProcessorContext());
     desugar(additions);
-    synthesizeInterfaceMethodBridges(additions);
+    synthesizeInterfaceMethodBridges();
     if (additions.isEmpty()) {
       return;
     }
@@ -4164,11 +4169,13 @@ public class Enqueuer {
     }
   }
 
-  private void synthesizeInterfaceMethodBridges(SyntheticAdditions additions) {
-    for (ProgramMethod bridge : syntheticInterfaceMethodBridges.values()) {
+  private void synthesizeInterfaceMethodBridges() {
+    for (InterfaceMethodSyntheticBridgeAction action : syntheticInterfaceMethodBridges.values()) {
+      ProgramMethod bridge = action.getMethodToKeep();
       DexProgramClass holder = bridge.getHolder();
       DexEncodedMethod method = bridge.getDefinition();
       holder.addVirtualMethod(method);
+      artProfileCollectionAdditions.addMethodIfContextIsInProfile(bridge, action.getSingleTarget());
     }
     syntheticInterfaceMethodBridges.clear();
   }
@@ -4473,7 +4480,7 @@ public class Enqueuer {
             }
           }
           ConsequentRootSetBuilder consequentSetBuilder =
-              ConsequentRootSet.builder(appView, subtypingInfo, this);
+              ConsequentRootSet.builder(appView, this, subtypingInfo);
           IfRuleEvaluator ifRuleEvaluator =
               new IfRuleEvaluator(
                   appView,
@@ -4567,6 +4574,7 @@ public class Enqueuer {
 
     CfPostProcessingDesugaringEventConsumer eventConsumer =
         CfPostProcessingDesugaringEventConsumer.createForR8(
+            appView,
             syntheticAdditions,
             artProfileCollectionAdditions,
             desugaring,
@@ -4633,7 +4641,7 @@ public class Enqueuer {
   }
 
   private ConsequentRootSet computeDelayedInterfaceMethodSyntheticBridges() {
-    RootSetBuilder builder = RootSet.builder(appView, subtypingInfo);
+    RootSetBuilder builder = RootSet.builder(appView, this, subtypingInfo);
     for (DelayedRootSetActionItem delayedRootSetActionItem : rootSet.delayedRootSetActionItems) {
       if (delayedRootSetActionItem.isInterfaceMethodSyntheticBridgeAction()) {
         handleInterfaceMethodSyntheticBridgeAction(
@@ -4643,8 +4651,8 @@ public class Enqueuer {
     return builder.buildConsequentRootSet();
   }
 
-  private final Map<DexMethod, ProgramMethod> syntheticInterfaceMethodBridges =
-      new LinkedHashMap<>();
+  private final Map<DexMethod, InterfaceMethodSyntheticBridgeAction>
+      syntheticInterfaceMethodBridges = new LinkedHashMap<>();
 
   private void identifySyntheticInterfaceMethodBridges(
       InterfaceMethodSyntheticBridgeAction action) {
@@ -4656,8 +4664,7 @@ public class Enqueuer {
     if (methodToKeep != singleTarget
         && !syntheticInterfaceMethodBridges.containsKey(
             methodToKeep.getDefinition().getReference())) {
-      syntheticInterfaceMethodBridges.put(
-          methodToKeep.getDefinition().getReference(), methodToKeep);
+      syntheticInterfaceMethodBridges.put(methodToKeep.getDefinition().getReference(), action);
     }
   }
 

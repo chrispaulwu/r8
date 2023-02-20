@@ -12,7 +12,6 @@ import com.android.tools.r8.horizontalclassmerging.HorizontalClassMerger.Mode;
 import com.android.tools.r8.horizontalclassmerging.policies.AllInstantiatedOrUninstantiated;
 import com.android.tools.r8.horizontalclassmerging.policies.CheckAbstractClasses;
 import com.android.tools.r8.horizontalclassmerging.policies.CheckSyntheticClasses;
-import com.android.tools.r8.horizontalclassmerging.policies.ComputeApiLevelOfSyntheticClass;
 import com.android.tools.r8.horizontalclassmerging.policies.FinalizeMergeGroup;
 import com.android.tools.r8.horizontalclassmerging.policies.LimitClassGroups;
 import com.android.tools.r8.horizontalclassmerging.policies.LimitInterfaceGroups;
@@ -58,7 +57,7 @@ import com.android.tools.r8.horizontalclassmerging.policies.SameFilePolicy;
 import com.android.tools.r8.horizontalclassmerging.policies.SameInstanceFields;
 import com.android.tools.r8.horizontalclassmerging.policies.SameMainDexGroup;
 import com.android.tools.r8.horizontalclassmerging.policies.SameNestHost;
-import com.android.tools.r8.horizontalclassmerging.policies.SamePackageForApiOutline;
+import com.android.tools.r8.horizontalclassmerging.policies.SamePackageForNonGlobalMergeSynthetic;
 import com.android.tools.r8.horizontalclassmerging.policies.SameParentClass;
 import com.android.tools.r8.horizontalclassmerging.policies.SyntheticItemsPolicy;
 import com.android.tools.r8.horizontalclassmerging.policies.VerifyMultiClassPolicyAlwaysSatisfied;
@@ -143,8 +142,7 @@ public class PolicyScheduler {
     ImmutableList.Builder<SingleClassPolicy> builder =
         ImmutableList.<SingleClassPolicy>builder()
             .add(new CheckSyntheticClasses(appView))
-            .add(new OnlyClassesWithStaticDefinitionsAndNoClassInitializer())
-            .add(new ComputeApiLevelOfSyntheticClass(appView));
+            .add(new OnlyClassesWithStaticDefinitionsAndNoClassInitializer());
     assert verifySingleClassPoliciesIrrelevantForMergingSyntheticsInD8(appView, mode, builder);
     return builder.build();
   }
@@ -267,7 +265,7 @@ public class PolicyScheduler {
         new SameParentClass(),
         new SyntheticItemsPolicy(appView, mode),
         new NoApiOutlineWithNonApiOutline(appView),
-        new SamePackageForApiOutline(appView, mode),
+        new SamePackageForNonGlobalMergeSynthetic(appView),
         new NoDifferentApiReferenceLevel(appView),
         new LimitClassGroups(appView));
     assert verifyMultiClassPoliciesIrrelevantForMergingSyntheticsInD8(appView, mode, builder);

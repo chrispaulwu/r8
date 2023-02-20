@@ -6,12 +6,14 @@ package com.android.tools.r8.dex.container;
 import static com.android.tools.r8.dex.Constants.CHECKSUM_OFFSET;
 import static com.android.tools.r8.dex.Constants.DATA_OFF_OFFSET;
 import static com.android.tools.r8.dex.Constants.DATA_SIZE_OFFSET;
+import static com.android.tools.r8.dex.Constants.DEX_MAGIC_SIZE;
 import static com.android.tools.r8.dex.Constants.FILE_SIZE_OFFSET;
 import static com.android.tools.r8.dex.Constants.MAP_OFF_OFFSET;
 import static com.android.tools.r8.dex.Constants.SIGNATURE_OFFSET;
 import static com.android.tools.r8.dex.Constants.STRING_IDS_OFF_OFFSET;
 import static com.android.tools.r8.dex.Constants.STRING_IDS_SIZE_OFFSET;
 import static com.android.tools.r8.dex.Constants.TYPE_STRING_ID_ITEM;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -26,7 +28,10 @@ import com.android.tools.r8.errors.CompilationError;
 import com.android.tools.r8.maindexlist.MainDexListTests;
 import com.android.tools.r8.transformers.ClassTransformer;
 import com.android.tools.r8.utils.AndroidApiLevel;
+import com.android.tools.r8.utils.BitUtils;
 import com.android.tools.r8.utils.DescriptorUtils;
+import com.android.tools.r8.utils.DexVersion;
+import com.android.tools.r8.utils.ListUtils;
 import com.android.tools.r8.utils.ZipUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteStreams;
@@ -80,7 +85,7 @@ public class DexContainerFormatBasicTest extends TestBase {
             .setMinApi(AndroidApiLevel.L)
             .compile()
             .writeToZip();
-    validateDex(outputA, 2);
+    validateDex(outputA, 2, AndroidApiLevel.L.getDexVersion());
 
     Path outputB =
         testForD8(Backend.DEX)
@@ -88,7 +93,7 @@ public class DexContainerFormatBasicTest extends TestBase {
             .setMinApi(AndroidApiLevel.L)
             .compile()
             .writeToZip();
-    validateDex(outputB, 2);
+    validateDex(outputB, 2, AndroidApiLevel.L.getDexVersion());
 
     Path outputMerged =
         testForD8(Backend.DEX)
@@ -96,7 +101,7 @@ public class DexContainerFormatBasicTest extends TestBase {
             .setMinApi(AndroidApiLevel.L)
             .compile()
             .writeToZip();
-    validateDex(outputMerged, 4);
+    validateDex(outputMerged, 4, AndroidApiLevel.L.getDexVersion());
   }
 
   @Test
@@ -135,47 +140,77 @@ public class DexContainerFormatBasicTest extends TestBase {
     validateSingleContainerDex(outputB);
   }
 
-  private void validateDex(Path output, int expectedDexes) throws Exception {
+  private void validateDex(Path output, int expectedDexes, DexVersion expectedVersion)
+      throws Exception {
     List<byte[]> dexes = unzipContent(output);
     assertEquals(expectedDexes, dexes.size());
     for (byte[] dex : dexes) {
-      validate(dex);
+      validate(dex, expectedVersion);
     }
   }
 
   private void validateSingleContainerDex(Path output) throws Exception {
     List<byte[]> dexes = unzipContent(output);
     assertEquals(1, dexes.size());
-    validate(dexes.get(0));
+    validate(dexes.get(0), DexVersion.V41);
   }
 
-  private void validate(byte[] dex) throws Exception {
+  private void validate(byte[] dex, DexVersion expectedVersion) throws Exception {
     CompatByteBuffer buffer = CompatByteBuffer.wrap(dex);
     setByteOrder(buffer);
 
     IntList sections = new IntArrayList();
     int offset = 0;
     while (offset < buffer.capacity()) {
+      assertTrue(BitUtils.isAligned(4, offset));
       sections.add(offset);
       int dataSize = buffer.getInt(offset + DATA_SIZE_OFFSET);
       int dataOffset = buffer.getInt(offset + DATA_OFF_OFFSET);
+      int file_size = buffer.getInt(offset + FILE_SIZE_OFFSET);
       offset = dataOffset + dataSize;
+      assertEquals(file_size, offset - ListUtils.last(sections));
     }
     assertEquals(buffer.capacity(), offset);
 
-    int lastOffset = sections.getInt(sections.size() - 1);
-    int stringIdsSize = buffer.getInt(lastOffset + STRING_IDS_SIZE_OFFSET);
-    int stringIdsOffset = buffer.getInt(lastOffset + STRING_IDS_OFF_OFFSET);
-
     for (Integer sectionOffset : sections) {
-      assertEquals(stringIdsSize, buffer.getInt(sectionOffset + STRING_IDS_SIZE_OFFSET));
-      assertEquals(stringIdsOffset, buffer.getInt(sectionOffset + STRING_IDS_OFF_OFFSET));
-      assertEquals(stringIdsSize, getSizeFromMap(TYPE_STRING_ID_ITEM, buffer, sectionOffset));
-      assertEquals(stringIdsOffset, getOffsetFromMap(TYPE_STRING_ID_ITEM, buffer, sectionOffset));
+      validateHeader(sections, buffer, sectionOffset, expectedVersion);
       validateMap(buffer, sectionOffset);
       validateSignature(buffer, sectionOffset);
       validateChecksum(buffer, sectionOffset);
     }
+  }
+
+  private byte[] magicBytes(DexVersion version) {
+    byte[] magic = new byte[DEX_MAGIC_SIZE];
+    System.arraycopy(
+        Constants.DEX_FILE_MAGIC_PREFIX, 0, magic, 0, Constants.DEX_FILE_MAGIC_PREFIX.length);
+    System.arraycopy(
+        version.getBytes(),
+        0,
+        magic,
+        Constants.DEX_FILE_MAGIC_PREFIX.length,
+        version.getBytes().length);
+    magic[Constants.DEX_FILE_MAGIC_PREFIX.length + version.getBytes().length] =
+        Constants.DEX_FILE_MAGIC_SUFFIX;
+    assertEquals(
+        DEX_MAGIC_SIZE, Constants.DEX_FILE_MAGIC_PREFIX.length + version.getBytes().length + 1);
+    return magic;
+  }
+
+  private void validateHeader(
+      IntList sections, CompatByteBuffer buffer, int offset, DexVersion expectedVersion) {
+    int lastOffset = sections.getInt(sections.size() - 1);
+    int stringIdsSize = buffer.getInt(lastOffset + STRING_IDS_SIZE_OFFSET);
+    int stringIdsOffset = buffer.getInt(lastOffset + STRING_IDS_OFF_OFFSET);
+
+    byte[] magic = new byte[DEX_MAGIC_SIZE];
+    buffer.get(magic);
+    assertArrayEquals(magicBytes(expectedVersion), magic);
+
+    assertEquals(stringIdsSize, buffer.getInt(offset + STRING_IDS_SIZE_OFFSET));
+    assertEquals(stringIdsOffset, buffer.getInt(offset + STRING_IDS_OFF_OFFSET));
+    assertEquals(stringIdsSize, getSizeFromMap(TYPE_STRING_ID_ITEM, buffer, offset));
+    assertEquals(stringIdsOffset, getOffsetFromMap(TYPE_STRING_ID_ITEM, buffer, offset));
   }
 
   private void validateMap(CompatByteBuffer buffer, int offset) {
@@ -199,9 +234,7 @@ public class DexContainerFormatBasicTest extends TestBase {
     int sectionSize = buffer.getInt(offset + FILE_SIZE_OFFSET);
     MessageDigest md = MessageDigest.getInstance("SHA-1");
     md.update(
-        buffer.asByteBuffer().array(),
-        offset + FILE_SIZE_OFFSET,
-        sectionSize - offset - FILE_SIZE_OFFSET);
+        buffer.asByteBuffer().array(), offset + FILE_SIZE_OFFSET, sectionSize - FILE_SIZE_OFFSET);
     byte[] expectedSignature = new byte[20];
     md.digest(expectedSignature, 0, 20);
     for (int i = 0; i < expectedSignature.length; i++) {
@@ -213,9 +246,7 @@ public class DexContainerFormatBasicTest extends TestBase {
     int sectionSize = buffer.getInt(offset + FILE_SIZE_OFFSET);
     Adler32 adler = new Adler32();
     adler.update(
-        buffer.asByteBuffer().array(),
-        offset + SIGNATURE_OFFSET,
-        sectionSize - offset - SIGNATURE_OFFSET);
+        buffer.asByteBuffer().array(), offset + SIGNATURE_OFFSET, sectionSize - SIGNATURE_OFFSET);
     assertEquals((int) adler.getValue(), buffer.getInt(offset + CHECKSUM_OFFSET));
   }
 
