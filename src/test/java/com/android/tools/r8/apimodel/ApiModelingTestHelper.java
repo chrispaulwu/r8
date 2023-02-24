@@ -447,6 +447,17 @@ public abstract class ApiModelingTestHelper {
       }
     }
 
+    void isOutlinedFromBetween(
+        Executable method, AndroidApiLevel lowerBoundInclusive, AndroidApiLevel upperBound) {
+      if (parameters.isDexRuntime()
+          && parameters.getApiLevel().isLessThan(upperBound)
+          && parameters.getApiLevel().isGreaterThanOrEqualTo(lowerBoundInclusive)) {
+        isOutlinedFrom(method);
+      } else {
+        isNotOutlinedFrom(method);
+      }
+    }
+
     void isOutlinedFrom(Executable method) {
       // Check that the call is in a synthetic class.
       List<FoundMethodSubject> outlinedMethod =
