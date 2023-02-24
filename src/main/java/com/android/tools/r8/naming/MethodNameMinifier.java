@@ -5,6 +5,7 @@ package com.android.tools.r8.naming;
 
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClass;
+import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexEncodedMethod;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexString;
@@ -290,6 +291,16 @@ class MethodNameMinifier {
             if (state.isAvailableForInterface(candidate, holder, method, minifierState) && state.isAvailable(candidate, method.getReference())) {
               System.out.printf("Found multi reservedNames and match interface's candidate: %s, reservedName: %s, method holder: %s, method: %s\n", candidate.toString(), newName, holder.getSimpleName(), method.getReference().toSourceString());
               newName = candidate;
+              if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method.getReference())) { //假设interface的method被keep，这时newName=method.getName()， 导致renaming无法被更新，
+                DexClassAndMethod interfaceResult = appView.appInfo().lookupMaximallySpecificMethod(holder, method.getReference());
+                if (interfaceResult != null) {
+                  DexMethod dexMethod = interfaceResult.getReference();
+                  if (dexMethod != null && !appView.appInfo().isMinificationAllowed(dexMethod)) {
+                    System.out.printf("Found interface's method candidate: %s, method: %s\n", candidate, dexMethod.toSourceString());
+                    keepRenaming.put(method.getReference(), newName);
+                  }
+                }
+              }
               break;
             }
           }
