@@ -108,6 +108,13 @@ public class TestParameters {
     return runtime == NoneRuntime.getInstance();
   }
 
+  public void configureApiLevel(TestCompilerBuilder<?, ?, ?, ?, ?> testCompilerBuilder) {
+    testCompilerBuilder.setMinApi(apiLevel);
+  }
+
+  // TODO(b/270021825): Tests should not access the underlying API level directly, but may be
+  //  allowed to query if the api level satisfies some condition.
+  @Deprecated
   public AndroidApiLevel getApiLevel() {
     if (runtime.isDex() && apiLevel == null) {
       throw new RuntimeException(

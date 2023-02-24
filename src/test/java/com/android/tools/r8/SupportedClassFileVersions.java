@@ -48,7 +48,7 @@ public class SupportedClassFileVersions extends TestBase implements Opcodes {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(dump(version))
         .addKeepMainRule("Test")
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), "Test")
         .applyIf(
             parameters.isCfRuntime()
