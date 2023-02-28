@@ -15,7 +15,6 @@ import com.android.tools.r8.TestCompilerBuilder;
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.references.Reference;
-import com.android.tools.r8.synthesis.SyntheticItemsTestUtils;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.codeinspector.HorizontallyMergedClassesInspector;
 import java.util.Collections;
@@ -115,25 +114,12 @@ public class ApiModelClassMergingPackagePrivateTest extends TestBase {
         .apply(this::setupTestBuilder)
         .addKeepMainRule(Main.class)
         .addDontObfuscate()
-        .addHorizontallyMergedClassesInspectorIf(
-            parameters.isCfRuntime(), HorizontallyMergedClassesInspector::assertNoClassesMerged)
-        .addHorizontallyMergedClassesInspectorIf(
-            !parameters.isCfRuntime(), this::inspectHorizontallyMergedClasses)
+        .addHorizontallyMergedClassesInspector(
+            HorizontallyMergedClassesInspector::assertNoClassesMerged)
         .compile()
         .addBootClasspathClasses(Api1.class, Api2.class)
         .run(parameters.getRuntime(), Main.class)
         .apply(this::checkOutput);
-  }
-
-  private void inspectHorizontallyMergedClasses(HorizontallyMergedClassesInspector inspector) {
-    if (isGreaterOrEqualToMockLevel()) {
-      inspector.assertNoClassesMerged();
-    } else {
-      inspector.assertClassReferencesMerged(
-          SyntheticItemsTestUtils.syntheticApiOutlineClass(Reference.classFromClass(Main.class), 0),
-          SyntheticItemsTestUtils.syntheticApiOutlineClass(
-              Reference.classFromDescriptor(newCallerDescriptor), 0));
-    }
   }
 
   private void checkOutput(SingleTestRunResult<?> runResult) {
