@@ -56,8 +56,8 @@ public class InvokeCustomRuntimeErrorTest extends TestBase {
 
   @Test
   public void testReference() throws Throwable {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(I.class, A.class)
         .addProgramClassFileData(getTransformedTestClass())
         .run(parameters.getRuntime(), TestClass.class)
@@ -86,7 +86,7 @@ public class InvokeCustomRuntimeErrorTest extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClasses(I.class, A.class)
         .addProgramClassFileData(getTransformedTestClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .disableDesugaring()
         .compileWithExpectedDiagnostics(
             diagnostics ->
@@ -180,8 +180,7 @@ public class InvokeCustomRuntimeErrorTest extends TestBase {
   static class TestClass {
 
     public static CallSite bsmCreateCallSite(
-        MethodHandles.Lookup caller, String name, MethodType type, MethodHandle handle)
-        throws Throwable {
+        MethodHandles.Lookup caller, String name, MethodType type, MethodHandle handle) {
       return new ConstantCallSite(handle);
     }
 

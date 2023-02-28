@@ -88,6 +88,19 @@ public abstract class TestCompileResult<
     this.libraryDesugaringTestConfiguration = libraryDesugaringTestConfiguration;
   }
 
+  public CR addVmArguments(Collection<String> arguments) {
+    vmArguments.addAll(arguments);
+    return self();
+  }
+
+  public CR addVmArguments(String... arguments) {
+    return addVmArguments(Arrays.asList(arguments));
+  }
+
+  public CR noVerify() {
+    return addVmArguments("-noverify");
+  }
+
   public CR applyIf(boolean condition, ThrowableConsumer<CR> thenConsumer) {
     return applyIf(condition, thenConsumer, result -> {});
   }
@@ -162,7 +175,7 @@ public abstract class TestCompileResult<
   }
 
   @Deprecated
-  public RR run(String mainClass) throws ExecutionException, IOException {
+  public RR run(String mainClass) throws IOException {
     assert !libraryDesugaringTestConfiguration.isEnabled();
     ClassSubject mainClassSubject = inspector().clazz(mainClass);
     assertThat(mainClassSubject, isPresent());
@@ -193,8 +206,7 @@ public abstract class TestCompileResult<
     return run(runtime, mainClass, new String[] {});
   }
 
-  public RR run(TestRuntime runtime, String mainClass, String... args)
-      throws ExecutionException, IOException {
+  public RR run(TestRuntime runtime, String mainClass, String... args) throws IOException {
     assert getBackend() == runtime.getBackend();
     ClassSubject mainClassSubject = inspector().clazz(mainClass);
     if (!mainClassSubject.isPresent()) {
@@ -285,7 +297,7 @@ public abstract class TestCompileResult<
             clazz, Origin.unknown(), ImmutableSet.of(TestBase.extractClassDescriptor(clazz)));
       }
       Path path = state.getNewTempFolder().resolve("runtime-classes.jar");
-      appBuilder.build().writeToZip(path, OutputMode.ClassFile);
+      appBuilder.build().writeToZipForTesting(path, OutputMode.ClassFile);
       additionalRunClassPath.add(path);
       return self();
     } catch (IOException e) {
@@ -412,7 +424,7 @@ public abstract class TestCompileResult<
   }
 
   public CR writeToZip(Path file) throws IOException {
-    app.writeToZip(file, getOutputMode());
+    app.writeToZipForTesting(file, getOutputMode());
     return self();
   }
 
@@ -594,7 +606,7 @@ public abstract class TestCompileResult<
     return self();
   }
 
-  public CR disassemble(PrintStream ps) throws IOException, ExecutionException {
+  public CR disassemble(PrintStream ps) throws IOException {
     ToolHelper.disassemble(app, ps);
     return self();
   }
@@ -617,7 +629,7 @@ public abstract class TestCompileResult<
     // does not declare exceptions.
     try {
       Path out = state.getNewTempFolder().resolve("out.zip");
-      app.writeToZip(out, getOutputMode());
+      app.writeToZipForTesting(out, getOutputMode());
       return DebugTestConfig.create(runtime, out);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -627,7 +639,7 @@ public abstract class TestCompileResult<
   private RR runJava(TestRuntime runtime, String... arguments) throws IOException {
     assert runtime != null;
     Path out = state.getNewTempFolder().resolve("out.zip");
-    app.writeToZip(out, OutputMode.ClassFile);
+    app.writeToZipForTesting(out, OutputMode.ClassFile);
     List<Path> classPath =
         ImmutableList.<Path>builder().addAll(additionalRunClassPath).add(out).build();
     ProcessResult result =
@@ -640,7 +652,7 @@ public abstract class TestCompileResult<
     DexVm vm = runtime.asDex().getVm();
     // TODO(b/127785410): Always assume a non-null runtime.
     Path out = state.getNewTempFolder().resolve("out.zip");
-    app.writeToZip(out, OutputMode.DexIndexed);
+    app.writeToZipForTesting(out, OutputMode.DexIndexed);
     List<String> classPath =
         ImmutableList.<String>builder()
             .addAll(
@@ -686,7 +698,7 @@ public abstract class TestCompileResult<
     Path tmp = state.getNewTempFolder();
     Path jarFile = tmp.resolve("out.jar");
     Path oatFile = tmp.resolve("out.oat");
-    app.writeToZip(jarFile, OutputMode.DexIndexed);
+    app.writeToZipForTesting(jarFile, OutputMode.DexIndexed);
     return new Dex2OatTestRunResult(
         app, runtime, ToolHelper.runDex2OatRaw(jarFile, oatFile, vm), state);
   }

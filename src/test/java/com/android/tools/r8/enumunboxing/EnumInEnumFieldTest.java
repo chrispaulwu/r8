@@ -53,7 +53,7 @@ public class EnumInEnumFieldTest extends EnumUnboxingTestBase {
               inspector.assertUnboxed(OtherEnum.class);
             })
         .addNeverClassInliningAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("0");
   }
@@ -74,7 +74,7 @@ public class EnumInEnumFieldTest extends EnumUnboxingTestBase {
 
   public static class Main {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       set(System.currentTimeMillis() > 0 ? OtherEnum.C : OtherEnum.D);
       System.out.println(MyEnum.A.otherEnum.ordinal());
     }

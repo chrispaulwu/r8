@@ -18,10 +18,7 @@ import com.android.tools.r8.ir.code.IRCode;
 import com.android.tools.r8.ir.code.Instruction;
 import com.android.tools.r8.ir.code.InvokeDirect;
 import com.android.tools.r8.ir.optimize.info.initializer.InstanceInitializerInfo;
-import com.android.tools.r8.logging.Log;
 import com.google.common.collect.Sets;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.util.Collections;
 import java.util.Set;
 
@@ -31,11 +28,6 @@ public class LibraryMethodOverrideAnalysis {
 
   // Note: Set is accessed concurrently and must be thread-safe.
   private final Set<DexType> nonEscapingClassesWithLibraryMethodOverrides;
-
-  // Maps each instruction type to the number of times that kind of instruction has caused a type to
-  // escape.
-  private final Object2IntMap<Class<?>> escapeDebuggingCounters =
-      Log.ENABLED ? new Object2IntLinkedOpenHashMap<>() : null;
 
   public LibraryMethodOverrideAnalysis(AppView<AppInfoWithLiveness> appView) {
     this.appView = appView;
@@ -127,16 +119,6 @@ public class LibraryMethodOverrideAnalysis {
           // We need to remove this instance from the set of non-escaping classes if it escapes.
           if (escapeAnalysis.isEscaping(code, instruction.outValue())) {
             nonEscapingClassesWithLibraryMethodOverrides.remove(type);
-
-            if (Log.ENABLED) {
-              Set<Instruction> escapeRoutes =
-                  escapeAnalysis.computeEscapeRoutes(code, instruction.outValue());
-              for (Instruction escapeRoute : escapeRoutes) {
-                Class<?> instructionClass = escapeRoute.getClass();
-                escapeDebuggingCounters.put(
-                    instructionClass, escapeDebuggingCounters.getInt(instructionClass) + 1);
-              }
-            }
           }
         }
       }
@@ -157,27 +139,6 @@ public class LibraryMethodOverrideAnalysis {
           || nonEscapingClassesWithLibraryMethodOverrides.contains(clazz.type);
     }
     return true;
-  }
-
-  public void logResults() {
-    assert Log.ENABLED;
-    Log.info(
-        getClass(),
-        "# classes with library method overrides: %s",
-        getClassesWithLibraryMethodOverrides(appView).size());
-    Log.info(
-        getClass(),
-        "# non-escaping classes with library method overrides: %s",
-        nonEscapingClassesWithLibraryMethodOverrides.size());
-    escapeDebuggingCounters
-        .keySet()
-        .forEach(
-            (instructionClass) ->
-                Log.info(
-                    getClass(),
-                    "# classes that escaped via %s: %s",
-                    instructionClass.getSimpleName(),
-                    escapeDebuggingCounters.getInt(instructionClass)));
   }
 
   static class LibraryEscapeAnalysisConfiguration implements EscapeAnalysisConfiguration {

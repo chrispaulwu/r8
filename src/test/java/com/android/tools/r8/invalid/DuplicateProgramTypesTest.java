@@ -65,7 +65,7 @@ public class DuplicateProgramTypesTest extends TestBase {
     builder.addClassProgramData(bytes, originB);
   }
 
-  private void addResolvingHandler(BaseCompilerCommand.Builder<?, ?> builder) throws Exception {
+  private void addResolvingHandler(BaseCompilerCommand.Builder<?, ?> builder) {
     builder.setClassConflictResolver(
         (reference, origins, handler) -> {
           assertEquals(
@@ -74,7 +74,7 @@ public class DuplicateProgramTypesTest extends TestBase {
         });
   }
 
-  private void addNonResolvingHandler(BaseCompilerCommand.Builder<?, ?> builder) throws Exception {
+  private void addNonResolvingHandler(BaseCompilerCommand.Builder<?, ?> builder) {
     builder.setClassConflictResolver(
         (reference, origins, handler) -> {
           assertEquals(
@@ -100,12 +100,12 @@ public class DuplicateProgramTypesTest extends TestBase {
   }
 
   @Test
-  public void testDefaultError() throws Exception {
+  public void testDefaultError() {
     assertThrows(
         CompilationFailedException.class,
         () ->
             testForD8(parameters.getBackend())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .apply(b -> addDuplicateDefinitions(b.getBuilder()))
                 .compileWithExpectedDiagnostics(this::checkErrorDiagnostic));
   }
@@ -113,7 +113,7 @@ public class DuplicateProgramTypesTest extends TestBase {
   @Test
   public void testResolvedConflictD8() throws Exception {
     testForD8(parameters.getBackend())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .apply(
             b -> {
               addDuplicateDefinitions(b.getBuilder());
@@ -126,7 +126,7 @@ public class DuplicateProgramTypesTest extends TestBase {
   @Test
   public void testResolvedConflictR8() throws Exception {
     testForR8(parameters.getBackend())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(TestClass.class)
         .apply(
             b -> {
@@ -138,12 +138,12 @@ public class DuplicateProgramTypesTest extends TestBase {
   }
 
   @Test
-  public void testNonResolvedConflictD8() throws Exception {
+  public void testNonResolvedConflictD8() {
     assertThrows(
         CompilationFailedException.class,
         () ->
             testForD8(parameters.getBackend())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .apply(
                     b -> {
                       addDuplicateDefinitions(b.getBuilder());
@@ -153,12 +153,12 @@ public class DuplicateProgramTypesTest extends TestBase {
   }
 
   @Test
-  public void testNonResolvedConflictR8() throws Exception {
+  public void testNonResolvedConflictR8() {
     assertThrows(
         CompilationFailedException.class,
         () ->
             testForR8(parameters.getBackend())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addKeepMainRule(TestClass.class)
                 .apply(
                     b -> {

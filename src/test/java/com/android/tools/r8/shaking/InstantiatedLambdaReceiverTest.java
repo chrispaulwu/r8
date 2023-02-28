@@ -4,7 +4,6 @@
 
 package com.android.tools.r8.shaking;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -31,8 +30,8 @@ public class InstantiatedLambdaReceiverTest extends TestBase {
 
   @Test
   public void jvmTest() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(expectedOutput);
@@ -43,7 +42,7 @@ public class InstantiatedLambdaReceiverTest extends TestBase {
     testForR8(parameters.getBackend())
         .addInnerClasses(InstantiatedLambdaReceiverTest.class)
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(expectedOutput);
   }

@@ -46,9 +46,9 @@ public class NestBasedAccessBridgesProfileRewritingTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
+    parameters.assumeJvmTestParameters();
     assumeTrue(parameters.asCfRuntime().isNewerThanOrEqual(CfVm.JDK11));
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(getProgramClassFileData())
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("1", "2", "3", "4");
@@ -59,7 +59,7 @@ public class NestBasedAccessBridgesProfileRewritingTest extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(getProgramClassFileData())
         .addArtProfileForRewriting(getArtProfile())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspectResidualArtProfile(this::inspectD8)
         .run(parameters.getRuntime(), Main.class)
@@ -76,7 +76,7 @@ public class NestBasedAccessBridgesProfileRewritingTest extends TestBase {
         .addArtProfileForRewriting(getArtProfile())
         .addOptionsModification(InlinerOptions::disableInlining)
         .addOptionsModification(options -> options.callSiteOptimizationOptions().setEnabled(false))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspectResidualArtProfile(this::inspectR8)
         .run(parameters.getRuntime(), Main.class)

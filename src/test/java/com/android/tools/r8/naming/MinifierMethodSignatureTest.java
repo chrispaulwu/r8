@@ -177,7 +177,7 @@ public class MinifierMethodSignatureTest extends TestBase {
                 ProguardKeepAttributes.ENCLOSING_METHOD,
                 ProguardKeepAttributes.SIGNATURE)
             .addKeepAllClassesRuleWithAllowObfuscation()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(
                 internalOptions ->
                     internalOptions.testing.disableMappingToOriginalProgramVerification = true)
@@ -305,7 +305,7 @@ public class MinifierMethodSignatureTest extends TestBase {
     return cw.toByteArray();
   }
 
-  private byte[] dumpInner() throws Exception {
+  private byte[] dumpInner() {
 
     ClassWriter cw = new ClassWriter(0);
     FieldVisitor fv;

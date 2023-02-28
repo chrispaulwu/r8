@@ -44,8 +44,8 @@ public class Regression127524985 extends TestBase {
 
   @Test
   public void testJvm() throws Throwable {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addClasspath(JAR)
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(EXPECTED);
@@ -56,7 +56,7 @@ public class Regression127524985 extends TestBase {
     assumeTrue(parameters.isDexRuntime());
     testForD8()
         .addProgramFiles(JAR)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(EXPECTED);
@@ -73,7 +73,7 @@ public class Regression127524985 extends TestBase {
         .addKeepRules("-dontwarn")
         .allowDiagnosticWarningMessages()
         .addProgramFiles(JAR)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics ->
                 diagnostics.assertWarningsMatch(

@@ -27,7 +27,6 @@ import com.android.tools.r8.graph.GraphLens;
 import com.android.tools.r8.graph.InitClassLens;
 import com.android.tools.r8.graph.ObjectToOffsetMapping;
 import com.android.tools.r8.ir.conversion.LensCodeRewriterUtils;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.naming.ClassNameMapper;
 import com.android.tools.r8.naming.NamingLens;
 import com.android.tools.r8.shaking.MainDexInfo;
@@ -46,7 +45,6 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,7 +58,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -264,10 +261,6 @@ public class VirtualFile {
             hasMainDexList, transaction.getNumberOfMethods(), transaction.getNumberOfFields()));
   }
 
-  private boolean isFilledEnough() {
-    return isFull(MAX_ENTRIES);
-  }
-
   public void abortTransaction() {
     transaction.abort();
   }
@@ -302,8 +295,7 @@ public class VirtualFile {
       this.writer = writer;
     }
 
-    public abstract List<VirtualFile> run() throws ExecutionException, IOException;
-
+    public abstract List<VirtualFile> run();
   }
 
   /**
@@ -411,14 +403,6 @@ public class VirtualFile {
             }
             mainDexFile.commitTransaction();
           });
-      if (Log.ENABLED) {
-        Log.info(
-            VirtualFile.class, "Main dex classes: " + mainDexFile.transaction.getNumberOfClasses());
-        Log.info(
-            VirtualFile.class, "Main dex methods: " + mainDexFile.transaction.getNumberOfMethods());
-        Log.info(
-            VirtualFile.class, "Main dex fields: " + mainDexFile.transaction.getNumberOfFields());
-      }
       mainDexFile.throwIfFull(true, options.reporter);
     }
 
@@ -495,7 +479,7 @@ public class VirtualFile {
     }
 
     @Override
-    public List<VirtualFile> run() throws IOException {
+    public List<VirtualFile> run() {
       assert virtualFiles.size() == 1;
       assert virtualFiles.get(0).isEmpty();
 
@@ -555,7 +539,7 @@ public class VirtualFile {
     }
 
     @Override
-    public List<VirtualFile> run() throws ExecutionException, IOException {
+    public List<VirtualFile> run() {
       Map<FeatureSplit, Set<DexProgramClass>> featureSplitClasses =
           removeFeatureSplitClassesGetMapping();
       // Add all classes to the main dex file.
@@ -967,10 +951,6 @@ public class VirtualFile {
           appView.options().testing.calculateItemUseCountInDex
               ? new IndexedItemsUsedByClassesInTransaction(appView, rewriter, base, this)
               : new EmptyIndexedItemUsedByClasses();
-    }
-
-    private NamingLens getNamingLens() {
-      return appView.getNamingLens();
     }
 
     private <T extends DexItem> boolean maybeInsert(T item, Set<T> set, Set<T> baseSet) {

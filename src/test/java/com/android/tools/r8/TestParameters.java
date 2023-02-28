@@ -134,6 +134,17 @@ public class TestParameters {
     return runtime == NoneRuntime.getInstance();
   }
 
+  public void configureApiLevel(TestAppViewBuilder testAppViewBuilder) {
+    testAppViewBuilder.setMinApi(apiLevel);
+  }
+
+  public void configureApiLevel(TestCompilerBuilder<?, ?, ?, ?, ?> testCompilerBuilder) {
+    testCompilerBuilder.setMinApi(apiLevel);
+  }
+
+  // TODO(b/270021825): Tests should not access the underlying API level directly, but may be
+  //  allowed to query if the api level satisfies some condition.
+  @Deprecated
   public AndroidApiLevel getApiLevel() {
     if (runtime.isDex() && apiLevel == null) {
       throw new RuntimeException(
@@ -179,8 +190,16 @@ public class TestParameters {
     return runtime.toString();
   }
 
+  public void assertCfRuntime() {
+    assertTrue(runtime.isCf());
+  }
+
   public void assertNoneRuntime() {
     assertEquals(NoneRuntime.getInstance(), runtime);
+  }
+
+  public void assertIsRepresentativeApiLevelForRuntime() {
+    assertTrue(representativeApiLevelForRuntime);
   }
 
   public TestParameters assumeCfRuntime() {
@@ -193,12 +212,27 @@ public class TestParameters {
     return this;
   }
 
+  public TestParameters assumeIsOrSimulateNoneRuntime() {
+    assumeTrue(isOrSimulateNoneRuntime());
+    return this;
+  }
+
+  public boolean isJvmTestParameters() {
+    if (isCfRuntime()) {
+      return apiLevel == null || representativeApiLevelForRuntime;
+    }
+    return false;
+  }
+
   public TestParameters assumeJvmTestParameters() {
-    assertFalse(
-        "No need to use assumeR8TestParameters() when not using api levels for CF",
-        apiLevel == null);
     assumeCfRuntime();
-    assumeTrue(representativeApiLevelForRuntime);
+    assumeTrue(apiLevel == null || representativeApiLevelForRuntime);
+    return this;
+  }
+
+  public TestParameters assumeProguardTestParameters() {
+    assumeCfRuntime();
+    assumeTrue(apiLevel == null || representativeApiLevelForRuntime);
     return this;
   }
 
@@ -207,6 +241,14 @@ public class TestParameters {
         "No need to use assumeR8TestParameters() when not using api levels for CF",
         isCfRuntime() && apiLevel == null);
     assertTrue(apiLevel != null || representativeApiLevelForRuntime);
+    assumeTrue(isDexRuntime() || representativeApiLevelForRuntime);
+    return this;
+  }
+
+  public TestParameters assumeRuntimeTestParameters() {
+    assertFalse(
+        "No need to use assumeRuntimeTestParameters() when not using api levels for CF",
+        apiLevel == null);
     assumeTrue(isDexRuntime() || representativeApiLevelForRuntime);
     return this;
   }

@@ -5,7 +5,6 @@
 package com.android.tools.r8.shaking.clinit;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
@@ -34,10 +33,10 @@ public class InterfaceWithDefaultMethodNotInitializedByInvokeStaticOnSubInterfac
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .addInnerClasses(getClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithEmptyOutput();
@@ -49,7 +48,7 @@ public class InterfaceWithDefaultMethodNotInitializedByInvokeStaticOnSubInterfac
         .addInnerClasses(getClass())
         .addKeepMainRule(TestClass.class)
         .allowStdoutMessages()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(inspector -> assertEquals(1, inspector.allClasses().size()))
         .run(parameters.getRuntime(), TestClass.class)
@@ -58,8 +57,8 @@ public class InterfaceWithDefaultMethodNotInitializedByInvokeStaticOnSubInterfac
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithEmptyOutput();

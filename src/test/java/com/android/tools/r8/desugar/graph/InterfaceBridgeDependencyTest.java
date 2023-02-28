@@ -69,7 +69,7 @@ public class InterfaceBridgeDependencyTest extends TestBase {
   @Test
   public void test() throws Exception {
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addProgramClasses(I.class, J.class, K.class, TestClass.class)
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(EXPECTED);
@@ -81,7 +81,7 @@ public class InterfaceBridgeDependencyTest extends TestBase {
       Origin originJ = DesugarGraphUtils.addClassWithOrigin(J.class, builder);
       Origin originK = DesugarGraphUtils.addClassWithOrigin(K.class, builder);
       builder
-          .setMinApi(parameters.getApiLevel())
+          .setMinApi(parameters)
           .addProgramClasses(TestClass.class)
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(EXPECTED);

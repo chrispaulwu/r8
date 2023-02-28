@@ -43,14 +43,14 @@ public class LibraryExtendsProgramRefinedReceiverIsLibraryClass extends TestBase
   @Test
   public void regression145645482DebugMode() throws Exception {
     testForR8Compat(parameters.getBackend())
-        .addLibraryFiles(runtimeJar(parameters.getBackend()))
+        .addLibraryFiles(parameters.getDefaultRuntimeLibrary())
         .addLibraryClasses(LibraryClass.class)
         .addProgramClasses(ProgramClass.class, ProgramTestRunnerWithoutPhi.class)
         .enableInliningAnnotations()
         .addKeepClassRules(ProgramClass.class)
         .addKeepMainRule(ProgramTestRunnerWithoutPhi.class)
         .allowDiagnosticWarningMessages()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .debug()
         .compile()
         .assertAllWarningMessagesMatch(containsString("extends program class"))
@@ -62,14 +62,14 @@ public class LibraryExtendsProgramRefinedReceiverIsLibraryClass extends TestBase
   @Test
   public void regression145645482ReleaseMode() throws Exception {
     testForR8Compat(parameters.getBackend())
-        .addLibraryFiles(runtimeJar(parameters.getBackend()))
+        .addLibraryFiles(parameters.getDefaultRuntimeLibrary())
         .addLibraryClasses(LibraryClass.class)
         .addProgramClasses(ProgramClass.class, ProgramTestRunnerWithPhi.class)
         .enableInliningAnnotations()
         .addKeepClassRules(ProgramClass.class)
         .addKeepMainRule(ProgramTestRunnerWithPhi.class)
         .allowDiagnosticWarningMessages()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .assertAllWarningMessagesMatch(containsString("extends program class"))
         .addRunClasspathClasses(LibraryClass.class)

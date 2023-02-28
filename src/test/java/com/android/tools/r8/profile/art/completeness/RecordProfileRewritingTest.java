@@ -68,7 +68,7 @@ public class RecordProfileRewritingTest extends TestBase {
   public void testReference() throws Exception {
     parameters.assumeJvmTestParameters();
     assumeTrue(parameters.canUseRecords());
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(PROGRAM_DATA)
         .run(parameters.getRuntime(), MAIN_REFERENCE.getTypeName())
         .assertSuccessWithOutput(EXPECTED_RESULT);
@@ -80,7 +80,7 @@ public class RecordProfileRewritingTest extends TestBase {
         testForD8(parameters.getBackend())
             .addProgramClassFileData(PROGRAM_DATA)
             .addArtProfileForRewriting(getArtProfile())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile();
     compileResult
         .inspectResidualArtProfile(
@@ -110,7 +110,7 @@ public class RecordProfileRewritingTest extends TestBase {
                     testBuilder.addLibraryFiles(RecordTestUtils.getJdk15LibraryFiles(temp)))
             .enableProguardTestOptions()
             .noHorizontalClassMergingOfSynthetics()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile();
     compileResult
         .inspectResidualArtProfile(

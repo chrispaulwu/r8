@@ -97,8 +97,8 @@ public class MaximallySpecificSingleDominatingAfterJoinTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addRunClasspathFiles(libraryClasses)
         .addProgramClasses(K.class, Main.class)
         .run(parameters.getRuntime(), Main.class)
@@ -107,7 +107,7 @@ public class MaximallySpecificSingleDominatingAfterJoinTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     runTest(
         testForD8(parameters.getBackend()),
         parameters.getDexRuntimeVersion().isDalvik()
@@ -130,7 +130,7 @@ public class MaximallySpecificSingleDominatingAfterJoinTest extends TestBase {
         .addProgramClasses(K.class, Main.class)
         .addDefaultRuntimeLibrary(parameters)
         .addLibraryFiles(libraryClasses)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.loadAllClassDefinitions = true)
         .compile()
         .addBootClasspathFiles(buildOnDexRuntime(parameters, libraryClasses))

@@ -6,6 +6,7 @@ package com.android.tools.r8.desugaring.interfacemethods;
 import com.android.tools.r8.D8TestBuilder;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.testing.AndroidBuildVersion;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import java.nio.file.Path;
@@ -23,8 +24,8 @@ public class Regress171867367 extends TestBase {
   private final TestParameters parameters;
 
   @Parameterized.Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(getTestParameters().withDexRuntimes().withAllApiLevels().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withDexRuntimes().withAllApiLevels().build();
   }
 
   public Regress171867367(TestParameters parameters) {
@@ -36,7 +37,7 @@ public class Regress171867367 extends TestBase {
     Path path =
         testForD8(Backend.CF)
             .addProgramClasses(TestClass.class)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile()
             .writeToZip();
     D8TestBuilder d8TestBuilder =
@@ -44,7 +45,7 @@ public class Regress171867367 extends TestBase {
             .addProgramFiles(path)
             .addAndroidBuildVersion()
             .addProgramClasses(TestClass2.class)
-            .setMinApi(parameters.getApiLevel());
+            .setMinApi(parameters);
     if (parameters.getApiLevel().isLessThan(AndroidApiLevel.N)) {
       d8TestBuilder
           .run(parameters.getRuntime(), TestClass.class)

@@ -6,7 +6,6 @@ package com.android.tools.r8.ir.conversion.callgraph;
 
 import com.android.tools.r8.errors.CompilationError;
 import com.android.tools.r8.graph.DexEncodedMethod;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.utils.collections.ProgramMethodSet;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Sets;
@@ -115,9 +114,6 @@ public class CycleEliminator {
     } while (!roots.isEmpty());
 
     CycleEliminationResult result = new CycleEliminationResult(removedCallEdges);
-    if (Log.ENABLED) {
-      Log.info(getClass(), "# call graph cycles broken: %s", result.numberOfRemovedCallEdges());
-    }
     reset();
     return result;
   }

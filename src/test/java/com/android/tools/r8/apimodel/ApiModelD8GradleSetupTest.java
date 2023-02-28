@@ -58,7 +58,7 @@ public class ApiModelD8GradleSetupTest extends TestBase {
     testBuilder
         .addLibraryClasses(LibraryClassOne.class, LibraryClassTwo.class, LibraryClassThree.class)
         .addDefaultRuntimeLibrary(parameters)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .apply(setMockApiLevelForClass(LibraryClassOne.class, mockApiLevelOne))
         .apply(
             setMockApiLevelForMethod(
@@ -104,8 +104,8 @@ public class ApiModelD8GradleSetupTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Main.class, ProgramClassOne.class, ProgramClassTwo.class)
         .addAndroidBuildVersion(AndroidApiLevel.B)
         .addLibraryClasses(LibraryClassOne.class, LibraryClassTwo.class, LibraryClassThree.class)
@@ -181,7 +181,7 @@ public class ApiModelD8GradleSetupTest extends TestBase {
             compileResultProgramClass.writeToZip(),
             compileResultProgramClassTwo.writeToZip(),
             compileResultMain.writeToZip())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAndroidBuildVersion(getApiLevelForRuntime())
         .addHorizontallyMergedClassesInspector(horizontallyMergingConsumer)
         .compile()

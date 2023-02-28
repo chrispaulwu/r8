@@ -10,7 +10,6 @@ import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.graph.SubtypingInfo;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.shaking.ScopedDexMethodSet.AddMethodIfMoreVisibleResult;
 import java.util.HashSet;
 import java.util.Set;
@@ -79,9 +78,6 @@ public class AbstractMethodRemover {
       return true;
     }
     // We will filter the method out since it is not pinned.
-    if (Log.ENABLED) {
-      Log.debug(getClass(), "Removing abstract method %s.", method.getReference());
-    }
     return false;
   }
 

@@ -37,7 +37,7 @@ public class StackTraceTest extends TestBase {
   }
 
   @Test
-  public void testJvmStackTrace() throws Exception {
+  public void testJvmStackTrace() {
     String stderr =
         StringUtils.join(
             "\n",
@@ -175,8 +175,8 @@ public class StackTraceTest extends TestBase {
 
   @Test
   public void testJvmStackTraceFromRunning() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addInnerClasses(StackTraceTest.class)
         .run(parameters.getRuntime(), Main.class)
         .assertFailure()
@@ -188,7 +188,7 @@ public class StackTraceTest extends TestBase {
     assumeTrue(parameters.isDexRuntime());
     testForD8()
         .addInnerClasses(StackTraceTest.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertFailure()
         .inspectStackTrace(this::checkStackTraceFromRunning);

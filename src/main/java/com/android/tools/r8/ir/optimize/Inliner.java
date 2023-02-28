@@ -24,7 +24,6 @@ import com.android.tools.r8.graph.NestMemberClassAttribute;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.ir.analysis.ClassInitializationAnalysis;
 import com.android.tools.r8.ir.analysis.proto.ProtoInliningReasonStrategy;
-import com.android.tools.r8.ir.analysis.type.ClassTypeElement;
 import com.android.tools.r8.ir.analysis.type.Nullability;
 import com.android.tools.r8.ir.analysis.type.TypeAnalysis;
 import com.android.tools.r8.ir.analysis.type.TypeElement;
@@ -41,6 +40,7 @@ import com.android.tools.r8.ir.code.Invoke;
 import com.android.tools.r8.ir.code.InvokeMethod;
 import com.android.tools.r8.ir.code.InvokeVirtual;
 import com.android.tools.r8.ir.code.Monitor;
+import com.android.tools.r8.ir.code.MonitorType;
 import com.android.tools.r8.ir.code.MoveException;
 import com.android.tools.r8.ir.code.Phi;
 import com.android.tools.r8.ir.code.Position;
@@ -676,10 +676,10 @@ public class Inliner {
         }
 
         // Insert the monitor-enter and monitor-exit instructions.
-        monitorEnterBlockIterator.add(new Monitor(Monitor.Type.ENTER, lockValue));
+        monitorEnterBlockIterator.add(new Monitor(MonitorType.ENTER, lockValue));
         if (monitorExitBlockIterator != null) {
           monitorExitBlockIterator.previous();
-          monitorExitBlockIterator.add(new Monitor(Monitor.Type.EXIT, lockValue));
+          monitorExitBlockIterator.add(new Monitor(MonitorType.EXIT, lockValue));
           monitorExitBlock.close(null);
         }
 
@@ -693,7 +693,7 @@ public class Inliner {
             InstructionListIterator instructionIterator =
                 block.listIterator(code, block.getInstructions().size() - 1);
             instructionIterator.setInsertionPosition(Position.syntheticNone());
-            instructionIterator.add(new Monitor(Monitor.Type.EXIT, lockValue));
+            instructionIterator.add(new Monitor(MonitorType.EXIT, lockValue));
           }
         }
       }
@@ -1140,27 +1140,6 @@ public class Inliner {
       }
     }
     return false;
-  }
-
-  private DexProgramClass getDowncastTypeIfNeeded(
-      InliningStrategy strategy, InvokeMethod invoke, ProgramMethod target) {
-    if (invoke.isInvokeMethodWithReceiver()) {
-      // If the invoke has a receiver but the actual type of the receiver is different from the
-      // computed target holder, inlining requires a downcast of the receiver. In case we don't know
-      // the exact type of the receiver we use the static type of the receiver.
-      Value receiver = invoke.asInvokeMethodWithReceiver().getReceiver();
-      if (!receiver.getType().isClassType()) {
-        return target.getHolder();
-      }
-
-      ClassTypeElement receiverType =
-          strategy.getReceiverTypeOrDefault(invoke, receiver.getType().asClassType());
-      ClassTypeElement targetType = target.getHolderType().toTypeElement(appView).asClassType();
-      if (!receiverType.lessThanOrEqualUpToNullability(targetType, appView)) {
-        return target.getHolder();
-      }
-    }
-    return null;
   }
 
   /** Applies member rebinding to the inlinee and inserts assume instructions. */

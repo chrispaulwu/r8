@@ -370,6 +370,11 @@ public abstract class TestCompilerBuilder<
     return setMinApi(minApiLevel.getLevel());
   }
 
+  public T setMinApi(TestParameters parameters) {
+    parameters.configureApiLevel(this);
+    return self();
+  }
+
   public T setMinApi(int minApiLevel) {
     assert minApiLevel != -1;
     this.minApiLevel = minApiLevel;
@@ -379,15 +384,6 @@ public abstract class TestCompilerBuilder<
   public T setNoMinApi() {
     this.minApiLevel = -1;
     this.noMinApiLevel = true;
-    return self();
-  }
-
-  /** @deprecated use {@link #setMinApi(AndroidApiLevel)} instead. */
-  @Deprecated
-  public T setMinApi(TestRuntime runtime) {
-    if (runtime.isDex()) {
-      setMinApi(runtime.asDex().getMinApiLevel());
-    }
     return self();
   }
 

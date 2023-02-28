@@ -48,7 +48,7 @@ class MySerializable implements Serializable {
   }
 
   @NeverInline
-  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+  private void readObject(ObjectInputStream in) throws IOException {
     System.out.println("Serializable::read");
     value = in.readInt();
   }
@@ -151,7 +151,7 @@ public class NoRelaxationForSerializableTest extends AccessRelaxationTestBase {
             .enableInliningAnnotations()
             .addKeepRuleFiles(configuration)
             .addKeepRules(KEEPMEMBER_RULES)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile()
             .inspect(this::inspect);
     // TODO(b/117302947): Need to update ART binary.
@@ -185,7 +185,7 @@ public class NoRelaxationForSerializableTest extends AccessRelaxationTestBase {
             .enableInliningAnnotations()
             .enableMemberValuePropagationAnnotations()
             .addKeepRuleFiles(configuration)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile();
     // TODO(b/117302947): Need to update ART binary.
     if (parameters.isCfRuntime()) {

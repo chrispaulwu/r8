@@ -213,7 +213,7 @@ public class InliningAfterClassInitializationTest extends TestBase {
 
   private CodeInspector buildAndRun(Class<?> mainClass, String expectedOutput) throws Exception {
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), mainClass)
           .assertSuccessWithOutput(expectedOutput);
@@ -230,7 +230,7 @@ public class InliningAfterClassInitializationTest extends TestBase {
         .enableConstantArgumentAnnotations()
         .enableUnusedArgumentAnnotations()
         .enableInliningAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), mainClass)
         .assertSuccessWithOutput(expectedOutput)
         .inspector();

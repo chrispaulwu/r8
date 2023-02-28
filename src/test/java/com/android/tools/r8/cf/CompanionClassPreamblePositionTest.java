@@ -45,7 +45,7 @@ public class CompanionClassPreamblePositionTest extends TestBase {
 
   @Test
   public void testZeroInInput() throws Exception {
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(TestClass.class, A.class)
         .addProgramClassFileData(getTransformedI(true))
         .run(parameters.getRuntime(), TestClass.class)
@@ -59,10 +59,10 @@ public class CompanionClassPreamblePositionTest extends TestBase {
         testForD8(parameters.getBackend())
             .addProgramClasses(TestClass.class, A.class)
             .addProgramClassFileData(getTransformedI(false))
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile()
             .writeToZip();
-    testForJvm()
+    testForJvm(parameters)
         .addProgramFiles(out)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED)

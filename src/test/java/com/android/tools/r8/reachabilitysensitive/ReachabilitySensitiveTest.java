@@ -161,11 +161,10 @@ public class ReachabilitySensitiveTest extends TestBase {
     checkNoLocals(code);
   }
 
-  private CodeInspector compile(Class... classes)
-      throws CompilationFailedException, IOException, ExecutionException {
+  private CodeInspector compile(Class... classes) throws CompilationFailedException, IOException {
     return testForD8()
         .addProgramClasses(classes)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setMode(CompilationMode.RELEASE)
         .compile()
         .inspector();
@@ -180,7 +179,7 @@ public class ReachabilitySensitiveTest extends TestBase {
         .addProgramClasses(classes)
         // TODO(ager): This will be in android.jar over time. For now, make it part of the app.
         .addProgramClasses(ReachabilitySensitive.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setMode(CompilationMode.RELEASE)
         // Keep the input class and its methods.
         .addKeepRules(keepRules)

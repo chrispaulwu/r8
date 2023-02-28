@@ -52,7 +52,7 @@ import com.android.tools.r8.ir.analysis.type.ClassTypeElement;
 import com.android.tools.r8.ir.analysis.type.DynamicType;
 import com.android.tools.r8.ir.analysis.type.TypeAnalysis;
 import com.android.tools.r8.ir.analysis.type.TypeElement;
-import com.android.tools.r8.ir.code.Invoke.Type;
+import com.android.tools.r8.ir.code.InvokeType;
 import com.android.tools.r8.ir.desugar.LambdaDescriptor;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.apiconversion.DesugaredLibraryAPIConverter;
 import com.android.tools.r8.ir.desugar.itf.InterfaceDesugaringSyntheticHelper;
@@ -436,34 +436,6 @@ public class AppInfoWithLiveness extends AppInfoWithClassHierarchy
       ExecutorService executorService,
       List<Future<?>> futures) {
     return pruneMap(map, prunedItems.getRemovedClasses(), executorService, futures);
-  }
-
-  private static <V> Map<DexMember<?, ?>, V> pruneMapFromMembers(
-      Map<DexMember<?, ?>, V> map,
-      PrunedItems prunedItems,
-      ExecutorService executorService,
-      List<Future<?>> futures) {
-    if (prunedItems.hasRemovedMembers()) {
-      futures.add(
-          ThreadUtils.processAsynchronously(
-              () -> {
-                Set<DexField> removedFields = prunedItems.getRemovedFields();
-                Set<DexMethod> removedMethods = prunedItems.getRemovedMethods();
-                if (map.size() <= removedFields.size() + removedMethods.size()) {
-                  map.keySet()
-                      .removeIf(
-                          member ->
-                              member.isDexField()
-                                  ? removedFields.contains(member.asDexField())
-                                  : removedMethods.contains(member.asDexMethod()));
-                } else {
-                  removedFields.forEach(map::remove);
-                  removedMethods.forEach(map::remove);
-                }
-              },
-              executorService));
-    }
-    return map;
   }
 
   private static Object2BooleanMap<DexMember<?, ?>> pruneMapFromMembers(
@@ -1258,7 +1230,7 @@ public class AppInfoWithLiveness extends AppInfoWithClassHierarchy
 
   public DexEncodedMethod lookupSingleTarget(
       AppView<? extends AppInfoWithClassHierarchy> appView,
-      Type type,
+      InvokeType type,
       DexMethod target,
       ProgramMethod context,
       LibraryModeledPredicate modeledPredicate) {
@@ -1285,7 +1257,7 @@ public class AppInfoWithLiveness extends AppInfoWithClassHierarchy
 
   public ProgramMethod lookupSingleProgramTarget(
       AppView<? extends AppInfoWithClassHierarchy> appView,
-      Type type,
+      InvokeType type,
       DexMethod target,
       ProgramMethod context,
       LibraryModeledPredicate modeledPredicate) {

@@ -8,13 +8,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.android.tools.r8.utils.codeinspector.TypeSubject;
 import com.google.common.collect.ImmutableList;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -32,9 +32,8 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
   @Parameter() public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build();
   }
 
   private static final String EXPECTED_OUTPUT = StringUtils.lines("Hello, world!");
@@ -45,7 +44,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
         parameters.isCfRuntime()
             && isRuntimeWithNestSupport(parameters.asCfRuntime())
             && parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(
             dumpHost(ACC_PRIVATE), dumpMember1(ACC_PRIVATE), dumpMember2(ACC_PRIVATE))
         .run(parameters.getRuntime(), "Host")
@@ -86,7 +85,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
         .addProgramClassFileData(
             dumpHost(ACC_PRIVATE), dumpMember1(ACC_PRIVATE), dumpMember2(ACC_PRIVATE))
         .addKeepMainRule("Host")
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .compile()
         .inspect(inspector -> assertEquals(1, inspector.allClasses().size()))
@@ -103,7 +102,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
     testForR8(parameters.getBackend())
         .addProgramClassFileData(
             dumpHost(ACC_PRIVATE), dumpMember1(ACC_PRIVATE), dumpMember2(ACC_PRIVATE))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .addKeepMainRule("Host")
         .addKeepClassAndMembersRules("Host", "Host$Member1", "Host$Member2")
@@ -125,7 +124,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
     testForR8(parameters.getBackend())
         .addProgramClassFileData(
             dumpHost(ACC_PUBLIC), dumpMember1(ACC_PUBLIC), dumpMember2(ACC_PUBLIC))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .addKeepMainRule("Host")
         .addKeepClassAndMembersRules("Host", "Host$Member1", "Host$Member2")
@@ -170,7 +169,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
     access methods is not feasible.
   */
 
-  public static byte[] dumpHost(int methodAccess) throws Exception {
+  public static byte[] dumpHost(int methodAccess) {
     assert methodAccess == ACC_PUBLIC || methodAccess == ACC_PRIVATE;
 
     ClassWriter classWriter = new ClassWriter(0);
@@ -267,7 +266,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpMember1(int methodAccess) throws Exception {
+  public static byte[] dumpMember1(int methodAccess) {
     assert methodAccess == ACC_PUBLIC || methodAccess == ACC_PRIVATE;
 
     ClassWriter classWriter = new ClassWriter(0);
@@ -310,7 +309,7 @@ public class NestAttributesInDexShrinkingMethodsTest extends NestAttributesInDex
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpMember2(int methodAccess) throws Exception {
+  public static byte[] dumpMember2(int methodAccess) {
     assert methodAccess == ACC_PUBLIC || methodAccess == ACC_PRIVATE;
 
     ClassWriter classWriter = new ClassWriter(0);

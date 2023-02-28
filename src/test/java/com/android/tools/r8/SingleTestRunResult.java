@@ -113,7 +113,7 @@ public abstract class SingleTestRunResult<RR extends SingleTestRunResult<RR>>
     return new CodeInspector(app);
   }
 
-  public CodeInspector inspector() throws IOException, ExecutionException {
+  public CodeInspector inspector() throws IOException {
     // Inspection post run implies success. If inspection of an invalid program is needed it should
     // be done on the compilation result or on the input.
     assertSuccess();
@@ -149,7 +149,7 @@ public abstract class SingleTestRunResult<RR extends SingleTestRunResult<RR>>
     return self();
   }
 
-  public RR disassemble(PrintStream ps) throws IOException, ExecutionException {
+  public RR disassemble(PrintStream ps) throws IOException {
     ToolHelper.disassemble(app, ps);
     return self();
   }
@@ -232,7 +232,7 @@ public abstract class SingleTestRunResult<RR extends SingleTestRunResult<RR>>
   public <E extends Throwable> RR debugger(ThrowingConsumer<DebugTestConfig, E> consumer)
       throws E, IOException {
     Path out = state.getNewTempFolder().resolve("out.zip");
-    app.writeToZip(out, runtime.isCf() ? OutputMode.ClassFile : OutputMode.DexIndexed);
+    app.writeToZipForTesting(out, runtime.isCf() ? OutputMode.ClassFile : OutputMode.DexIndexed);
     DebugTestConfig config = DebugTestConfig.create(runtime, out);
     consumer.accept(config);
     return self();

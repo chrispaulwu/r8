@@ -41,12 +41,11 @@ public class AbstractInterfaceMethodsTest extends TestBase {
   }
 
   @Test
-  public void testSingleInheritanceProguard()
-      throws CompilationFailedException, IOException, ExecutionException {
+  public void testSingleInheritanceProguard() throws CompilationFailedException, IOException {
     assumeTrue(parameters.isCfRuntime());
     testForProguard()
         .addProgramClasses(I.class, J.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMethodRules(J.class, "void foo()")
         .addKeepRules("-dontwarn")
         .compile()
@@ -65,7 +64,7 @@ public class AbstractInterfaceMethodsTest extends TestBase {
     R8TestCompileResult compileResult =
         testForR8(parameters.getBackend())
             .addProgramClasses(I.class, J.class)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepMethodRules(J.class, "void foo()")
             .compile();
     testForRuntime(parameters)

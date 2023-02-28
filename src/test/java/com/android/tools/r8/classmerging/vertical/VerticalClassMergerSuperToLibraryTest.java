@@ -6,7 +6,6 @@ package com.android.tools.r8.classmerging.vertical;
 
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assume.assumeTrue;
 import static org.objectweb.asm.Opcodes.INVOKESPECIAL;
 
 import com.android.tools.r8.NeverClassInline;
@@ -39,8 +38,8 @@ public class VerticalClassMergerSuperToLibraryTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(B.class, Main.class)
         .addProgramClassFileData(getAWithRewrittenInvokeSpecialToBase())
         .addLibraryClasses(LibParent.class)
@@ -52,13 +51,13 @@ public class VerticalClassMergerSuperToLibraryTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addDefaultRuntimeLibrary(parameters)
         .addLibraryClasses(Lib.class, LibParent.class)
         .addProgramClasses(B.class, Main.class)
         .addProgramClassFileData(getAWithRewrittenInvokeSpecialToBase())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .addBootClasspathFiles(
             buildOnDexRuntime(
@@ -81,7 +80,7 @@ public class VerticalClassMergerSuperToLibraryTest extends TestBase {
         .addKeepMainRule(Main.class)
         .enableInliningAnnotations()
         .enableNeverClassInliningAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addVerticallyMergedClassesInspector(
             VerticallyMergedClassesInspector::assertNoClassesMerged)
         .compile()

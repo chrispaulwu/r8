@@ -87,7 +87,7 @@ public class ApplyMappingMinificationTest extends TestBase {
 
   @Test
   public void testApplyMappingFollowedByMinification()
-      throws IOException, CompilationFailedException, ExecutionException, NoSuchMethodException {
+      throws IOException, CompilationFailedException, ExecutionException {
     String[] pgMap =
         new String[] {
           A.class.getTypeName() + " -> a:", "  int fieldA -> a", "  void methodA() -> a"
@@ -102,7 +102,7 @@ public class ApplyMappingMinificationTest extends TestBase {
             .enableMemberValuePropagationAnnotations()
             .enableNeverClassInliningAnnotations()
             .addApplyMapping(StringUtils.lines(pgMap))
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), C.class)
             .assertSuccessWithOutputLines("1", "2", "A.methodA", "A.methodB", "A.methodC", "B.foo")
             .inspect(

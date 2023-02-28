@@ -41,7 +41,7 @@ public class AndroidLogRemovalTest extends TestBase {
             .addProgramClassFileData(
                 transformer(Log.class).setClassDescriptor("Landroid/util/Log;").transform())
             .addKeepAllClassesRule()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile()
             .writeToZip();
 
@@ -58,10 +58,10 @@ public class AndroidLogRemovalTest extends TestBase {
                             descriptor,
                             isInterface))
                 .transform())
-        .addLibraryFiles(libraryFile, runtimeJar(parameters.getBackend()))
+        .addLibraryFiles(libraryFile, parameters.getDefaultRuntimeLibrary())
         .addKeepMainRule(TestClass.class)
         .addKeepRules("-maximumremovedandroidloglevel " + maxRemovedAndroidLogLevel)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .addRunClasspathFiles(libraryFile)
         .run(parameters.getRuntime(), TestClass.class)

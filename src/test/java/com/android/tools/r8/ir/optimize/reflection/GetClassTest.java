@@ -150,7 +150,7 @@ public class GetClassTest extends ReflectionOptimizerTestBase {
     assumeTrue(
         "Only run JVM reference on CF runtimes",
         parameters.isCfRuntime() && mode == CompilationMode.DEBUG);
-    testForJvm()
+    testForJvm(parameters)
         .addInnerClasses(GetClassTest.class)
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JAVA_OUTPUT);
@@ -197,7 +197,7 @@ public class GetClassTest extends ReflectionOptimizerTestBase {
     testForD8()
         .setMode(mode)
         .addInnerClasses(GetClassTest.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JAVA_OUTPUT)
         .inspect(inspector -> test(inspector, true, 6, 0));
@@ -216,7 +216,7 @@ public class GetClassTest extends ReflectionOptimizerTestBase {
         .enableNoHorizontalClassMergingAnnotations()
         .addKeepMainRule(MAIN)
         .addDontObfuscate()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JAVA_OUTPUT)
         .inspect(

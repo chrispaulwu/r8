@@ -12,9 +12,6 @@ import static org.junit.Assert.assertEquals;
 import com.android.tools.r8.DataEntryResource;
 import com.android.tools.r8.NeverClassInline;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.classmerging.horizontal.EmptyClassTest.B;
-import com.android.tools.r8.classmerging.horizontal.EmptyClassTest.Main;
-import com.android.tools.r8.classmerging.horizontal.ServiceLoaderTest.A;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.utils.DataResourceConsumerForTesting;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
@@ -40,7 +37,7 @@ public class AdaptResourceFileContentsTest extends HorizontalClassMergingTestBas
                 DataEntryResource.fromString(
                     "foo.txt", Origin.unknown(), A.class.getTypeName(), B.class.getTypeName()))
             .addKeepRules("-adaptresourcefilecontents foo.txt")
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addHorizontallyMergedClassesInspector(
                 inspector -> inspector.assertMergedInto(B.class, A.class))
             .compile()

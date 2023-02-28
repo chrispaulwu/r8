@@ -49,8 +49,9 @@ public class DaggerBasicNotSingletonUsingBindsTest extends DaggerBasicTestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    assumeTrue(target.equals(javacTargets.get(0)));
+    testForJvm(parameters)
         .addProgramFiles(getProgramFiles(target))
         .run(parameters.getRuntime(), MAIN_CLASS)
         .assertSuccessWithOutputLines(EXPECTED_OUTPUT);
@@ -58,10 +59,10 @@ public class DaggerBasicNotSingletonUsingBindsTest extends DaggerBasicTestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramFiles(getProgramFiles(target))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), MAIN_CLASS)
         .assertSuccessWithOutputLines(EXPECTED_OUTPUT);
   }
@@ -74,7 +75,7 @@ public class DaggerBasicNotSingletonUsingBindsTest extends DaggerBasicTestBase {
   public void testR8() throws Exception {
     testForR8(parameters.getBackend())
         .addProgramFiles(getProgramFiles(target))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(MAIN_CLASS)
         .run(parameters.getRuntime(), MAIN_CLASS)
         .inspect(this::inspect)

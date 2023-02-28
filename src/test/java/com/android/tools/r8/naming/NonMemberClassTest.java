@@ -143,7 +143,7 @@ public class NonMemberClassTest extends TestBase {
     assumeTrue(
         "Only run JVM reference on CF runtimes",
         parameters.isCfRuntime() && config == TestConfig.NO_KEEP_NO_MINIFICATION);
-    testForJvm()
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JVM_OUTPUT);
@@ -157,7 +157,7 @@ public class NonMemberClassTest extends TestBase {
         .addKeepRules(config.getKeepRules())
         .addKeepAttributes("Signature", "InnerClasses", "EnclosingMethod")
         .enableInliningAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.enableClassInlining = false)
         .compile()
         .inspect(inspector -> config.inspect(false, inspector))
@@ -174,7 +174,7 @@ public class NonMemberClassTest extends TestBase {
         .addKeepAttributeInnerClassesAndEnclosingMethod()
         .addKeepAttributeSignature()
         .enableInliningAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.enableClassInlining = false)
         .compile()
         .inspect(inspector -> config.inspect(true, inspector))

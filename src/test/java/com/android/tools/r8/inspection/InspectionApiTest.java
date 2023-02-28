@@ -41,7 +41,7 @@ public class InspectionApiTest extends TestBase {
   @Test
   public void testD8() throws Exception {
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addProgramClasses(TestClass.class)
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(EXPECTED);
@@ -49,7 +49,7 @@ public class InspectionApiTest extends TestBase {
     }
     testForD8()
         .addProgramClasses(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .apply(b -> b.getBuilder().addOutputInspection(this::inspection))
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
@@ -61,7 +61,7 @@ public class InspectionApiTest extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClasses(TestClass.class)
         .addKeepClassAndMembersRules(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .apply(b -> b.getBuilder().addOutputInspection(this::inspection))
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);

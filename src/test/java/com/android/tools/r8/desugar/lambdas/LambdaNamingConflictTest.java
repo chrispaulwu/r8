@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.desugar.lambdas;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -42,8 +41,8 @@ public class LambdaNamingConflictTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(I.class)
         .addProgramClassFileData(getConflictingNameClass())
         .addProgramClassFileData(getTransformedMainClass())
@@ -57,7 +56,7 @@ public class LambdaNamingConflictTest extends TestBase {
         .addProgramClasses(I.class)
         .addProgramClassFileData(getConflictingNameClass())
         .addProgramClassFileData(getTransformedMainClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
   }
@@ -68,7 +67,7 @@ public class LambdaNamingConflictTest extends TestBase {
         .addProgramClasses(I.class)
         .addProgramClassFileData(getConflictingNameClass())
         .addProgramClassFileData(getTransformedMainClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(TestClass.class)
         // Ensure that R8 cannot remove or rename the conflicting name.
         .addKeepClassAndMembersRules(CONFLICTING_NAME.getTypeName())

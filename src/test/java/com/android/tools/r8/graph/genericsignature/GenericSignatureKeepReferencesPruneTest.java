@@ -51,10 +51,10 @@ public class GenericSignatureKeepReferencesPruneTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
+    parameters.assumeJvmTestParameters();
     assumeTrue(isCompat);
     assumeTrue(!minify);
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(I.class, Foo.class, J.class, K.class, L.class)
         .addProgramClassesAndInnerClasses(Main.class)
         .run(parameters.getRuntime(), Main.class)
@@ -68,7 +68,7 @@ public class GenericSignatureKeepReferencesPruneTest extends TestBase {
             .addProgramClasses(I.class, Foo.class, J.class, K.class, L.class)
             .addProgramClassesAndInnerClasses(Main.class)
             .addKeepClassAndMembersRules(Main.class)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepAttributeSignature()
             .addKeepAttributeInnerClassesAndEnclosingMethod()
             .enableInliningAnnotations()

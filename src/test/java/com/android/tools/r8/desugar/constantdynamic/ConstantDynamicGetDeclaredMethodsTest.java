@@ -56,11 +56,9 @@ public class ConstantDynamicGetDeclaredMethodsTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
+    parameters.assumeJvmTestParameters();
     assumeTrue(parameters.getRuntime().asCf().isNewerThanOrEqual(CfVm.JDK11));
-    assumeTrue(parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
-
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(getTransformedClasses())
         .run(parameters.getRuntime(), MAIN_CLASS)
         .assertSuccessWithOutput(EXPECTED_OUTPUT_WITH_METHOD_HANDLES);
@@ -94,7 +92,7 @@ public class ConstantDynamicGetDeclaredMethodsTest extends TestBase {
     assumeTrue(parameters.isDexRuntime());
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(MAIN_CLASS)
         .applyIf(
             parameters.getApiLevel().isLessThan(AndroidApiLevel.O),
@@ -108,7 +106,7 @@ public class ConstantDynamicGetDeclaredMethodsTest extends TestBase {
     assumeTrue(parameters.isDexRuntime());
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(MAIN_CLASS)
         .addKeepMethodRules(MAIN_CLASS, "myConstant(...)")
         .applyIf(

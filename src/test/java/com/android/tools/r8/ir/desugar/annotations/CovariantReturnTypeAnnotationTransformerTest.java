@@ -163,7 +163,7 @@ public class CovariantReturnTypeAnnotationTransformerTest extends AsmTestBase {
         testForD8(parameters.getBackend())
             .addProgramClassFileData(input)
             .addOptionsModification(options -> options.processCovariantReturnTypeAnnotations = true)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile()
             // Compilation output does not contain annotations.
             .inspect(inspector -> checkPresenceOfCovariantAnnotations(inspector, false))
@@ -174,7 +174,7 @@ public class CovariantReturnTypeAnnotationTransformerTest extends AsmTestBase {
     testForD8(parameters.getBackend())
         .addProgramFiles(output)
         .addOptionsModification(options -> options.processCovariantReturnTypeAnnotations = true)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile();
   }
 
@@ -184,7 +184,7 @@ public class CovariantReturnTypeAnnotationTransformerTest extends AsmTestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(input)
         .addOptionsModification(options -> options.processCovariantReturnTypeAnnotations = option)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(
             inspector -> {
@@ -201,7 +201,7 @@ public class CovariantReturnTypeAnnotationTransformerTest extends AsmTestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(input)
         .addOptionsModification(options -> options.processCovariantReturnTypeAnnotations = option)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(inspector -> checkPresenceOfCovariantAnnotations(inspector, false))
         .run(parameters.getRuntime(), Client.class.getCanonicalName())
@@ -235,7 +235,7 @@ public class CovariantReturnTypeAnnotationTransformerTest extends AsmTestBase {
                         .anyMatch(method -> method.annotation(CRTS_TYPE_NAME).isPresent())));
   }
 
-  private void checkPresenceOfSyntheticMethods(CodeInspector inspector) throws Exception {
+  private void checkPresenceOfSyntheticMethods(CodeInspector inspector) {
     // Get classes A, B, and C.
     ClassSubject clazzA = inspector.clazz(A.class.getCanonicalName());
     assertThat(clazzA, isPresent());

@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -56,13 +55,12 @@ import java.util.stream.StreamSupport;
 import org.junit.ComparisonFailure;
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
-import org.junit.rules.TemporaryFolder;
 
 /**
  * This test class is not invoked directly. Instead, the gradle script generates one subclass per
  * actual art test. This allows us to run these in parallel.
  */
-public abstract class R8RunArtTestsTest {
+public abstract class R8RunArtTestsTest extends TestBase {
 
   private static final boolean DEX_COMPARE_WITH_DEX_REFERENCE_ON_FAILURE = true;
 
@@ -1504,9 +1502,6 @@ public abstract class R8RunArtTestsTest {
   }
 
   @Rule
-  public TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
-
-  @Rule
   public TestDescriptionWatcher watcher = new TestDescriptionWatcher();
 
   public R8RunArtTestsTest(String name, DexTool toolchain) {
@@ -1683,8 +1678,7 @@ public abstract class R8RunArtTestsTest {
                   .addProgramResourceProvider(
                       new ProgramResourceProvider() {
                         @Override
-                        public Collection<ProgramResource> getProgramResources()
-                            throws ResourceException {
+                        public Collection<ProgramResource> getProgramResources() {
                           return cfInputs;
                         }
                       });
@@ -2066,8 +2060,7 @@ public abstract class R8RunArtTestsTest {
     expectedException = true;
   }
 
-  private void failWithDexDiff(File originalFile, File processedFile)
-      throws IOException, ExecutionException {
+  private void failWithDexDiff(File originalFile, File processedFile) throws IOException {
     CodeInspector inspectOriginal =
         new CodeInspector(originalFile.toPath().toAbsolutePath());
     CodeInspector inspectProcessed =

@@ -296,8 +296,12 @@ public class AndroidApp {
     }
   }
 
-  public Set<DataEntryResource> getDataEntryResourcesForTesting() throws ResourceException {
-    Set<DataEntryResource> out = new TreeSet<>(Comparator.comparing(DataResource::getName));
+  public Pair<Set<DataDirectoryResource>, Set<DataEntryResource>> getDataResourcesForTesting()
+      throws ResourceException {
+    Set<DataDirectoryResource> dataDirectoryResources =
+        new TreeSet<>(Comparator.comparing(DataResource::getName));
+    Set<DataEntryResource> dataEntryResources =
+        new TreeSet<>(Comparator.comparing(DataResource::getName));
     for (ProgramResourceProvider programResourceProvider : getProgramResourceProviders()) {
       DataResourceProvider dataResourceProvider = programResourceProvider.getDataResourceProvider();
       if (dataResourceProvider != null) {
@@ -306,7 +310,8 @@ public class AndroidApp {
 
               @Override
               public void visit(DataDirectoryResource directory) {
-                // Ignore.
+                dataDirectoryResources.add(
+                    DataDirectoryResource.fromName(directory.getName(), directory.getOrigin()));
               }
 
               @Override
@@ -315,7 +320,7 @@ public class AndroidApp {
                   byte[] bytes = ByteStreams.toByteArray(file.getByteStream());
                   DataEntryResource copy =
                       DataEntryResource.fromBytes(bytes, file.getName(), file.getOrigin());
-                  out.add(copy);
+                  dataEntryResources.add(copy);
                 } catch (IOException | ResourceException e) {
                   throw new RuntimeException(e);
                 }
@@ -323,7 +328,7 @@ public class AndroidApp {
             });
       }
     }
-    return out;
+    return new Pair<>(dataDirectoryResources, dataEntryResources);
   }
 
   /** Get program resource providers. */
@@ -411,12 +416,10 @@ public class AndroidApp {
         ImmutableList.of());
   }
 
-  /**
-   * Write the dex program resources and proguard resource to @code{output}.
-   */
-  public void write(Path output, OutputMode outputMode) throws IOException {
+  /** Write the dex program resources and proguard resource to @code{output}. */
+  public void writeForTesting(Path output, OutputMode outputMode) throws IOException {
     if (isArchive(output)) {
-      writeToZip(output, outputMode);
+      writeToZipForTesting(output, outputMode);
     } else {
       writeToDirectory(output, outputMode);
     }
@@ -440,19 +443,29 @@ public class AndroidApp {
   }
 
   /** Write the dex program resources to @code{archive}. */
-  public void writeToZip(Path archive, OutputMode outputMode) throws IOException {
+  public void writeToZipForTesting(Path archive, OutputMode outputMode) throws IOException {
     try {
       if (outputMode == OutputMode.DexIndexed) {
-        DexIndexedConsumer.ArchiveConsumer.writeResources(
-            archive, getDexProgramResourcesForTesting(), getDataEntryResourcesForTesting());
+        Pair<Set<DataDirectoryResource>, Set<DataEntryResource>> dataResourcesForTesting =
+            getDataResourcesForTesting();
+        DexIndexedConsumer.ArchiveConsumer.writeResourcesForTesting(
+            archive,
+            getDexProgramResourcesForTesting(),
+            dataResourcesForTesting.getFirst(),
+            dataResourcesForTesting.getSecond());
       } else if (outputMode == OutputMode.DexFilePerClassFile
           || outputMode == OutputMode.DexFilePerClass) {
         List<ProgramResource> resources = getDexProgramResourcesForTesting();
-        DexFilePerClassFileConsumer.ArchiveConsumer.writeResources(
+        DexFilePerClassFileConsumer.ArchiveConsumer.writeResourcesForTesting(
             archive, resources, programResourcesMainDescriptor);
       } else if (outputMode == OutputMode.ClassFile) {
-        ClassFileConsumer.ArchiveConsumer.writeResources(
-            archive, getClassProgramResourcesForTesting(), getDataEntryResourcesForTesting());
+        Pair<Set<DataDirectoryResource>, Set<DataEntryResource>> dataResourcesForTesting =
+            getDataResourcesForTesting();
+        ClassFileConsumer.ArchiveConsumer.writeResourcesForTesting(
+            archive,
+            getClassProgramResourcesForTesting(),
+            dataResourcesForTesting.getFirst(),
+            dataResourcesForTesting.getSecond());
       } else {
         throw new Unreachable("Unsupported output-mode for writing: " + outputMode);
       }
@@ -591,15 +604,6 @@ public class AndroidApp {
     };
   }
 
-  private Consumer<ProgramResource> createClassFileResourceConsumer(
-      Map<String, ProgramResource> classPathResources) {
-    return programResource -> {
-      assert programResource.getClassDescriptors().size() == 1;
-      String descriptor = programResource.getClassDescriptors().iterator().next();
-      classPathResources.put(descriptor, programResource);
-    };
-  }
-
   private int dumpProgramResources(
       String archiveName,
       FeatureSplitConfiguration featureSplitConfiguration,
@@ -627,10 +631,17 @@ public class AndroidApp {
       try (ByteArrayOutputStream archiveByteStream = new ByteArrayOutputStream()) {
         try (ZipOutputStream archiveOutputStream = new ZipOutputStream(archiveByteStream)) {
           Object2IntMap<String> seen = new Object2IntOpenHashMap<>();
-          Set<DataEntryResource> dataEntries = getDataEntryResourcesForTesting();
-          for (DataEntryResource dataResource : dataEntries) {
-            String entryName = dataResource.getName();
-            try (InputStream dataStream = dataResource.getByteStream()) {
+          Pair<Set<DataDirectoryResource>, Set<DataEntryResource>> dataResources =
+              getDataResourcesForTesting();
+          Set<DataDirectoryResource> dataDirectoryResources = dataResources.getFirst();
+          for (DataDirectoryResource dataDirectoryResource : dataDirectoryResources) {
+            writeToZipStream(
+                archiveOutputStream, dataDirectoryResource.getName(), new byte[0], ZipEntry.STORED);
+          }
+          Set<DataEntryResource> dataEntryResources = dataResources.getSecond();
+          for (DataEntryResource dataEntryResource : dataEntryResources) {
+            String entryName = dataEntryResource.getName();
+            try (InputStream dataStream = dataEntryResource.getByteStream()) {
               byte[] bytes = ByteStreams.toByteArray(dataStream);
               writeToZipStream(archiveOutputStream, entryName, bytes, ZipEntry.DEFLATED);
             }
@@ -958,7 +969,7 @@ public class AndroidApp {
         addProgramResourceProvider(
             new ProgramResourceProvider() {
               @Override
-              public Collection<ProgramResource> getProgramResources() throws ResourceException {
+              public Collection<ProgramResource> getProgramResources() {
                 return programResources;
               }
 
@@ -968,7 +979,7 @@ public class AndroidApp {
                     ? null
                     : new DataResourceProvider() {
                       @Override
-                      public void accept(Visitor visitor) throws ResourceException {
+                      public void accept(Visitor visitor) {
                         for (DataEntryResource dataResource : dataResources) {
                           visitor.visit(dataResource);
                         }

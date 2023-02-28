@@ -4,7 +4,6 @@
 
 package com.android.tools.r8.memberrebinding;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
@@ -30,8 +29,8 @@ public class MemberRebindingLibraryBridgeVerticallyMergeTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(A.class, B.class, C.class, D.class, Main.class)
         .addLibraryClasses(Lib.class)
         .run(parameters.getRuntime(), Main.class)
@@ -40,12 +39,12 @@ public class MemberRebindingLibraryBridgeVerticallyMergeTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClasses(A.class, B.class, C.class, D.class, Main.class)
         .addLibraryClasses(Lib.class)
         .addDefaultRuntimeLibrary(parameters)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .addBootClasspathClasses(Lib.class)
         .run(parameters.getRuntime(), Main.class)
@@ -58,7 +57,7 @@ public class MemberRebindingLibraryBridgeVerticallyMergeTest extends TestBase {
         .addProgramClasses(A.class, B.class, C.class, D.class, Main.class)
         .addLibraryClasses(Lib.class)
         .addDefaultRuntimeLibrary(parameters)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(Main.class)
         .addKeepClassRules(C.class, D.class)
         .enableInliningAnnotations()

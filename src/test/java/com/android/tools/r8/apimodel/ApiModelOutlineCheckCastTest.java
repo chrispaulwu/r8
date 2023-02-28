@@ -7,7 +7,6 @@ package com.android.tools.r8.apimodel;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForClass;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLevelForMethod;
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.verifyThat;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.CompilationMode;
 import com.android.tools.r8.SingleTestRunResult;
@@ -43,7 +42,7 @@ public class ApiModelOutlineCheckCastTest extends TestBase {
         .addLibraryClasses(LibraryClass.class, LibraryProvider.class)
         .addDefaultRuntimeLibrary(parameters)
         .addProgramClasses(Main.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAndroidBuildVersion(getApiLevelForRuntime())
         .apply(setMockApiLevelForClass(LibraryProvider.class, AndroidApiLevel.B))
         .apply(
@@ -69,8 +68,8 @@ public class ApiModelOutlineCheckCastTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime() && parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Main.class)
         .addAndroidBuildVersion(parameters.getApiLevel())
         .addLibraryClasses(LibraryProvider.class)
@@ -80,7 +79,7 @@ public class ApiModelOutlineCheckCastTest extends TestBase {
 
   @Test
   public void testD8Debug() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .setMode(CompilationMode.DEBUG)
         .apply(this::setupTestBuilder)
@@ -96,7 +95,7 @@ public class ApiModelOutlineCheckCastTest extends TestBase {
 
   @Test
   public void testD8Release() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .setMode(CompilationMode.RELEASE)
         .apply(this::setupTestBuilder)

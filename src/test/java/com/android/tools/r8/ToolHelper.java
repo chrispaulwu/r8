@@ -171,8 +171,6 @@ public class ToolHelper {
       Paths.get(LIBS_DIR, "r8_no_manifest_without_deps.jar");
   public static final Path R8_WITH_RELOCATED_DEPS_JAR =
       Paths.get(LIBS_DIR, "r8_with_relocated_deps.jar");
-  public static final Path R8_WITH_RELOCATED_DEPS_11_JAR =
-      Paths.get(LIBS_DIR, "r8_with_relocated_deps_11.jar");
   public static final Path R8_WITH_DEPS_17_JAR = Paths.get(LIBS_DIR, "r8_with_deps_17.jar");
   public static final Path R8_WITH_RELOCATED_DEPS_17_JAR =
       Paths.get(LIBS_DIR, "r8_with_relocated_deps_17.jar");
@@ -1242,7 +1240,7 @@ public class ToolHelper {
   }
 
   public static DirectMappedDexApplication buildApplicationWithAndroidJar(
-      List<String> fileNames, Path androidJar) throws IOException, ExecutionException {
+      List<String> fileNames, Path androidJar) throws IOException {
     AndroidApp input =
         AndroidApp.builder()
             .addProgramFiles(ListUtils.map(fileNames, Paths::get))
@@ -1587,14 +1585,13 @@ public class ToolHelper {
     return forkJavaWithJarAndJavaOptions(dir, r8Jar, Arrays.asList(args), javaOptions);
   }
 
-  public static ProcessResult forkR8Jar(Path dir, String... args)
-      throws IOException, InterruptedException {
+  public static ProcessResult forkR8Jar(Path dir, String... args) throws IOException {
     String r8Jar = R8_JAR.toAbsolutePath().toString();
     return forkJavaWithJar(dir, r8Jar, Arrays.asList(args));
   }
 
   public static ProcessResult forkGenerateMainDexList(Path dir, List<String> args1, String... args2)
-      throws IOException, InterruptedException {
+      throws IOException {
     List<String> args = new ArrayList<>();
     args.addAll(args1);
     args.addAll(Arrays.asList(args2));
@@ -1606,8 +1603,7 @@ public class ToolHelper {
     return forkJava(dir, GenerateMainDexList.class, args);
   }
 
-  private static ProcessResult forkJava(Path dir, Class clazz, String... args)
-      throws IOException, InterruptedException {
+  private static ProcessResult forkJava(Path dir, Class clazz, String... args) throws IOException {
     return forkJava(dir, clazz, Arrays.asList(args));
   }
 
@@ -2320,8 +2316,7 @@ public class ToolHelper {
         directory,
         new SimpleFileVisitor<Path>() {
           @Override
-          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-              throws IOException {
+          public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
             if (isDexFile(file)) {
               builder.addProgramFile(file);
             }

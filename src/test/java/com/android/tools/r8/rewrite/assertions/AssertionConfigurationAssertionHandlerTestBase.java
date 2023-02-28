@@ -4,11 +4,11 @@
 
 package com.android.tools.r8.rewrite.assertions;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.R8TestBuilder;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.rewrite.assertions.assertionhandler.AssertionHandlers;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
@@ -26,9 +26,8 @@ public abstract class AssertionConfigurationAssertionHandlerTestBase extends Tes
   @Parameter() public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build();
   }
 
   abstract String getExpectedOutput();
@@ -55,11 +54,11 @@ public abstract class AssertionConfigurationAssertionHandlerTestBase extends Tes
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClasses(getAssertionHandlerClasses())
         .addProgramClasses(getTestClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(o -> o.testing.forceIRForCfToCfDesugar = true)
         .addAssertionsConfiguration(
             builder ->
@@ -80,7 +79,7 @@ public abstract class AssertionConfigurationAssertionHandlerTestBase extends Tes
         .addKeepMainRule(getTestClasses().get(0))
         .addKeepAnnotation()
         .addKeepRules("-keepclassmembers class * { @com.android.tools.r8.Keep *; }")
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAssertionsConfiguration(
             builder ->
                 builder

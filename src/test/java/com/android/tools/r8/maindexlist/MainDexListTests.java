@@ -250,7 +250,7 @@ public class MainDexListTests extends TestBase {
   }
 
   @Test
-  public void singleEntryNoNewLine() throws Exception {
+  public void singleEntryNoNewLine() {
     DexItemFactory factory = new DexItemFactory();
     Set<DexType> types =
         MainDexListParser.parseList(
@@ -481,10 +481,11 @@ public class MainDexListTests extends TestBase {
     }
     Path input = temp.newFolder().toPath().resolve("input.zip");
     ToolHelper.runR8(
-        ToolHelper.prepareR8CommandBuilder(jasminBuilder.build())
-            .setDisableTreeShaking(true)
-            .setDisableMinification(true)
-            .build()).writeToZip(input, OutputMode.DexIndexed);
+            ToolHelper.prepareR8CommandBuilder(jasminBuilder.build())
+                .setDisableTreeShaking(true)
+                .setDisableMinification(true)
+                .build())
+        .writeToZipForTesting(input, OutputMode.DexIndexed);
 
     // Test with empty main dex list.
     runDeterministicTest(input, null, true);

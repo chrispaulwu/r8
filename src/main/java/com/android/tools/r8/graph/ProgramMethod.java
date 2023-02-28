@@ -15,7 +15,6 @@ import com.android.tools.r8.ir.conversion.MethodConversionOptions.MutableMethodC
 import com.android.tools.r8.ir.conversion.MethodProcessor;
 import com.android.tools.r8.ir.optimize.Inliner.ConstraintWithTarget;
 import com.android.tools.r8.kotlin.KotlinMethodLevelInfo;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceMap;
@@ -121,9 +120,6 @@ public final class ProgramMethod extends DexClassAndMethod
   public void registerCodeReferences(UseRegistry<?> registry) {
     Code code = getDefinition().getCode();
     if (code != null) {
-      if (Log.ENABLED) {
-        Log.verbose(getClass(), "Registering definitions reachable from `%s`.", this);
-      }
       code.registerCodeReferences(this, registry);
     }
   }

@@ -16,7 +16,6 @@ import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.android.tools.r8.utils.codeinspector.FoundClassSubject;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.concurrent.ExecutionException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -40,10 +39,10 @@ public class MetadataRewriteDependentKeepTest extends KotlinMetadataTestBase {
   }
 
   @Test
-  public void testR8() throws CompilationFailedException, IOException, ExecutionException {
+  public void testR8() throws CompilationFailedException, IOException {
     testForR8(parameters.getBackend())
         .addProgramFiles(kotlinc.getKotlinStdlibJar(), kotlinc.getKotlinAnnotationJar())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepKotlinMetadata()
         .addKeepRules(StringUtils.joinLines("-if class *.Metadata", "-keep class <1>.io.** { *; }"))
         .allowDiagnosticWarningMessages()

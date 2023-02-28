@@ -15,6 +15,7 @@ import com.android.tools.r8.R8TestCompileResult;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestCompileResult;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.dex.Constants;
 import com.android.tools.r8.naming.MemberNaming.MethodSignature;
@@ -26,11 +27,8 @@ import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.android.tools.r8.utils.codeinspector.MethodSubject;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.function.Function;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.objectweb.asm.ClassReader;
@@ -170,22 +168,20 @@ public class RemoveAssertionsTest extends TestBase {
   private final TestParameters parameters;
 
   @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> data() {
-    return buildParameters(getTestParameters().withAllRuntimes().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimes().build();
   }
 
   public RemoveAssertionsTest(TestParameters parameters) {
     this.parameters = parameters;
   }
 
-  @ClassRule public static TemporaryFolder staticTemp = ToolHelper.getTemporaryFolderForTest();
-
   private static Function<Backend, CompilationResults> compilationResults =
       memoizeFunction(RemoveAssertionsTest::compileAll);
 
   private static R8TestCompileResult compileWithAccessModification(Backend backend)
       throws CompilationFailedException {
-    return testForR8(staticTemp, backend)
+    return testForR8(getStaticTemp(), backend)
         .addProgramClasses(ClassWithAssertions.class)
         .addKeepMainRule(ClassWithAssertions.class)
         .addOptionsModification(o -> o.inlinerOptions().enableInlining = false)
@@ -198,7 +194,7 @@ public class RemoveAssertionsTest extends TestBase {
   private static R8TestCompileResult compileCf(
       Function<AssertionsConfiguration.Builder, AssertionsConfiguration> transformation)
       throws CompilationFailedException {
-    return testForR8(staticTemp, Backend.CF)
+    return testForR8(getStaticTemp(), Backend.CF)
         .addProgramClasses(ClassWithAssertions.class)
         .debug()
         .noTreeShaking()
@@ -219,7 +215,7 @@ public class RemoveAssertionsTest extends TestBase {
 
   private static R8TestCompileResult compileRegress110887293(Function<byte[], byte[]> rewriter)
       throws CompilationFailedException, IOException {
-    return testForR8(staticTemp, Backend.DEX)
+    return testForR8(getStaticTemp(), Backend.DEX)
         .addProgramClassFileData(
             rewriter.apply(ToolHelper.getClassAsBytes(ClassWithAssertions.class)))
         .addProgramClasses(ChromuimAssertionHookMock.class)
@@ -369,7 +365,7 @@ public class RemoveAssertionsTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     checkResultWithAssertionsInactive(
         compileD8(builder -> builder.setCompileTimeDisable().setScopeAll().build()));
     checkResultWithAssertionsInactive(

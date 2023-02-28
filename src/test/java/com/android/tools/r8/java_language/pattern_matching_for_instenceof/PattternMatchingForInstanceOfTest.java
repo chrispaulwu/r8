@@ -7,6 +7,7 @@ package com.android.tools.r8.java_language.pattern_matching_for_instenceof;
 import com.android.tools.r8.R8TestBuilder;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.examples.jdk17.PatternMatchingForInstanceof;
 import com.google.common.collect.ImmutableList;
@@ -29,26 +30,28 @@ public class PattternMatchingForInstanceOfTest extends TestBase {
   private static final String MAIN = PatternMatchingForInstanceof.Main.typeName();
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters()
-            .withCfRuntimesStartingFromIncluding(CfVm.JDK17)
-            .withDexRuntimes()
-            .withAllApiLevelsAlsoForCf()
-            .build());
+  public static TestParametersCollection data() {
+    return getTestParameters()
+        .withCfRuntimesStartingFromIncluding(CfVm.JDK17)
+        .withDexRuntimes()
+        .withAllApiLevelsAlsoForCf()
+        .build();
   }
 
   @Test
-  public void testD8AndJvm() throws Exception {
-    if (parameters.isCfRuntime()) {
-      testForJvm()
-          .addRunClasspathFiles(JAR)
-          .run(parameters.getRuntime(), MAIN)
-          .assertSuccessWithOutputLines(EXPECTED);
-    }
+  public void testJvm() throws Exception {
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
+        .addRunClasspathFiles(JAR)
+        .run(parameters.getRuntime(), MAIN)
+        .assertSuccessWithOutputLines(EXPECTED);
+  }
+
+  @Test
+  public void testD8() throws Exception {
     testForD8(parameters.getBackend())
         .addProgramFiles(JAR)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutputLines(EXPECTED);
@@ -60,12 +63,12 @@ public class PattternMatchingForInstanceOfTest extends TestBase {
     R8TestBuilder<?> builder =
         testForR8(parameters.getBackend())
             .addProgramFiles(JAR)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepMainRule(MAIN);
     if (parameters.getBackend().isDex()) {
       builder.run(parameters.getRuntime(), MAIN).assertSuccessWithOutputLines(EXPECTED);
     } else {
-      testForJvm()
+      testForJvm(parameters)
           .addRunClasspathFiles(builder.compile().writeToZip())
           .run(parameters.getRuntime(), MAIN)
           .assertSuccessWithOutputLines(EXPECTED);

@@ -4,7 +4,6 @@
 
 package com.android.tools.r8.memberrebinding;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestBuilder;
@@ -49,8 +48,8 @@ public class MemberRebindingAmbiguousDispatchToLibraryTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .apply(this::setupInput)
         .run(parameters.getRuntime(), Main.class)
         .apply(this::checkOutput);
@@ -60,7 +59,7 @@ public class MemberRebindingAmbiguousDispatchToLibraryTest extends TestBase {
   public void testD8() throws Exception {
     testForD8(parameters.getBackend())
         .apply(this::setupInput)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .addRunClasspathClasses(SuperInterface.class)
         .addRunClasspathClassFileData(getSuperClass())
@@ -73,7 +72,7 @@ public class MemberRebindingAmbiguousDispatchToLibraryTest extends TestBase {
     parameters.assumeR8TestParameters();
     testForR8(parameters.getBackend())
         .apply(this::setupInput)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(Main.class)
         .compile()
         .addRunClasspathClasses(SuperInterface.class)

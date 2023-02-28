@@ -62,7 +62,7 @@ public class ApiOutlineProfileRewritingTest extends TestBase {
     assumeTrue(parameters.isCfRuntime());
     assumeTrue(parameters.getApiLevel() == AndroidApiLevel.B);
     assertFalse(isLibraryClassPresentInCurrentRuntime());
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(Main.class)
         .run(parameters.getRuntime(), Main.class)
         .apply(this::inspectRunResult);
@@ -76,7 +76,7 @@ public class ApiOutlineProfileRewritingTest extends TestBase {
         .addDefaultRuntimeLibrary(parameters)
         .addArtProfileForRewriting(getArtProfile())
         .apply(setMockApiLevelForClass(LibraryClass.class, classApiLevel))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspectResidualArtProfile(this::inspectD8)
         .applyIf(
@@ -96,7 +96,7 @@ public class ApiOutlineProfileRewritingTest extends TestBase {
         .addKeepMainRule(Main.class)
         .addArtProfileForRewriting(getArtProfile())
         .apply(setMockApiLevelForClass(LibraryClass.class, classApiLevel))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspectResidualArtProfile(this::inspectR8)
         .applyIf(

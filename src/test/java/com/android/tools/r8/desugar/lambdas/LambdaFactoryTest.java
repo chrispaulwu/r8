@@ -113,7 +113,7 @@ public class LambdaFactoryTest extends TestBase {
     testForR8(parameters.getBackend())
         .addInnerClasses(getClass())
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .inspect(
             inspector -> {
@@ -150,7 +150,7 @@ public class LambdaFactoryTest extends TestBase {
       System.out.println(s);
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       ((Runnable) TestClass::greet).run();
       greet(System.out::println);
       ((MyTriConsumer<Long, Double, String>) TestClass::greetTri).accept(3L, 4.0, "5");

@@ -42,7 +42,7 @@ public class ReflectiveNewInstanceTest extends TestBase {
         StringUtils.lines("Success", "Success", "Success", "Success", "Success");
 
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(expectedOutput);
@@ -57,7 +57,7 @@ public class ReflectiveNewInstanceTest extends TestBase {
             .addKeepMainRule(TestClass.class)
             .enableGraphInspector()
             .enableUnusedArgumentAnnotations()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), TestClass.class)
             .assertSuccessWithOutput(expectedOutputAfterR8)
             .graphInspector();

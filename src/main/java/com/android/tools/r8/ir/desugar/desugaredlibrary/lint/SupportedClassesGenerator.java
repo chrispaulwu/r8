@@ -40,6 +40,7 @@ import com.android.tools.r8.utils.AndroidApp;
 import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.ThreadUtils;
 import com.android.tools.r8.utils.Timing;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -81,7 +82,6 @@ public class SupportedClassesGenerator {
 
   private void annotateClasses(
       SupportedClasses.Builder builder, DirectMappedDexApplication appForMax) {
-
     builder.forEachClassAndMethods(
         (clazz, methods) -> {
           ClassAnnotation classAnnotation = builder.getClassAnnotation(clazz.type);
@@ -122,6 +122,11 @@ public class SupportedClassesGenerator {
         continue;
       }
       AndroidApiLevel androidApiLevel = AndroidApiLevel.getAndroidApiLevel(api);
+      MachineDesugaredLibrarySpecification machineSpecification =
+          getMachineSpecification(androidApiLevel, specification);
+      options.setMinApiLevel(androidApiLevel);
+      options.resetDesugaredLibrarySpecificationForTesting();
+      options.setDesugaredLibrarySpecification(machineSpecification);
       AndroidApp library =
           AndroidApp.builder().addProgramFiles(getAndroidJarPath(androidApiLevel)).build();
       DirectMappedDexApplication dexApplication =
@@ -133,15 +138,9 @@ public class SupportedClassesGenerator {
               MainDexInfo.none(),
               GlobalSyntheticsStrategy.forNonSynthesizing(),
               StartupOrder.empty());
-      MachineDesugaredLibrarySpecification machineSpecification =
-          getMachineSpecification(androidApiLevel, specification);
 
-      options.setMinApiLevel(androidApiLevel);
-      options.resetDesugaredLibrarySpecificationForTesting();
-      options.setDesugaredLibrarySpecification(machineSpecification);
       List<DexMethod> backports =
-          BackportedMethodRewriter.generateListOfBackportedMethods(
-              library, options, ThreadUtils.getExecutorService(1));
+          BackportedMethodRewriter.generateListOfBackportedMethods(dexApplication, options);
 
       int finalApi = api;
       builder.forEachClassAndMethod(
@@ -224,6 +223,13 @@ public class SupportedClassesGenerator {
       SupportedClasses.Builder builder)
       throws IOException {
 
+    MachineDesugaredLibrarySpecification machineSpecification =
+        getMachineSpecification(AndroidApiLevel.B, specification);
+
+    options.setMinApiLevel(AndroidApiLevel.B);
+    options.resetDesugaredLibrarySpecificationForTesting();
+    options.setDesugaredLibrarySpecification(machineSpecification);
+
     AndroidApp implementation =
         AndroidApp.builder().addProgramFiles(desugaredLibraryImplementation).build();
     DirectMappedDexApplication implementationApplication =
@@ -236,15 +242,8 @@ public class SupportedClassesGenerator {
     DirectMappedDexApplication amendedAppForMax =
         new ApplicationReader(library, options, Timing.empty()).read().toDirect();
 
-    MachineDesugaredLibrarySpecification machineSpecification =
-        getMachineSpecification(AndroidApiLevel.B, specification);
-
-    options.setMinApiLevel(AndroidApiLevel.B);
-    options.resetDesugaredLibrarySpecificationForTesting();
-    options.setDesugaredLibrarySpecification(machineSpecification);
     List<DexMethod> backports =
-        BackportedMethodRewriter.generateListOfBackportedMethods(
-            library, options, ThreadUtils.getExecutorService(1));
+        BackportedMethodRewriter.generateListOfBackportedMethods(amendedAppForMax, options);
 
     DesugaredLibraryAmender.run(
         machineSpecification.getAmendLibraryMethods(),
@@ -350,20 +349,34 @@ public class SupportedClassesGenerator {
       if (clazz.type == backport.getHolderType()) {
         DexClass maxClass = amendedAppForMax.definitionFor(clazz.type);
         DexEncodedMethod dexEncodedMethod = maxClass.lookupMethod(backport);
-        // There is a single backport not in amendedAppForMax, Stream#ofNullable.
-        assert dexEncodedMethod != null
-            || backport
-                .toString()
-                .equals(
-                    "java.util.stream.Stream java.util.stream.Stream.ofNullable(java.lang.Object)");
+        // Some backports are not in amendedAppForMax, such as Stream#ofNullable and recent ones
+        // introduced in U.
         if (dexEncodedMethod == null) {
-          dexEncodedMethod =
-              DexEncodedMethod.builder()
-                  .setMethod(backport)
-                  .setAccessFlags(
-                      MethodAccessFlags.fromSharedAccessFlags(
-                          Constants.ACC_PUBLIC | Constants.ACC_STATIC, false))
-                  .build();
+          ImmutableSet<DexType> allStaticPublicMethods =
+              ImmutableSet.of(
+                  options.dexItemFactory().mathType,
+                  options.dexItemFactory().strictMathType,
+                  options.dexItemFactory().objectsType);
+          if (backport
+                  .toString()
+                  .equals(
+                      "java.util.stream.Stream"
+                          + " java.util.stream.Stream.ofNullable(java.lang.Object)")
+              || allStaticPublicMethods.contains(backport.getHolderType())) {
+            dexEncodedMethod =
+                DexEncodedMethod.builder()
+                    .setMethod(backport)
+                    .setAccessFlags(
+                        MethodAccessFlags.fromSharedAccessFlags(
+                            Constants.ACC_PUBLIC | Constants.ACC_STATIC, false))
+                    .build();
+          } else {
+            throw new Error(
+                "Unexpected backport missing from Android "
+                    + MAX_TESTED_ANDROID_API_LEVEL
+                    + ": "
+                    + backport);
+          }
         }
         builder.addSupportedMethod(clazz, dexEncodedMethod);
       }

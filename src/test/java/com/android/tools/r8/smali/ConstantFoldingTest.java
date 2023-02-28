@@ -16,7 +16,7 @@ import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.graph.DexCode;
 import com.android.tools.r8.graph.DexEncodedMethod;
 import com.android.tools.r8.ir.code.Cmp.Bias;
-import com.android.tools.r8.ir.code.If.Type;
+import com.android.tools.r8.ir.code.IfType;
 import com.android.tools.r8.ir.code.SingleConstant;
 import com.android.tools.r8.ir.code.WideConstant;
 import com.android.tools.r8.utils.AndroidApp;
@@ -315,7 +315,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     testBuilder.addTest(this::unopMethodBuilder, this::unopMethodChecker, test);
   }
 
-  private void addNegFoldingTest(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addNegFoldingTest(SmaliBuilderWithCheckers testBuilder) {
     addUnopTest(testBuilder, new UnopTestData("int", "neg", 2L, -2L));
     addUnopTest(testBuilder, new UnopTestData("int", "neg", -2L, 2L));
     addUnopTest(testBuilder, new UnopTestData("long", "neg", 2L, -2L));
@@ -601,7 +601,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturn);
   }
 
-  private void addNotIntFoldTests(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addNotIntFoldTests(SmaliBuilderWithCheckers testBuilder) {
     ImmutableList.of(0, 1, 0xff, 0xffffffff, 0xff000000, 0x80000000)
         .forEach(v -> testBuilder.addTest(this::notIntMethodBuilder, this::notIntMethodChecker, v));
   }
@@ -623,8 +623,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturnWide);
   }
 
-
-  private void addNotLongFoldTests(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addNotLongFoldTests(SmaliBuilderWithCheckers testBuilder) {
     ImmutableList.of(
         0L,
         1L,
@@ -653,7 +652,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturn);
   }
 
-  private void addNegIntFoldTests(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addNegIntFoldTests(SmaliBuilderWithCheckers testBuilder) {
     ImmutableList.of(0, 1, 0xff, 0xffffffff, 0xff000000, 0x80000000)
         .forEach(v -> testBuilder.addTest(this::negIntMethodBuilder, this::negIntMethodChecker, v));
   }
@@ -676,7 +675,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturnWide);
   }
 
-  private void addNegLongFoldTests(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addNegLongFoldTests(SmaliBuilderWithCheckers testBuilder) {
     ImmutableList.of(
         0L,
         1L,
@@ -692,11 +691,11 @@ public class ConstantFoldingTest extends SmaliTestBase {
 
     final float a;
     final float b;
-    final Type type;
+    final IfType type;
     final Bias bias;
     final boolean expected;
 
-    FloatTestData(float a, float b, Type type, Bias bias) {
+    FloatTestData(float a, float b, IfType type, Bias bias) {
       this.a = a;
       this.b = b;
       this.type = type;
@@ -715,12 +714,12 @@ public class ConstantFoldingTest extends SmaliTestBase {
 
   private void cmpFloatMethodBuilder(SmaliBuilder builder, String name, Object parameters) {
     String[] ifOpcode = new String[6];
-    ifOpcode[Type.EQ.ordinal()] = "if-eqz";
-    ifOpcode[Type.NE.ordinal()] = "if-nez";
-    ifOpcode[Type.LE.ordinal()] = "if-lez";
-    ifOpcode[Type.GE.ordinal()] = "if-gez";
-    ifOpcode[Type.LT.ordinal()] = "if-ltz";
-    ifOpcode[Type.GT.ordinal()] = "if-gtz";
+    ifOpcode[IfType.EQ.ordinal()] = "if-eqz";
+    ifOpcode[IfType.NE.ordinal()] = "if-nez";
+    ifOpcode[IfType.LE.ordinal()] = "if-lez";
+    ifOpcode[IfType.GE.ordinal()] = "if-gez";
+    ifOpcode[IfType.LT.ordinal()] = "if-ltz";
+    ifOpcode[IfType.GT.ordinal()] = "if-gtz";
 
     FloatTestData test = (FloatTestData) parameters;
     String cmpInstruction;
@@ -751,7 +750,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturn);
   }
 
-  private void addCmpFloatFoldTests(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addCmpFloatFoldTests(SmaliBuilderWithCheckers testBuilder) {
     float[] testValues = new float[]{
         Float.NEGATIVE_INFINITY,
         -100.0f,
@@ -765,7 +764,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     // Build the test configuration.
     for (int i = 0; i < testValues.length; i++) {
       for (int j = 0; j < testValues.length; j++) {
-        for (Type type : Type.values()) {
+        for (IfType type : IfType.values()) {
           for (Bias bias : Bias.values()) {
             if (bias == Bias.NONE) {
               // Bias NONE is only for long comparison.
@@ -779,10 +778,10 @@ public class ConstantFoldingTest extends SmaliTestBase {
               //
               // The numerical comparison operators <, <=, >, and >= return false if either or both
               // operands are NaN
-              if ((type == Type.GE || type == Type.GT) && bias == Bias.GT) {
+              if ((type == IfType.GE || type == IfType.GT) && bias == Bias.GT) {
                 continue;
               }
-              if ((type == Type.LE || type == Type.LT) && bias == Bias.LT) {
+              if ((type == IfType.LE || type == IfType.LT) && bias == Bias.LT) {
                 continue;
               }
             }
@@ -800,11 +799,11 @@ public class ConstantFoldingTest extends SmaliTestBase {
 
     final double a;
     final double b;
-    final Type type;
+    final IfType type;
     final Bias bias;
     final boolean expected;
 
-    DoubleTestData(double a, double b, Type type, Bias bias) {
+    DoubleTestData(double a, double b, IfType type, Bias bias) {
       this.a = a;
       this.b = b;
       this.type = type;
@@ -823,12 +822,12 @@ public class ConstantFoldingTest extends SmaliTestBase {
 
   private void cmpDoubleMethodBuilder(SmaliBuilder builder, String name, Object parameters) {
     String[] ifOpcode = new String[6];
-    ifOpcode[Type.EQ.ordinal()] = "if-eqz";
-    ifOpcode[Type.NE.ordinal()] = "if-nez";
-    ifOpcode[Type.LE.ordinal()] = "if-lez";
-    ifOpcode[Type.GE.ordinal()] = "if-gez";
-    ifOpcode[Type.LT.ordinal()] = "if-ltz";
-    ifOpcode[Type.GT.ordinal()] = "if-gtz";
+    ifOpcode[IfType.EQ.ordinal()] = "if-eqz";
+    ifOpcode[IfType.NE.ordinal()] = "if-nez";
+    ifOpcode[IfType.LE.ordinal()] = "if-lez";
+    ifOpcode[IfType.GE.ordinal()] = "if-gez";
+    ifOpcode[IfType.LT.ordinal()] = "if-ltz";
+    ifOpcode[IfType.GT.ordinal()] = "if-gtz";
 
     DoubleTestData test = (DoubleTestData) parameters;
     String cmpInstruction;
@@ -859,8 +858,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturn);
   }
 
-
-  private void addCmpDoubleFoldTests(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addCmpDoubleFoldTests(SmaliBuilderWithCheckers testBuilder) {
     double[] testValues = new double[]{
         Double.NEGATIVE_INFINITY,
         -100.0f,
@@ -874,7 +872,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     // Build the test configuration.
     for (int i = 0; i < testValues.length; i++) {
       for (int j = 0; j < testValues.length; j++) {
-        for (Type type : Type.values()) {
+        for (IfType type : IfType.values()) {
           for (Bias bias : Bias.values()) {
             if (bias == Bias.NONE) {
               // Bias NONE is only for long comparison.
@@ -887,10 +885,10 @@ public class ConstantFoldingTest extends SmaliTestBase {
               //
               // The numerical comparison operators <, <=, >, and >= return false if either or both
               // operands are NaN
-              if ((type == Type.GE || type == Type.GT) && bias == Bias.GT) {
+              if ((type == IfType.GE || type == IfType.GT) && bias == Bias.GT) {
                 continue;
               }
-              if ((type == Type.LE || type == Type.LT) && bias == Bias.LT) {
+              if ((type == IfType.LE || type == IfType.LT) && bias == Bias.LT) {
                 continue;
               }
             }
@@ -923,7 +921,7 @@ public class ConstantFoldingTest extends SmaliTestBase {
     assertTrue(code.instructions[1] instanceof DexReturn);
   }
 
-  private void addCmpLongFold(SmaliBuilderWithCheckers testBuilder) throws Exception {
+  private void addCmpLongFold(SmaliBuilderWithCheckers testBuilder) {
     ImmutableList.of(
         new long[]{Long.MIN_VALUE, 1L},
         new long[]{Long.MAX_VALUE, 1L},

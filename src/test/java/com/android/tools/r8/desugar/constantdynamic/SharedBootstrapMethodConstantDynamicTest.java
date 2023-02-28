@@ -15,6 +15,7 @@ import com.android.tools.r8.CompilationFailedException;
 import com.android.tools.r8.DiagnosticsLevel;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.cf.CfVersion;
@@ -27,7 +28,6 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -41,9 +41,8 @@ public class SharedBootstrapMethodConstantDynamicTest extends TestBase {
   public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build();
   }
 
   private static final String EXPECTED_OUTPUT =
@@ -56,7 +55,7 @@ public class SharedBootstrapMethodConstantDynamicTest extends TestBase {
     assumeTrue(parameters.asCfRuntime().isNewerThanOrEqual(CfVm.JDK11));
     assumeTrue(parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
 
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(getTransformedClasses())
         .run(parameters.getRuntime(), MAIN_CLASS)
         .assertSuccessWithOutput(EXPECTED_OUTPUT);
@@ -80,10 +79,10 @@ public class SharedBootstrapMethodConstantDynamicTest extends TestBase {
 
   @Test
   public void testD8Cf() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
+    parameters.assumeCfRuntime();
     testForD8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setDiagnosticsLevelModifier(
             (level, diagnostic) ->
                 (diagnostic instanceof ConstantDynamicDesugarDiagnostic
@@ -111,10 +110,10 @@ public class SharedBootstrapMethodConstantDynamicTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClassFileData(getTransformedClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setDiagnosticsLevelModifier(
             (level, diagnostic) ->
                 (diagnostic instanceof ConstantDynamicDesugarDiagnostic
@@ -163,7 +162,7 @@ public class SharedBootstrapMethodConstantDynamicTest extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
         .addLibraryFiles(ToolHelper.getMostRecentAndroidJar())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(MAIN_CLASS)
         .allowDiagnosticMessages()
         .compileWithExpectedDiagnostics(

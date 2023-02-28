@@ -133,7 +133,9 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
       desugarings.add(new InvokeToPrivateRewriter());
     }
     desugarings.add(new StringConcatInstructionDesugaring(appView));
-    desugarings.add(new BufferCovariantReturnTypeRewriter(appView));
+    if (appView.options().shouldDesugarBufferCovariantReturnType()) {
+      desugarings.add(new BufferCovariantReturnTypeRewriter(appView));
+    }
     if (backportedMethodRewriter.hasBackports()) {
       desugarings.add(backportedMethodRewriter);
     }
@@ -263,13 +265,13 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
         method.getDefinition().getCode().asCfCode().getInstructions()) {
       for (CfInstructionDesugaring impreciseDesugaring :
           Iterables.filter(desugarings, desugaring -> !desugaring.hasPreciseNeedsDesugaring())) {
-        if (impreciseDesugaring.needsDesugaring(instruction, method)) {
+        if (impreciseDesugaring.compute(instruction, method).needsDesugaring()) {
           foundFalsePositive = true;
         }
       }
       for (CfInstructionDesugaring preciseDesugaring :
           Iterables.filter(desugarings, desugaring -> desugaring.hasPreciseNeedsDesugaring())) {
-        assert !preciseDesugaring.needsDesugaring(instruction, method);
+        assert !preciseDesugaring.compute(instruction, method).needsDesugaring();
       }
     }
     assert foundFalsePositive;
@@ -320,17 +322,17 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
     while (iterator.hasNext()) {
       CfInstructionDesugaring desugaring = iterator.next();
       Collection<CfInstruction> replacement =
-          desugaring.desugarInstruction(
-              instruction,
-              freshLocalProvider,
-              localStackAllocator,
-              eventConsumer,
-              context,
-              methodProcessingContext,
-              this,
-              appView.dexItemFactory());
+          desugaring
+              .compute(instruction, context)
+              .desugarInstruction(
+                  freshLocalProvider,
+                  localStackAllocator,
+                  eventConsumer,
+                  context,
+                  methodProcessingContext,
+                  this,
+                  appView.dexItemFactory());
       if (replacement != null) {
-        assert desugaring.needsDesugaring(instruction, context);
         assert verifyNoOtherDesugaringNeeded(instruction, context, iterator, desugaring);
         return replacement;
       }
@@ -359,9 +361,10 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
 
   private boolean needsDesugaring(CfInstruction instruction, ProgramMethod context) {
     return Iterables.any(
-            desugarings, desugaring -> desugaring.needsDesugaring(instruction, context))
+            desugarings, desugaring -> desugaring.compute(instruction, context).needsDesugaring())
         || Iterables.any(
-            yieldingDesugarings, desugaring -> desugaring.needsDesugaring(instruction, context));
+            yieldingDesugarings,
+            desugaring -> desugaring.compute(instruction, context).needsDesugaring());
   }
 
   private boolean verifyNoOtherDesugaringNeeded(
@@ -371,7 +374,7 @@ public class NonEmptyCfInstructionDesugaringCollection extends CfInstructionDesu
       CfInstructionDesugaring appliedDesugaring) {
     iterator.forEachRemaining(
         desugaring -> {
-          boolean alsoApplicable = desugaring.needsDesugaring(instruction, context);
+          boolean alsoApplicable = desugaring.compute(instruction, context).needsDesugaring();
           // TODO(b/187913003): As part of precise interface desugaring, make sure the
           //  identification is explicitly non-overlapping and remove the exceptions below.
           assert !alsoApplicable

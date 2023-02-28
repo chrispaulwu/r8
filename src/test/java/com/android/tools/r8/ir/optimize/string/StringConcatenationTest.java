@@ -22,6 +22,8 @@ import com.android.tools.r8.utils.codeinspector.MethodSubject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class StringConcatenationTest extends TestBase {
@@ -66,27 +68,24 @@ public class StringConcatenationTest extends TestBase {
       "na;na;na;na;na;na;na;na;Batman!"
   );
 
-  @Parameterized.Parameters(name = "{0}")
+  @Parameters(name = "{0}")
   public static TestParametersCollection data() {
-    return getTestParameters().withAllRuntimes().withAllApiLevels().build();
+    return getTestParameters().withAllRuntimesAndApiLevels().build();
   }
 
-  private final TestParameters parameters;
-
-  public StringConcatenationTest(TestParameters parameters) {
-    this.parameters = parameters;
-  }
+  @Parameter(0)
+  public TestParameters parameters;
 
   @Test
   public void testJVMOutput() throws Exception {
-    assumeTrue("Only run JVM reference on CF runtimes", parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JAVA_OUTPUT);
   }
 
-  private void test(SingleTestRunResult result, boolean isR8, boolean isReleaseMode)
+  private void test(SingleTestRunResult<?> result, boolean isR8, boolean isReleaseMode)
       throws Exception {
     // TODO(b/154899065): The lack of subtyping made the escape analysis to regard
     //    StringBuilder#toString as an alias-introducing instruction.
@@ -194,12 +193,12 @@ public class StringConcatenationTest extends TestBase {
 
   @Test
   public void testD8Debug() throws Exception {
-    assumeTrue("Only run D8 for Dex backend", parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     test(
         testForD8()
             .debug()
             .addProgramClasses(MAIN)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), MAIN)
             .assertSuccessWithOutput(JAVA_OUTPUT),
         false,
@@ -208,12 +207,12 @@ public class StringConcatenationTest extends TestBase {
 
   @Test
   public void testD8Release() throws Exception {
-    assumeTrue("Only run D8 for Dex backend", parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     test(
         testForD8()
             .release()
             .addProgramClasses(MAIN)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), MAIN)
             .assertSuccessWithOutput(JAVA_OUTPUT),
         false,
@@ -230,7 +229,7 @@ public class StringConcatenationTest extends TestBase {
             .enableInliningAnnotations()
             .addKeepMainRule(MAIN)
             .addDontObfuscate()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), MAIN)
             .assertSuccessWithOutput(JAVA_OUTPUT);
     test(result, true, true);

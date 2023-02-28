@@ -170,7 +170,7 @@ public class NestInvokeSpecialInterfaceMethodAccessTest extends TestBase {
     return computeAppViewWithClassHierarchy(
         buildClasses(getClasses())
             .addClassProgramData(getTransformedClasses())
-            .addLibraryFile(TestBase.runtimeJar(parameters.getBackend()))
+            .addLibraryFile(parameters.getDefaultRuntimeLibrary())
             .build());
   }
 
@@ -188,7 +188,7 @@ public class NestInvokeSpecialInterfaceMethodAccessTest extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClasses(getClasses())
         .addProgramClassFileData(getTransformedClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(Main.class)
         .run(parameters.getRuntime(), Main.class)
         .apply(this::checkExpectedResult);

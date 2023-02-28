@@ -6,7 +6,6 @@ package com.android.tools.r8.shaking;
 
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPresentAndRenamed;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.KeepConstantArguments;
 import com.android.tools.r8.TestBase;
@@ -66,8 +65,8 @@ public class ReturnTypeTest extends TestBase {
 
   @Test
   public void testJVMOutput() throws Exception {
-    assumeTrue("Only run JVM reference on CF runtimes", parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JAVA_OUTPUT);
@@ -80,7 +79,7 @@ public class ReturnTypeTest extends TestBase {
             B112517039ReturnType.class, B112517039I.class, B112517039Caller.class, MAIN)
         .addKeepMainRule(MAIN)
         .enableConstantArgumentAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(o -> o.inlinerOptions().enableInlining = false)
         .run(parameters.getRuntime(), MAIN)
         .assertSuccessWithOutput(JAVA_OUTPUT)

@@ -26,7 +26,6 @@ import com.android.tools.r8.ir.optimize.info.MutableMethodOptimizationInfo;
 import com.android.tools.r8.ir.optimize.info.OptimizationFeedback;
 import com.android.tools.r8.ir.optimize.info.OptimizationFeedback.OptimizationInfoFixer;
 import com.android.tools.r8.ir.optimize.info.OptimizationFeedbackSimple;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.utils.CollectionUtils;
 import com.android.tools.r8.utils.ExceptionUtils;
 import com.android.tools.r8.utils.InternalOptions;
@@ -136,9 +135,6 @@ public class TreePruner {
         pruneMembersAndAttributes(clazz);
       } else {
         // The class is completely unused and we can remove it.
-        if (Log.ENABLED) {
-          Log.debug(getClass(), "Removing class: " + clazz);
-        }
         prunedTypes.add(clazz.type);
         if (clazz.getSourceFile() != null) {
           appView.addPrunedClassSourceFile(clazz.type, clazz.getSourceFile().toString());
@@ -345,18 +341,12 @@ public class TreePruner {
           reachableMethods.add(method);
           continue;
         }
-        if (Log.ENABLED) {
-          Log.debug(getClass(), "Making method %s abstract.", method.getReference());
-        }
         // Private methods and static methods can only be targeted yet non-live as the result of
         // an invalid invoke. They will not actually be called at runtime but we have to keep them
         // as non-abstract (see above) to produce the same failure mode.
         new ProgramMethod(clazz, method).convertToAbstractOrThrowNullMethod(appView);
         reachableMethods.add(method);
       } else {
-        if (Log.ENABLED) {
-          Log.debug(getClass(), "Removing method %s.", method.getReference());
-        }
         unusedItemsPrinter.registerUnusedMethod(method);
         prunedMethods.add(method.getReference());
       }
@@ -381,9 +371,6 @@ public class TreePruner {
     if (firstUnreachable == -1) {
       return null;
     }
-    if (Log.ENABLED) {
-      Log.debug(getClass(), "Removing field %s.", fields.get(firstUnreachable));
-    }
     DexEncodedField firstUnreachableField = fields.get(firstUnreachable);
     unusedItemsPrinter.registerUnusedField(firstUnreachableField);
     prunedFields.add(firstUnreachableField.getReference());
@@ -396,9 +383,6 @@ public class TreePruner {
       if (isReachableOrReferencedField.test(field)) {
         reachableOrReferencedFields.add(field);
       } else {
-        if (Log.ENABLED) {
-          Log.debug(getClass(), "Removing field %s.", field.getReference());
-        }
         unusedItemsPrinter.registerUnusedField(field);
         prunedFields.add(field.getReference());
       }

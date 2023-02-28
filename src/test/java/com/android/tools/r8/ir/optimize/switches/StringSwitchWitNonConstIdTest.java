@@ -4,7 +4,6 @@
 
 package com.android.tools.r8.ir.optimize.switches;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
@@ -30,11 +29,11 @@ public class StringSwitchWitNonConstIdTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .addProgramClasses(Main.class)
         .release()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("Foo", "Bar", "Baz", "Qux");
   }
@@ -46,7 +45,7 @@ public class StringSwitchWitNonConstIdTest extends TestBase {
         .addKeepMainRule(Main.class)
         .enableInliningAnnotations()
         .release()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("Foo", "Bar", "Baz", "Qux");
   }

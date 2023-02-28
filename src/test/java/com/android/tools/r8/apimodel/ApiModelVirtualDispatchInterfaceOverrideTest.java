@@ -48,7 +48,7 @@ public class ApiModelVirtualDispatchInterfaceOverrideTest extends TestBase {
                     descriptor(AssetManager.class), "Landroid/content/res/AssetManager;")
                 .transform())
         .addLibraryFiles(ToolHelper.getAndroidJar(LATEST))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(Main.class)
         .apply(ApiModelingTestHelper::enableApiCallerIdentification)
         .apply(
@@ -70,7 +70,7 @@ public class ApiModelVirtualDispatchInterfaceOverrideTest extends TestBase {
 
   public static class Main {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       AssetManager manager = null;
       manager.close();
     }

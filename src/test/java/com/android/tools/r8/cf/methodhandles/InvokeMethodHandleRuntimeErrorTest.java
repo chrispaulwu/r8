@@ -51,8 +51,8 @@ public class InvokeMethodHandleRuntimeErrorTest extends TestBase {
 
   @Test
   public void testReference() throws Throwable {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Main.class, I.class, Super.class)
         .addProgramClassFileData(getInvokeCustomTransform())
         .run(parameters.getRuntime(), Main.class)
@@ -65,7 +65,7 @@ public class InvokeMethodHandleRuntimeErrorTest extends TestBase {
     testForD8()
         .addProgramClasses(Main.class, I.class, Super.class)
         .addProgramClassFileData(getInvokeCustomTransform())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
               if (hasCompileSupport()) {

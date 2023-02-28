@@ -111,7 +111,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
     return testForR8(parameters.getBackend())
         .applyIf(providerType == ProviderType.API, b -> b.addProgramFiles(library))
         .applyIf(providerType == ProviderType.INJARS, b -> b.addKeepRules("-injars " + library))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspector();
   }
@@ -153,7 +153,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
   }
 
   @Test
-  public void syntaxError() throws Exception {
+  public void syntaxError() {
     // TODO(b/228319861): Read Proguard rules from AAR's.
     assumeTrue(!libraryType.isAar());
     assertThrows(
@@ -161,7 +161,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
         () ->
             testForR8(parameters.getBackend())
                 .addProgramFiles(buildLibrary(ImmutableList.of("error")))
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compileWithExpectedDiagnostics(
                     diagnostics ->
                         diagnostics.assertErrorThatMatches(
@@ -172,7 +172,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
   }
 
   @Test
-  public void includeError() throws Exception {
+  public void includeError() {
     // TODO(b/228319861): Read Proguard rules from AAR's.
     assumeTrue(!libraryType.isAar());
     assertThrows(
@@ -180,7 +180,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
         () ->
             testForR8(parameters.getBackend())
                 .addProgramFiles(buildLibrary(ImmutableList.of("-include other.rules")))
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compileWithExpectedDiagnostics(
                     diagnostics ->
                         diagnostics.assertErrorThatMatches(
@@ -215,7 +215,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
   }
 
   @Test
-  public void throwingDataResourceProvider() throws Exception {
+  public void throwingDataResourceProvider() {
     // TODO(b/228319861): Read Proguard rules from AAR's.
     assumeTrue(!libraryType.isAar());
     assertThrows(
@@ -223,7 +223,7 @@ public class LibraryProvidedProguardRulesTest extends LibraryProvidedProguardRul
         () ->
             testForR8(parameters.getBackend())
                 .addProgramResourceProviders(new TestProvider())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compileWithExpectedDiagnostics(
                     diagnostics ->
                         diagnostics.assertErrorThatMatches(

@@ -38,8 +38,8 @@ public class LegacyLambdaMergeTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(getTransformedMain())
         // Add the lambda twice (JVM just picks the first).
         .addProgramClassFileData(getTransformedLambda())
@@ -53,12 +53,9 @@ public class LegacyLambdaMergeTest extends TestBase {
     // Merging legacy lambdas is only valid for DEX inputs, thus also not R8 applicable.
     assumeTrue(parameters.isDexRuntime());
     D8TestCompileResult lambda =
-        testForD8()
-            .setMinApi(parameters.getApiLevel())
-            .addProgramClassFileData(getTransformedLambda())
-            .compile();
+        testForD8().setMinApi(parameters).addProgramClassFileData(getTransformedLambda()).compile();
     testForD8()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addProgramClassFileData(getTransformedMain())
         // Add the lambda twice.
         .addProgramFiles(lambda.writeToZip())

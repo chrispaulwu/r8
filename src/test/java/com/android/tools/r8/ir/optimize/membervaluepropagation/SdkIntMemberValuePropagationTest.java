@@ -82,13 +82,13 @@ public class SdkIntMemberValuePropagationTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     assumeTrue(rule.getRule().equals(""));
     testForD8()
         .addProgramClassFileData(getTransformedMainClass())
         .addLibraryClassFileData(getTransformedBuildVERSIONClass())
         .addLibraryFiles(parameters.getDefaultRuntimeLibrary())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(inspector -> verifyOutput(inspector, Compiler.D8))
         .addRunClasspathClassFileData(getTransformedBuildVERSIONClass())
@@ -104,7 +104,7 @@ public class SdkIntMemberValuePropagationTest extends TestBase {
         .addKeepRules(rule.getRule())
         .addLibraryClassFileData(getTransformedBuildVERSIONClass())
         .addLibraryFiles(parameters.getDefaultRuntimeLibrary())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(inspector -> verifyOutput(inspector, Compiler.R8))
         .addRunClasspathClassFileData(getTransformedBuildVERSIONClass())

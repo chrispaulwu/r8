@@ -37,28 +37,28 @@ public class NegatedMethodArgumentTest extends TestBase {
   private static final String EXPECTED_OUTPUT = StringUtils.lines("Hello, world!");
 
   @Test
-  public void testR8NegatedPrimitive() throws Exception {
+  public void testR8NegatedPrimitive() {
     assertThrows(
         CompilationFailedException.class,
         () ->
             testForR8(parameters.getBackend())
                 .addInnerClasses(getClass())
                 .addKeepMainRule(TestClass.class)
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addKeepRules("-keep class * { void setX(!%); }")
                 .run(parameters.getRuntime(), TestClass.class)
                 .assertSuccessWithOutput(EXPECTED_OUTPUT));
   }
 
   @Test
-  public void testR8NegatedClass() throws Exception {
+  public void testR8NegatedClass() {
     assertThrows(
         CompilationFailedException.class,
         () ->
             testForR8(parameters.getBackend())
                 .addInnerClasses(getClass())
                 .addKeepMainRule(TestClass.class)
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addKeepRules("-keep class * { void setX(!**Producer); }")
                 .compile());
   }

@@ -4,9 +4,7 @@
 package com.android.tools.r8.graph.invokespecial;
 
 import static com.android.tools.r8.utils.DescriptorUtils.getBinaryNameFromJavaType;
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -37,8 +35,8 @@ public class InvokeSpecialToVirtualMethodTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Base.class, Bar.class, TestClass.class)
         .addProgramClassFileData(getFooTransform())
         .run(parameters.getRuntime(), TestClass.class)
@@ -47,11 +45,11 @@ public class InvokeSpecialToVirtualMethodTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .addProgramClasses(Base.class, Bar.class, TestClass.class)
         .addProgramClassFileData(getFooTransform())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
   }
@@ -61,21 +59,10 @@ public class InvokeSpecialToVirtualMethodTest extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClasses(Base.class, Bar.class, TestClass.class)
         .addProgramClassFileData(getFooTransform())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(TestClass.class)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
-  }
-
-  @Test
-  public void testDX() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForDX()
-        .addProgramClasses(Base.class, Bar.class, TestClass.class)
-        .addProgramClassFileData(getFooTransform())
-        .setMinApi(parameters.getApiLevel())
-        .run(parameters.getRuntime(), TestClass.class)
-        .assertFailureWithErrorThatMatches(containsString(getExpectedOutput()));
   }
 
   private String getExpectedOutput() {

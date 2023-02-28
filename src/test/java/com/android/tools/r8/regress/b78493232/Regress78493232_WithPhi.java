@@ -50,8 +50,8 @@ public class Regress78493232_WithPhi extends AsmTestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .noVerify()
         .addProgramClassFileData(CLASS_BYTES)
         .addProgramClasses(CLASSES)
@@ -61,12 +61,12 @@ public class Regress78493232_WithPhi extends AsmTestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     D8TestRunResult result =
         testForD8()
             .addProgramClasses(CLASSES)
             .addProgramClassFileData(CLASS_BYTES)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(options -> options.testing.readInputStackMaps = false)
             .run(parameters.getRuntime(), MAIN);
     checkResult(result);
@@ -91,7 +91,7 @@ public class Regress78493232_WithPhi extends AsmTestBase {
             .allowDiagnosticWarningMessages()
             .treeShaking(treeShake)
             .addDontObfuscate()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(options -> options.testing.readInputStackMaps = false)
             .addKeepMainRule(MAIN)
             .compileWithExpectedDiagnostics(

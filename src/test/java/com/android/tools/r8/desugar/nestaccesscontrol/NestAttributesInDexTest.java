@@ -10,6 +10,7 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRunResult;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.desugar.nestaccesscontrol.NestAttributesInDexTest.Host.Member1;
@@ -26,7 +27,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,9 +41,8 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
   @Parameter() public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build();
   }
 
   private static final String EXPECTED_OUTPUT =
@@ -82,7 +81,7 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
         parameters.isCfRuntime()
             && isRuntimeWithNestSupport(parameters.asCfRuntime())
             && parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
         .run(parameters.getRuntime(), TestClass.class)
@@ -108,11 +107,11 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .compile()
         .inspect(inspector -> inspect(inspector, true))
@@ -127,7 +126,7 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
         .disableDesugaring()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> assertFalse(options.emitNestAnnotationsInDex))
         .compile()
         .inspect(inspector -> inspect(inspector, false))
@@ -142,7 +141,7 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .addKeepMainRule(TestClass.class)
         .compile()
@@ -161,7 +160,7 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .addKeepMainRule(TestClass.class)
         .addKeepClassRules(Host.class)
@@ -182,7 +181,7 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .addKeepMainRule(TestClass.class)
         .addKeepClassRules(Member1.class, Member2.class)
@@ -203,7 +202,7 @@ public class NestAttributesInDexTest extends NestAttributesInDexTestBase {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(OtherHost.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .addKeepMainRule(TestClass.class)
         .addKeepClassRules(Host.class, Member1.class, Member2.class)

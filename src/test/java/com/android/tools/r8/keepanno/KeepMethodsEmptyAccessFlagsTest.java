@@ -55,7 +55,7 @@ public class KeepMethodsEmptyAccessFlagsTest extends TestBase {
         .enableExperimentalKeepAnnotations()
         .addProgramClasses(getInputClasses())
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED)
         .inspect(this::checkOutput);
@@ -94,7 +94,7 @@ public class KeepMethodsEmptyAccessFlagsTest extends TestBase {
             /* the explicit empty set matches all access */
           })
     })
-    void foo() throws Exception {
+    void foo() {
       List<String> sorted = new ArrayList<>();
       for (Method method : Abs.class.getDeclaredMethods()) {
         int modifiers = method.getModifiers();

@@ -84,8 +84,8 @@ public class TwrCloseResourceDuplicationTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramFiles(getProgramInputs())
         .run(parameters.getRuntime(), MAIN.typeName(), getZipFile())
         .assertSuccessWithOutput(EXPECTED);
@@ -96,7 +96,7 @@ public class TwrCloseResourceDuplicationTest extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramFiles(getProgramInputs())
         .addLibraryFiles(ToolHelper.getAndroidJar(AndroidApiLevel.LATEST))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), MAIN.typeName(), getZipFile())
         .assertSuccessWithOutput(EXPECTED)
         .inspect(
@@ -122,7 +122,7 @@ public class TwrCloseResourceDuplicationTest extends TestBase {
         .addLibraryFiles(ToolHelper.getAndroidJar(AndroidApiLevel.LATEST))
         .addKeepMainRule(MAIN.typeName())
         .addKeepClassAndMembersRules(FOO.typeName(), BAR.typeName())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addDontObfuscate()
         .run(parameters.getRuntime(), MAIN.typeName(), getZipFile())
         .assertSuccessWithOutput(EXPECTED)

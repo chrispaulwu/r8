@@ -43,7 +43,7 @@ public class ApiModelOutlineInstanceInitializerSuperTest extends TestBase {
         .addLibraryClasses(LibraryClass.class)
         .addDefaultRuntimeLibrary(parameters)
         .addProgramClasses(Main.class, ProgramExtendsLibraryClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAndroidBuildVersion()
         .apply(setMockApiLevelForClass(LibraryClass.class, classApiLevel))
         .apply(
@@ -108,8 +108,9 @@ public class ApiModelOutlineInstanceInitializerSuperTest extends TestBase {
             ProgramExtendsLibraryClass.class.getMethod("print"),
             isR8 ? AndroidApiLevel.B : classApiLevel);
     verifyThat(inspector, parameters, LibraryClass.class.getDeclaredConstructor(String.class))
-        .isOutlinedFromUntil(
+        .isOutlinedFromBetween(
             ProgramExtendsLibraryClass.class.getDeclaredConstructor(String.class),
+            AndroidApiLevel.L,
             isR8 ? AndroidApiLevel.B : classApiLevel);
   }
 

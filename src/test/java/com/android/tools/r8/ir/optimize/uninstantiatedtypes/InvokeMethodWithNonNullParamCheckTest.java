@@ -70,7 +70,7 @@ public class InvokeMethodWithNonNullParamCheckTest extends TestBase {
                 + "WithDeadCatchHandler");
 
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(expected);
@@ -88,7 +88,7 @@ public class InvokeMethodWithNonNullParamCheckTest extends TestBase {
                   // CatchHandlers(new A()).
                   options.enableClassInlining = false;
                 })
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), TestClass.class)
             .assertSuccessWithOutput(expected)
             .inspector();

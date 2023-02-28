@@ -14,7 +14,6 @@ import static org.junit.Assert.assertEquals;
 import com.android.tools.r8.CompilationFailedException;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.diagnostic.MissingDefinitionsDiagnostic;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import java.io.BufferedReader;
@@ -27,9 +26,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -49,9 +46,6 @@ public class TreeShakingSpecificTest extends TestBase {
     this.backend = backend;
     parameters.assertNoneRuntime();
   }
-
-  @Rule
-  public TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
 
   private Path getProgramFiles(String test) {
     return Paths.get(EXAMPLES_BUILD_DIR, test + ".jar");

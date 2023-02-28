@@ -231,8 +231,7 @@ public abstract class D8IncrementalRunExamplesAndroidOTest
       }
     }
 
-    abstract void addClasspathReference(
-        Path testJarFile, D8Command.Builder builder) throws IOException;
+    abstract void addClasspathReference(Path testJarFile, D8Command.Builder builder);
 
     abstract void addLibraryReference(Builder builder, Path location) throws IOException;
   }
@@ -288,11 +287,11 @@ public abstract class D8IncrementalRunExamplesAndroidOTest
             Lists.newArrayList(test.compileClassesTogether(inputJarFile, null).values()), null);
 
     Path out1 = temp.newFolder().toPath().resolve("out-together.zip");
-    mergedFromCompiledTogether.writeToZip(out1, OutputMode.DexIndexed);
+    mergedFromCompiledTogether.writeToZipForTesting(out1, OutputMode.DexIndexed);
     ToolHelper.runArtNoVerificationErrors(out1.toString(), testPackage + "." + mainClass);
 
     Path out2 = temp.newFolder().toPath().resolve("out-separate.zip");
-    mergedFromCompiledSeparately.writeToZip(out2, OutputMode.DexIndexed);
+    mergedFromCompiledSeparately.writeToZipForTesting(out2, OutputMode.DexIndexed);
     ToolHelper.runArtNoVerificationErrors(out2.toString(), testPackage + "." + mainClass);
 
     Path dissasemble1 = temp.newFolder().toPath().resolve("disassemble1.txt");
@@ -375,8 +374,7 @@ public abstract class D8IncrementalRunExamplesAndroidOTest
 
   @Override
   protected void testIntermediateWithMainDexList(
-      String packageName, Path input, int expectedMainDexListSize, List<String> mainDexClasses)
-      throws Throwable {
+      String packageName, Path input, int expectedMainDexListSize, List<String> mainDexClasses) {
     // Skip those tests.
     Assume.assumeTrue(false);
   }
@@ -387,8 +385,7 @@ public abstract class D8IncrementalRunExamplesAndroidOTest
       Path input,
       OutputMode outputMode,
       AndroidApiLevel minApi,
-      List<String> mainDexClasses)
-      throws Throwable {
+      List<String> mainDexClasses) {
     // tests using this should already been skipped.
     throw new Unreachable();
   }

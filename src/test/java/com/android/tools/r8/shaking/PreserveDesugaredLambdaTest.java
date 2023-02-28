@@ -58,17 +58,17 @@ public class PreserveDesugaredLambdaTest extends TestBase {
         testForR8(parameters.getBackend())
             .addProgramClasses(Interface.class, A.class)
             .addKeepAllClassesRule()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile();
     // A is not passed in to ensure the Enqueuer is not tracing through classpath to see the use of
     // computeFoo().
     testForR8(parameters.getBackend())
         .addProgramClasses(Main.class)
         .addClasspathClasses(Interface.class)
-        .addLibraryFiles(TestBase.runtimeJar(parameters.getBackend()))
+        .addLibraryFiles(parameters.getDefaultRuntimeLibrary())
         .addKeepAllClassesRule()
         .addDontWarn(A.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .addRunClasspathFiles(libraryCompileResult.writeToZip())
         .inspect(

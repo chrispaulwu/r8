@@ -7,7 +7,6 @@ import static com.android.tools.r8.utils.codeinspector.Matchers.isNative;
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPrivate;
 import static com.android.tools.r8.utils.codeinspector.Matchers.isPublic;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.CompilationFailedException;
 import com.android.tools.r8.TestBase;
@@ -68,8 +67,8 @@ public class LambdaMethodsWithModifiedAccessTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(TestClass.class)
         .addProgramClassFileData(getTransformedLambdaTest())
         .run(parameters.getRuntime(), TestClass.class)
@@ -85,11 +84,11 @@ public class LambdaMethodsWithModifiedAccessTest extends TestBase {
   //     || (implHandle.type.isInvokeDirect() && isPublicizedInstanceMethod(target));
   @Test(expected = CompilationFailedException.class)
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClasses(TestClass.class)
         .addProgramClassFileData(getTransformedLambdaTest())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile();
   }
 
@@ -106,7 +105,7 @@ public class LambdaMethodsWithModifiedAccessTest extends TestBase {
         .addProgramClasses(TestClass.class)
         .addProgramClassFileData(getTransformedLambdaTest())
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile();
   }
 

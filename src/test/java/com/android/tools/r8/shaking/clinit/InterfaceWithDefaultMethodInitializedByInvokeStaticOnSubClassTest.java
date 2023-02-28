@@ -4,7 +4,6 @@
 
 package com.android.tools.r8.shaking.clinit;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestParameters;
 import com.android.tools.r8.TestParametersCollection;
@@ -33,10 +32,10 @@ public class InterfaceWithDefaultMethodInitializedByInvokeStaticOnSubClassTest
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .addInnerClasses(getClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         .apply(
@@ -60,7 +59,7 @@ public class InterfaceWithDefaultMethodInitializedByInvokeStaticOnSubClassTest
         .addInnerClasses(getClass())
         .addKeepMainRule(TestClass.class)
         .allowStdoutMessages()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         // TODO(b/144266257): This should succeed with "I" when default interface methods are
@@ -71,8 +70,8 @@ public class InterfaceWithDefaultMethodInitializedByInvokeStaticOnSubClassTest
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutputLines("I");

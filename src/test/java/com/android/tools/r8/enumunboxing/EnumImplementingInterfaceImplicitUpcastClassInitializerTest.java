@@ -50,7 +50,7 @@ public class EnumImplementingInterfaceImplicitUpcastClassInitializerTest
         .addKeepMainRule(Main.class)
         .addKeepRules(enumKeepRules.getKeepRules())
         .enableNeverClassInliningAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(opt -> enableEnumOptions(opt, enumValueOptimization))
         .addEnumUnboxingInspector(
             inspector -> inspector.assertNotUnboxed(OtherEnum.class, MyEnum.class))
@@ -97,7 +97,7 @@ public class EnumImplementingInterfaceImplicitUpcastClassInitializerTest
 
   public static class Main implements I {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       System.out.println(MyEnum.A.otherEnum.get());
       System.out.println(new Main().get());
     }

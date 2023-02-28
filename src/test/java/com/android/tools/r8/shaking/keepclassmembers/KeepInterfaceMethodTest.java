@@ -39,7 +39,7 @@ public class KeepInterfaceMethodTest extends TestBase {
   }
 
   @Test
-  public void testIProguard() throws CompilationFailedException, IOException, ExecutionException {
+  public void testIProguard() throws CompilationFailedException, IOException {
     testForProguard()
         // TODO(b/159694276): Run the resulting code on runtime.
         .addProgramClasses(I.class)
@@ -52,13 +52,13 @@ public class KeepInterfaceMethodTest extends TestBase {
   }
 
   @Test
-  public void testIR8() throws CompilationFailedException, IOException, ExecutionException {
+  public void testIR8() throws CompilationFailedException, IOException {
     // TODO(b/159694276): Add compat variant of this.
     testForR8(parameters.getBackend())
         .addProgramClasses(I.class)
         .addKeepRules("-keepclassmembers class " + I.class.getTypeName() + " { void foo(); }")
         .addKeepRules("-keep class " + I.class.getTypeName() + " { }")
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(this::inspectIClassAndMethodIsPresent);
   }
@@ -84,7 +84,7 @@ public class KeepInterfaceMethodTest extends TestBase {
         .addKeepRules("-keepclassmembers class " + I.class.getTypeName() + " { void foo(); }")
         .addKeepMainRule(Main.class)
         .enableNoHorizontalClassMergingAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("A.foo")
         .inspect(this::inspectIClassAndMethodIsPresent);

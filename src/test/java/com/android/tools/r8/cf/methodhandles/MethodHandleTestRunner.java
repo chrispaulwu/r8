@@ -62,8 +62,8 @@ public class MethodHandleTestRunner extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(getInputClasses())
         .addProgramClassFileData(getTransformedClasses())
         .run(parameters.getRuntime(), CLASS.getName())
@@ -72,9 +72,9 @@ public class MethodHandleTestRunner extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
-        .setMinApi(parameters.getApiLevel())
+    parameters.assumeDexRuntime();
+    testForD8()
+        .setMinApi(parameters)
         .addProgramClasses(getInputClasses())
         .addProgramClassFileData(getTransformedClasses())
         .compileWithExpectedDiagnostics(this::checkDiagnostics)
@@ -98,7 +98,7 @@ public class MethodHandleTestRunner extends TestBase {
   private void runR8(ThrowableConsumer<R8FullTestBuilder> additionalSetUp) throws Exception {
     testForR8(parameters.getBackend())
         .apply(additionalSetUp)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addProgramClasses(getInputClasses())
         .addProgramClassFileData(getTransformedClasses())
         .addLibraryFiles(ToolHelper.getMostRecentAndroidJar())

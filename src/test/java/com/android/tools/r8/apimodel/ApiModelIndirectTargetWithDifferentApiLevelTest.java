@@ -10,7 +10,6 @@ import static com.android.tools.r8.apimodel.ApiModelingTestHelper.setMockApiLeve
 import static com.android.tools.r8.apimodel.ApiModelingTestHelper.verifyThat;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.CompilationMode;
 import com.android.tools.r8.SingleTestRunResult;
@@ -59,7 +58,7 @@ public class ApiModelIndirectTargetWithDifferentApiLevelTest extends TestBase {
         .addProgramClasses(Main.class, ProgramJoiner.class)
         .addLibraryClasses(LibraryClass.class, LibraryInterface.class)
         .addDefaultRuntimeLibrary(parameters)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAndroidBuildVersion(parameters.getApiLevel())
         .apply(ApiModelingTestHelper::enableStubbingOfClasses)
         .apply(setMockApiLevelForDefaultInstanceInitializer(LibraryClass.class, classApiLevel))
@@ -88,8 +87,8 @@ public class ApiModelIndirectTargetWithDifferentApiLevelTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime() && parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Main.class, ProgramJoiner.class)
         .addAndroidBuildVersion(parameters.getApiLevel())
         .addLibraryClasses(LibraryClass.class, LibraryInterface.class)

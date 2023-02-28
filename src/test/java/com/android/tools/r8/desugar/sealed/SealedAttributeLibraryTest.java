@@ -4,13 +4,12 @@
 
 package com.android.tools.r8.desugar.sealed;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestCompilerBuilder;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.examples.jdk17.Sealed;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -24,9 +23,8 @@ public class SealedAttributeLibraryTest extends TestBase {
   public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withAllRuntimesAndApiLevels().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimesAndApiLevels().build();
   }
 
   private void runTest(TestCompilerBuilder<?, ?, ?, ?, ?> builder) throws Exception {
@@ -34,14 +32,14 @@ public class SealedAttributeLibraryTest extends TestBase {
         .addDefaultRuntimeLibrary(parameters)
         .addLibraryFiles(Sealed.jar())
         .addInnerClasses(getClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestRunner.class)
         .assertSuccessWithOutputLines("Hello, world!");
   }
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     runTest(testForD8(parameters.getBackend()));
   }
 

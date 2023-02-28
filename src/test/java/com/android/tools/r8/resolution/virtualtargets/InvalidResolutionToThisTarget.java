@@ -44,7 +44,7 @@ public class InvalidResolutionToThisTarget extends TestBase {
   }
 
   @Test
-  public void testResolution() throws Exception {
+  public void testResolution() {
     assumeTrue(parameters.isOrSimulateNoneRuntime());
     AssertionError foo =
         assertThrows(
@@ -81,14 +81,14 @@ public class InvalidResolutionToThisTarget extends TestBase {
   }
 
   @Test
-  public void testR8() throws IOException, CompilationFailedException, ExecutionException {
+  public void testR8() {
     assertThrows(
         CompilationFailedException.class,
         () ->
             testForR8(parameters.getBackend())
                 .addProgramClasses(A.class)
                 .addProgramClassFileData(getMainWithModifiedReceiverCall())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addKeepMainRule(Main.class)
                 .compileWithExpectedDiagnostics(
                     diagnosticMessages -> {

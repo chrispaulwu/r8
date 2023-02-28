@@ -14,7 +14,7 @@ public class D8DebugTestResourcesConfig extends D8DebugTestConfig {
 
   private static AndroidApp compiledResources = null;
 
-  private static synchronized AndroidApp getCompiledResources() throws Throwable {
+  private static synchronized AndroidApp getCompiledResources() {
     if (compiledResources == null) {
       compiledResources = d8Compile(Collections.singletonList(DebugTestBase.DEBUGGEE_JAR), null);
     }
@@ -24,7 +24,7 @@ public class D8DebugTestResourcesConfig extends D8DebugTestConfig {
   public D8DebugTestResourcesConfig(TemporaryFolder temp) {
     try {
       Path path = temp.newFolder().toPath().resolve("d8_debug_test_resources.jar");
-      getCompiledResources().write(path, OutputMode.DexIndexed);
+      getCompiledResources().writeForTesting(path, OutputMode.DexIndexed);
       addPaths(path);
     } catch (Throwable e) {
       throw new RuntimeException(e);

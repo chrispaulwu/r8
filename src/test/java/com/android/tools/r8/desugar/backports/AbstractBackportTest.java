@@ -154,15 +154,19 @@ abstract class AbstractBackportTest extends TestBase {
   }
 
   @Test
-  public void desugaring() throws Exception {
-    if (parameters.isCfRuntime()) {
-      testForJvm()
-          .apply(this::configureProgram)
-          .run(parameters.getRuntime(), testClassName)
-          .assertSuccess();
-    } else {
+  public void testJvm() throws Exception {
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
+        .apply(this::configureProgram)
+        .run(parameters.getRuntime(), testClassName)
+        .assertSuccess();
+  }
+
+  @Test
+  public void testD8() throws Exception {
+    parameters.assumeDexRuntime();
       testForD8()
-          .setMinApi(parameters.getApiLevel())
+          .setMinApi(parameters)
           .apply(this::configureProgram)
           .setIncludeClassesChecksum(true)
           .compileWithExpectedDiagnostics(
@@ -185,7 +189,6 @@ abstract class AbstractBackportTest extends TestBase {
           .run(parameters.getRuntime(), testClassName)
           .assertSuccess()
           .inspect(this::assertDesugaring);
-    }
   }
 
   private void assertDesugaring(CodeInspector inspector) {

@@ -76,10 +76,10 @@ public class NewArrayTestRunner extends TestBase {
 
   @Test
   public void runReference() throws Exception {
+    parameters.assumeJvmTestParameters();
     assumeFalse(enableMultiANewArrayDesugaringForClassFiles);
-    assumeTrue(parameters.isCfRuntime());
     assumeTrue(mode == CompilationMode.DEBUG);
-    testForJvm(getStaticTemp())
+    testForJvm(parameters)
         .addProgramClassesAndInnerClasses(CLASS)
         .run(parameters.getRuntime(), CLASS)
         .assertSuccessWithOutputLines(EXPECTED);
@@ -87,11 +87,11 @@ public class NewArrayTestRunner extends TestBase {
 
   @Test
   public void testD8() throws Exception {
+    parameters.assumeDexRuntime();
     assumeFalse(enableMultiANewArrayDesugaringForClassFiles);
-    assumeTrue(parameters.isDexRuntime());
     testForD8()
         .addProgramClassesAndInnerClasses(CLASS)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setMode(mode)
         .run(parameters.getRuntime(), CLASS)
         .assertSuccessWithOutputLines(EXPECTED);
@@ -107,7 +107,7 @@ public class NewArrayTestRunner extends TestBase {
             options ->
                 options.testing.enableMultiANewArrayDesugaringForClassFiles =
                     enableMultiANewArrayDesugaringForClassFiles)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setMode(mode)
         .run(parameters.getRuntime(), CLASS)
         .assertSuccessWithOutputLines(EXPECTED);

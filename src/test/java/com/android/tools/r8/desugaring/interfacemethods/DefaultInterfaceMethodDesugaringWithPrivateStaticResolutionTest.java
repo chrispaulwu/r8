@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.desugaring.interfacemethods;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -32,8 +31,8 @@ public class DefaultInterfaceMethodDesugaringWithPrivateStaticResolutionTest ext
 
   @Test
   public void testJVM() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addTestClasspath()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
@@ -41,10 +40,10 @@ public class DefaultInterfaceMethodDesugaringWithPrivateStaticResolutionTest ext
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .addInnerClasses(DefaultInterfaceMethodDesugaringWithPrivateStaticResolutionTest.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
@@ -55,7 +54,7 @@ public class DefaultInterfaceMethodDesugaringWithPrivateStaticResolutionTest ext
     testForR8(parameters.getBackend())
         .addInnerClasses(DefaultInterfaceMethodDesugaringWithPrivateStaticResolutionTest.class)
         .addKeepAllClassesRule()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);

@@ -40,8 +40,8 @@ public class MovedPrivateInterfaceMethodProfileRewritingTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    parameters.assumeCfRuntime();
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Main.class, A.class)
         .addProgramClassFileData(getTransformedInterface())
         .run(parameters.getRuntime(), Main.class)
@@ -54,7 +54,7 @@ public class MovedPrivateInterfaceMethodProfileRewritingTest extends TestBase {
         .addProgramClasses(Main.class, A.class)
         .addProgramClassFileData(getTransformedInterface())
         .addArtProfileForRewriting(getArtProfile())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspectResidualArtProfile(this::inspectD8)
         .run(parameters.getRuntime(), Main.class)
@@ -71,7 +71,7 @@ public class MovedPrivateInterfaceMethodProfileRewritingTest extends TestBase {
         .addArtProfileForRewriting(getArtProfile())
         .addOptionsModification(InlinerOptions::disableInlining)
         .enableNoVerticalClassMergingAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspectResidualArtProfile(this::inspectR8)
         .run(parameters.getRuntime(), Main.class)

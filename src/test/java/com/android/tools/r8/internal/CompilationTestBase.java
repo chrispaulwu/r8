@@ -43,8 +43,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,21 +51,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
-import org.junit.Rule;
-import org.junit.rules.TemporaryFolder;
 
 public abstract class CompilationTestBase extends DesugaredLibraryTestBase {
 
   protected KeepingDiagnosticHandler handler;
   protected Reporter reporter;
-
-  @Rule
-  public TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
 
   @Before
   public void reset() {
@@ -148,12 +138,11 @@ public abstract class CompilationTestBase extends DesugaredLibraryTestBase {
     return checkVerification(outputApp.build(), referenceApk);
   }
 
-
   public AndroidApp checkVerification(AndroidApp outputApp, String referenceApk)
-      throws IOException, ExecutionException {
+      throws IOException {
     Path out = temp.getRoot().toPath().resolve("all.zip");
     Path oatFile = temp.getRoot().toPath().resolve("all.oat");
-    outputApp.writeToZip(out, OutputMode.DexIndexed);
+    outputApp.writeToZipForTesting(out, OutputMode.DexIndexed);
     try {
       ToolHelper.runDex2Oat(out, oatFile);
       return outputApp;
@@ -211,8 +200,7 @@ public abstract class CompilationTestBase extends DesugaredLibraryTestBase {
   }
 
   public void assertIdenticalApplicationsUpToCode(
-      AndroidApp app1, AndroidApp app2, boolean allowNewClassesInApp2)
-      throws IOException, ExecutionException {
+      AndroidApp app1, AndroidApp app2, boolean allowNewClassesInApp2) throws IOException {
     CodeInspector inspect1 = new CodeInspector(app1);
     CodeInspector inspect2 = new CodeInspector(app2);
 

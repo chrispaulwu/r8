@@ -4,7 +4,6 @@
 package com.android.tools.r8.desugaring.interfacemethods;
 
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -51,8 +50,8 @@ public class DefaultInterfaceMethodDesugaringWithPublicStaticResolutionTest exte
 
   @Test
   public void testJVM() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(getProgramClasses())
         .addProgramClassFileData(getProgramClassData())
         .run(parameters.getRuntime(), TestClass.class)
@@ -64,7 +63,7 @@ public class DefaultInterfaceMethodDesugaringWithPublicStaticResolutionTest exte
     testForD8(parameters.getBackend())
         .addProgramClasses(getProgramClasses())
         .addProgramClassFileData(getProgramClassData())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
@@ -77,7 +76,7 @@ public class DefaultInterfaceMethodDesugaringWithPublicStaticResolutionTest exte
         .addProgramClasses(getProgramClasses())
         .addProgramClassFileData(getProgramClassData())
         .addKeepAllClassesRule()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);

@@ -7,7 +7,6 @@ package com.android.tools.r8.cf;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.CompilationFailedException;
 import com.android.tools.r8.TestBase;
@@ -40,8 +39,8 @@ public class InvokeClinitTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(A.class)
         .addProgramClassFileData(transformMain())
         .run(parameters.getRuntime(), Main.class)
@@ -59,7 +58,7 @@ public class InvokeClinitTest extends TestBase {
             testForD8(parameters.getBackend())
                 .addProgramClasses(A.class)
                 .addProgramClassFileData(transformMain())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compile());
   }
 
@@ -72,7 +71,7 @@ public class InvokeClinitTest extends TestBase {
                 .addProgramClasses(A.class)
                 .addProgramClassFileData(transformMain())
                 .addKeepMainRule(Main.class)
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compile());
   }
 

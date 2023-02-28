@@ -70,7 +70,7 @@ public final class NonConstructorRelaxationTest extends AccessRelaxationTestBase
     Class<?> mainClass = C.class;
     if (parameters.isCfRuntime()) {
       // Only run JVM reference on CF runtimes.
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), mainClass)
           .assertSuccessWithOutput(expectedOutput);
@@ -104,7 +104,7 @@ public final class NonConstructorRelaxationTest extends AccessRelaxationTestBase
                 "  *** pBlah1();",
                 "}")
             .allowAccessModification()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), mainClass);
 
     assertEquals(expectedOutput, result.getStdOut());
@@ -156,7 +156,7 @@ public final class NonConstructorRelaxationTest extends AccessRelaxationTestBase
     Class<?> mainClass = TestMain.class;
     if (parameters.isCfRuntime()) {
       // Only run JVM reference on CF runtimes.
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), mainClass)
           .assertSuccessWithOutput(expectedOutput);
@@ -184,7 +184,7 @@ public final class NonConstructorRelaxationTest extends AccessRelaxationTestBase
                 "  *** p*();",
                 "}")
             .allowAccessModification()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), mainClass);
 
     assertEquals(

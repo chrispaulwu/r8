@@ -77,7 +77,7 @@ public abstract class VarHandleDesugaringTestBase extends TestBase {
     // possible spurious failures but expect it to behave like compareAndSet (which is what the
     // desugared implementation does.
     assumeTrue(parameters.isCfRuntime() && parameters.asCfRuntime().isNewerThanOrEqual(CfVm.JDK9));
-    testForJvm()
+    testForJvm(parameters)
         .addProgramFiles(VarHandle.jar())
         .run(parameters.getRuntime(), getMainClass())
         .assertSuccessWithOutput(getExpectedOutputForReferenceImplementation());
@@ -181,7 +181,7 @@ public abstract class VarHandleDesugaringTestBase extends TestBase {
     assumeTrue(parameters.isDexRuntime());
     testForD8(parameters.getBackend())
         .addProgramClassFileData(getProgramClassFileData())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.enableVarHandleDesugaring = true)
         .run(parameters.getRuntime(), getMainClass())
         .applyIf(
@@ -210,7 +210,7 @@ public abstract class VarHandleDesugaringTestBase extends TestBase {
             b -> b.addLibraryProvider(JdkClassFileProvider.fromSystemJdk()))
         .addProgramClassFileData(getProgramClassFileData())
         .addOptionsModification(options -> options.enableVarHandleDesugaring = true)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(getMainClass())
         .addKeepRules(getKeepRules())
         .run(parameters.getRuntime(), getMainClass())

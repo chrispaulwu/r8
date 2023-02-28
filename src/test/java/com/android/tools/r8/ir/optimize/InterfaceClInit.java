@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.ir.optimize;
 
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -31,15 +30,15 @@ public class InterfaceClInit extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClasses(TestClass.class, InterfaceWithStaticBlock.class, UsedFromStatic.class)
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutputLines(EXPECTED);
   }
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(TestClass.class, InterfaceWithStaticBlock.class, UsedFromStatic.class)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutputLines(EXPECTED);

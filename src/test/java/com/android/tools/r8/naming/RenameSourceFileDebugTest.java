@@ -25,6 +25,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /** Tests -renamesourcefileattribute. */
 @RunWith(Parameterized.class)
@@ -37,7 +39,7 @@ public class RenameSourceFileDebugTest extends DebugTestBase {
   @BeforeClass
   public static void initDebuggeePath() throws Exception {
     for (Backend backend : ToolHelper.getBackends()) {
-      Path outdir = temp.newFolder().toPath();
+      Path outdir = getStaticTemp().newFolder().toPath();
       Path outjar = outdir.resolve("r8_compiled.jar");
       Path proguardMapPath = outdir.resolve("proguard.map");
       R8Command.Builder builder =
@@ -74,15 +76,12 @@ public class RenameSourceFileDebugTest extends DebugTestBase {
     }
   }
 
-  private Backend backend;
+  @Parameter(0)
+  public Backend backend;
 
-  @Parameterized.Parameters(name = "Backend: {0}")
+  @Parameters(name = "{0}")
   public static Backend[] data() {
     return ToolHelper.getBackends();
-  }
-
-  public RenameSourceFileDebugTest(Backend backend) {
-    this.backend = backend;
   }
 
   /** replica of {@link ClassInitializationTest#testBreakpointInEmptyClassInitializer} */

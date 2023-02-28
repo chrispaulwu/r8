@@ -10,7 +10,6 @@ import static org.junit.Assert.assertTrue;
 import com.android.tools.r8.DexIndexedConsumer.ArchiveConsumer;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.StringUtils;
@@ -21,11 +20,11 @@ import com.google.common.collect.ImmutableList;
 import java.nio.file.Path;
 import java.util.Collection;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public class AssumenosideeffectsWithoutMatchingDefinitionTest extends TestBase {
@@ -74,32 +73,27 @@ public class AssumenosideeffectsWithoutMatchingDefinitionTest extends TestBase {
     }
   }
 
-  @Parameterized.Parameters(name = "{0} {1}")
+  @Parameters(name = "{0} {1}")
   public static Collection<Object[]> data() {
-    return buildParameters(getTestParameters().withAllRuntimes().build(), TestConfig.values());
+    return buildParameters(
+        getTestParameters().withAllRuntimesAndApiLevels().build(), TestConfig.values());
   }
 
-  private final TestParameters parameters;
-  private final TestConfig config;
+  @Parameter(0)
+  public TestParameters parameters;
 
-  public AssumenosideeffectsWithoutMatchingDefinitionTest(
-      TestParameters parameters, TestConfig config) {
-    this.parameters = parameters;
-    this.config = config;
-  }
-
-  @ClassRule
-  public static TemporaryFolder staticTemp = ToolHelper.getTemporaryFolderForTest();
+  @Parameter(1)
+  public TestConfig config;
 
   private static Path libJarPath;
   private static Path libDexPath;
 
   @BeforeClass
   public static void prepareLibJar() throws Exception {
-    libJarPath = staticTemp.newFile("lib.jar").toPath().toAbsolutePath();
+    libJarPath = getStaticTemp().newFile("lib.jar").toPath().toAbsolutePath();
     writeClassesToJar(libJarPath, ImmutableList.of(LibraryBase.class, LibrarySub.class));
-    libDexPath = staticTemp.newFile("lib.dex").toPath().toAbsolutePath();
-    testForD8(staticTemp)
+    libDexPath = getStaticTemp().newFile("lib.dex").toPath().toAbsolutePath();
+    testForD8(getStaticTemp())
         .addProgramFiles(libJarPath)
         .setMinApi(AndroidApiLevel.B)
         .setProgramConsumer(new ArchiveConsumer(libDexPath))
@@ -110,12 +104,12 @@ public class AssumenosideeffectsWithoutMatchingDefinitionTest extends TestBase {
   public void testR8() throws Exception {
     testForR8(parameters.getBackend())
         .addLibraryFiles(libJarPath)
-        .addLibraryFiles(ToolHelper.getDefaultAndroidJar())
+        .addLibraryFiles(parameters.getDefaultRuntimeLibrary())
         .addProgramClasses(MAIN)
         .addKeepMainRule(MAIN)
         .addKeepRules(config.getKeepRule())
         .addDontObfuscate()
-        .setMinApi(parameters.getRuntime())
+        .setMinApi(parameters)
         .compile()
         .addRunClasspathFiles(parameters.isDexRuntime() ? libDexPath : libJarPath)
         .run(parameters.getRuntime(), MAIN)

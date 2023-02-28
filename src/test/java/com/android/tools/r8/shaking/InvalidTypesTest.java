@@ -12,7 +12,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 
 import com.android.tools.r8.D8TestRunResult;
-import com.android.tools.r8.DXTestRunResult;
 import com.android.tools.r8.ProguardTestRunResult;
 import com.android.tools.r8.R8TestRunResult;
 import com.android.tools.r8.TestParameters;
@@ -37,7 +36,6 @@ import org.junit.runners.Parameterized.Parameters;
 public class InvalidTypesTest extends JasminTestBase {
 
   private enum Compiler {
-    DX,
     D8,
     JAVAC,
     PROGUARD,
@@ -71,7 +69,6 @@ public class InvalidTypesTest extends JasminTestBase {
           case JAVAC:
             return StringUtils.joinLines("Hello!", "Goodbye!", "");
 
-          case DX:
           case D8:
             switch (parameters.getDexRuntimeVersion()) {
               case V4_0_4:
@@ -265,7 +262,9 @@ public class InvalidTypesTest extends JasminTestBase {
 
     if (parameters.isCfRuntime()) {
       TestRunResult<?> jvmResult =
-          testForJvm().addClasspath(inputJar).run(parameters.getRuntime(), mainClass.name);
+          testForJvm(parameters)
+              .addClasspath(inputJar)
+              .run(parameters.getRuntime(), mainClass.name);
       checkTestRunResult(jvmResult, Compiler.JAVAC);
 
       ProguardTestRunResult proguardResult =
@@ -278,17 +277,10 @@ public class InvalidTypesTest extends JasminTestBase {
     } else {
       assert parameters.isDexRuntime();
 
-      DXTestRunResult dxResult =
-          testForDX()
-              .addProgramFiles(inputJar)
-              .setMinApi(parameters.getApiLevel())
-              .run(parameters.getRuntime(), mainClass.name);
-      checkTestRunResult(dxResult, Compiler.DX);
-
       D8TestRunResult d8Result =
           testForD8()
               .addProgramFiles(inputJar)
-              .setMinApi(parameters.getApiLevel())
+              .setMinApi(parameters)
               .run(parameters.getRuntime(), mainClass.name);
       checkTestRunResult(d8Result, Compiler.D8);
     }
@@ -313,7 +305,7 @@ public class InvalidTypesTest extends JasminTestBase {
                   }
                 })
             .allowDiagnosticWarningMessages(allowDiagnosticWarningMessages)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compileWithExpectedDiagnostics(
                 diagnostics -> {
                   if (allowDiagnosticWarningMessages) {

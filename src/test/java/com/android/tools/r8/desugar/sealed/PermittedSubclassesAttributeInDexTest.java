@@ -9,6 +9,7 @@ import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.transformers.ClassFileTransformer;
 import com.android.tools.r8.utils.AndroidApiLevel;
@@ -19,7 +20,6 @@ import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,9 +34,8 @@ public class PermittedSubclassesAttributeInDexTest extends TestBase {
   @Parameter() public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build();
   }
 
   private static final String EXPECTED_OUTPUT = StringUtils.lines("true", "true");
@@ -47,7 +46,7 @@ public class PermittedSubclassesAttributeInDexTest extends TestBase {
         parameters.isCfRuntime()
             && parameters.asCfRuntime().isNewerThanOrEqual(CfVm.JDK17)
             && parameters.getApiLevel().isEqualTo(AndroidApiLevel.B));
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(Sub1.class, Sub2.class)
         .run(parameters.getRuntime(), TestClass.class)
@@ -64,11 +63,11 @@ public class PermittedSubclassesAttributeInDexTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClassFileData(getTransformedClasses())
         .addProgramClasses(Sub1.class, Sub2.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitPermittedSubclassesAnnotationsInDex = true)
         .compile()
         .inspect(this::inspect)

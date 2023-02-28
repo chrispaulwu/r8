@@ -7,7 +7,6 @@ package com.android.tools.r8.retrace;
 import static com.android.tools.r8.naming.retrace.StackTrace.isSameExceptForFileNameAndLineNumber;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.SingleTestRunResult;
 import com.android.tools.r8.TestBase;
@@ -53,8 +52,8 @@ public class RetraceCompanionWithPreambleTest extends TestBase {
 
   @Test
   public void testReference() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Main.class, A.class)
         .addProgramClassFileData(getI())
         .run(parameters.getRuntime(), Main.class)
@@ -68,7 +67,7 @@ public class RetraceCompanionWithPreambleTest extends TestBase {
         .internalEnableMappingOutput()
         .addProgramClasses(Main.class, A.class)
         .addProgramClassFileData(getI())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .apply(this::checkRunResult)
         .inspectStackTrace(RetraceCompanionWithPreambleTest::checkExpectedStackTrace);
@@ -82,7 +81,7 @@ public class RetraceCompanionWithPreambleTest extends TestBase {
         .addKeepMainRule(Main.class)
         .addKeepAttributeSourceFile()
         .addKeepAttributeLineNumberTable()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .apply(this::checkRunResult)
         .inspectStackTrace(RetraceCompanionWithPreambleTest::checkExpectedStackTrace);

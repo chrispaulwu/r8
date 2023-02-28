@@ -5,7 +5,6 @@
 package com.android.tools.r8.desugar.nest;
 
 import static com.android.tools.r8.TestRuntime.CfVm.JDK11;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -38,10 +37,10 @@ public class NestBasedAccessToNativeMethodTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     testForD8()
         .addProgramClassFileData(getProgramClassFileData())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("Hello from native");
@@ -52,7 +51,7 @@ public class NestBasedAccessToNativeMethodTest extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(getProgramClassFileData())
         .addKeepMainRule(Main.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines("Hello from native");

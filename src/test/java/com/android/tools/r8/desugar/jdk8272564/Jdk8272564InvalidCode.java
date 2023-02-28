@@ -41,7 +41,7 @@ public class Jdk8272564InvalidCode extends TestBase {
   @Test
   public void testRuntime() throws Exception {
     assumeTrue(isDefaultCfParameters());
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(I.class)
         .addProgramClassFileData(getTransformedClass())
         .run(parameters.getRuntime(), A.class)
@@ -69,7 +69,7 @@ public class Jdk8272564InvalidCode extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClasses(I.class)
         .addProgramClassFileData(getTransformedClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(A.class)
         .addOptionsModification(options -> options.testing.allowInvokeErrors = true)
         .run(parameters.getRuntime(), A.class)

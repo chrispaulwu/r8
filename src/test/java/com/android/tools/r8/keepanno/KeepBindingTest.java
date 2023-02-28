@@ -54,7 +54,7 @@ public class KeepBindingTest extends TestBase {
         .addProgramClasses(getInputClasses())
         .addKeepClassRules(A.class, B.class)
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED)
         .inspect(i -> checkOutput(i, true));
@@ -66,7 +66,7 @@ public class KeepBindingTest extends TestBase {
         .enableExperimentalKeepAnnotations()
         .addProgramClasses(getInputClasses())
         .addKeepMainRule(TestClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED)
         .inspect(i -> checkOutput(i, false));
@@ -89,7 +89,7 @@ public class KeepBindingTest extends TestBase {
   }
 
   static class A {
-    public void foo() throws Exception {
+    public void foo() {
       System.out.println("A::foo");
     }
 
@@ -99,7 +99,7 @@ public class KeepBindingTest extends TestBase {
   }
 
   static class B {
-    public void foo() throws Exception {
+    public void foo() {
       System.out.println("B::foo");
     }
 
@@ -109,7 +109,7 @@ public class KeepBindingTest extends TestBase {
   }
 
   static class C {
-    public void foo() throws Exception {
+    public void foo() {
       System.out.println("C::foo");
     }
 

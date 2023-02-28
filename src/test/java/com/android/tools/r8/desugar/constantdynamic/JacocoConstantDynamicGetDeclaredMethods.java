@@ -81,14 +81,13 @@ public class JacocoConstantDynamicGetDeclaredMethods extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(
-        parameters.isCfRuntime()
-            && (parameters.getRuntime().asCf().isNewerThanOrEqual(CfVm.JDK11)));
+    parameters.assumeJvmTestParameters();
+    assumeTrue(parameters.getRuntime().asCf().isNewerThanOrEqual(CfVm.JDK11));
 
     // Run non-instrumented code with an agent causing on the fly instrumentation on the JVM.
     Path output = temp.newFolder().toPath();
     Path agentOutputOnTheFly = output.resolve("on-the-fly");
-    testForJvm()
+    testForJvm(parameters)
         .addProgramFiles(testClasses.getOriginal())
         .enableJaCoCoAgent(ToolHelper.JACOCO_AGENT, agentOutputOnTheFly)
         .run(parameters.getRuntime(), MAIN_CLASS)
@@ -97,7 +96,7 @@ public class JacocoConstantDynamicGetDeclaredMethods extends TestBase {
 
     // Run the instrumented code.
     Path agentOutputOffline = output.resolve("offline");
-    testForJvm()
+    testForJvm(parameters)
         .addProgramFiles(testClasses.getInstrumented())
         .configureJaCoCoAgentForOfflineInstrumentedCode(ToolHelper.JACOCO_AGENT, agentOutputOffline)
         .run(parameters.getRuntime(), MAIN_CLASS)
@@ -112,7 +111,7 @@ public class JacocoConstantDynamicGetDeclaredMethods extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramFiles(testClasses.getInstrumented())
         .addProgramFiles(ToolHelper.JACOCO_AGENT)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .runWithJaCoCo(agentOutput, parameters.getRuntime(), MAIN_CLASS)
         .applyIf(
@@ -129,7 +128,7 @@ public class JacocoConstantDynamicGetDeclaredMethods extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramFiles(testClasses.getInstrumented())
         .addProgramFiles(ToolHelper.JACOCO_AGENT)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRules(TestRunner.class)
         .applyIf(
             parameters.getApiLevel().isLessThan(AndroidApiLevel.O),
@@ -156,7 +155,7 @@ public class JacocoConstantDynamicGetDeclaredMethods extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramFiles(testClasses.getInstrumented())
         .addProgramFiles(ToolHelper.JACOCO_AGENT)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRules(TestRunner.class)
         .addKeepRules("-keep class ** { *** " + jacocoBootstrapMethodName + "(...); }")
         .applyIf(

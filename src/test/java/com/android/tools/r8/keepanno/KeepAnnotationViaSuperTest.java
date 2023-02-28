@@ -58,7 +58,7 @@ public class KeepAnnotationViaSuperTest extends TestBase {
         .addProgramClasses(getInputClasses())
         .addKeepMainRule(TestClass.class)
         .addKeepRuntimeVisibleAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED)
         .inspect(this::checkOutput);
@@ -128,7 +128,7 @@ public class KeepAnnotationViaSuperTest extends TestBase {
 
   static class TestClass {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       Base b = System.nanoTime() > 0 ? new SubA() : new SubB();
     }
   }

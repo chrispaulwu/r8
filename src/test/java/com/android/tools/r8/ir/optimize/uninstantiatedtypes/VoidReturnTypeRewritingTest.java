@@ -46,7 +46,7 @@ public class VoidReturnTypeRewritingTest extends TestBase {
             "SubSubFactory.createVirtual() -> null");
 
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(expected);
@@ -62,7 +62,7 @@ public class VoidReturnTypeRewritingTest extends TestBase {
             .enableNoHorizontalClassMergingAnnotations()
             .addOptionsModification(options -> options.enableClassInlining = false)
             .addDontObfuscate()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), TestClass.class)
             .assertSuccessWithOutput(expected)
             .inspector();

@@ -77,8 +77,8 @@ public class VarHandleTest extends TestBase {
 
   @Test
   public void testReference() throws Throwable {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramFiles(getProgramInputs())
         .run(parameters.getRuntime(), MAIN.typeName())
         .assertSuccessWithOutput(EXPECTED);
@@ -92,7 +92,7 @@ public class VarHandleTest extends TestBase {
         parameters.isDexRuntimeVersion(Version.DEFAULT));
     testForD8()
         .addProgramFiles(getProgramInputs())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
               if (hasInvokePolymorphicCompileSupport()) {
@@ -127,7 +127,7 @@ public class VarHandleTest extends TestBase {
     assumeTrue(hasInvokePolymorphicCompileSupport() && hasFindStaticVarHandleMethod());
     testForR8(parameters.getBackend())
         .addProgramFiles(getProgramInputs())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepClassAndMembersRules(MAIN.typeName())
         .applyIf(!hasVarHandleInLibrary(), b -> b.addDontWarn("java.lang.invoke.VarHandle"))
         .run(parameters.getRuntime(), MAIN.typeName())

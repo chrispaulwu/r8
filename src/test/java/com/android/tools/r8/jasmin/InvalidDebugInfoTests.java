@@ -22,6 +22,7 @@ import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
@@ -34,13 +35,11 @@ public class InvalidDebugInfoTests extends TestBase {
         BooleanUtils.values());
   }
 
-  private final TestParameters parameters;
-  private final boolean strict;
+  @Parameter(0)
+  public TestParameters parameters;
 
-  public InvalidDebugInfoTests(TestParameters parameters, boolean strict) {
-    this.parameters = parameters;
-    this.strict = strict;
-  }
+  @Parameter(1)
+  public boolean strict;
 
   private void optionsModification(InternalOptions options) {
     options.invalidDebugInfoStrict = strict;
@@ -122,15 +121,15 @@ public class InvalidDebugInfoTests extends TestBase {
         "  return");
 
     String expected = "42" + ToolHelper.LINE_SEPARATOR + "0" + ToolHelper.LINE_SEPARATOR;
-    if (parameters.isCfRuntime()) {
-      testForJvm()
+    if (parameters.isJvmTestParameters()) {
+      testForJvm(parameters)
           .addProgramClassFileData(builder.buildClasses())
           .run(parameters.getRuntime(), clazz.name)
           .assertSuccessWithOutput(expected);
     }
     testForD8(parameters.getBackend())
         .addProgramClassFileData(builder.buildClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(this::optionsModification)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
@@ -187,8 +186,8 @@ public class InvalidDebugInfoTests extends TestBase {
         "  return");
 
     String expected = "42" + ToolHelper.LINE_SEPARATOR;
-    if (parameters.isCfRuntime()) {
-      testForJvm()
+    if (parameters.isJvmTestParameters()) {
+      testForJvm(parameters)
           .addProgramClassFileData(builder.buildClasses())
           .run(parameters.getRuntime(), clazz.name)
           .assertSuccessWithOutput(expected);
@@ -196,7 +195,7 @@ public class InvalidDebugInfoTests extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(builder.buildClasses())
         .addOptionsModification(this::optionsModification)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
               if (strict) {
@@ -244,15 +243,15 @@ public class InvalidDebugInfoTests extends TestBase {
         "  return");
 
     String expected = StringUtils.lines("42", "7.5");
-    if (parameters.isCfRuntime()) {
-      testForJvm()
+    if (parameters.isJvmTestParameters()) {
+      testForJvm(parameters)
           .addProgramClassFileData(builder.buildClasses())
           .run(parameters.getRuntime(), clazz.name)
           .assertSuccessWithOutput(expected);
     }
     testForD8(parameters.getBackend())
         .addProgramClassFileData(builder.buildClasses())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(this::optionsModification)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
@@ -303,8 +302,8 @@ public class InvalidDebugInfoTests extends TestBase {
         "  return");
 
     String expected = StringUtils.lines("42", "7.5");
-    if (parameters.isCfRuntime()) {
-      testForJvm()
+    if (parameters.isJvmTestParameters()) {
+      testForJvm(parameters)
           .addProgramClassFileData(builder.buildClasses())
           .run(parameters.getRuntime(), clazz.name)
           .assertSuccessWithOutput(expected);
@@ -312,7 +311,7 @@ public class InvalidDebugInfoTests extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(builder.buildClasses())
         .addOptionsModification(this::optionsModification)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(this::assertInvalidTypeMessage)
         .run(parameters.getRuntime(), clazz.name)
         .assertSuccessWithOutput(expected)
@@ -362,8 +361,8 @@ public class InvalidDebugInfoTests extends TestBase {
         "  return");
 
     String expected = StringUtils.lines("42");
-    if (parameters.isCfRuntime()) {
-      testForJvm()
+    if (parameters.isJvmTestParameters()) {
+      testForJvm(parameters)
           .addProgramClassFileData(builder.buildClasses())
           .run(parameters.getRuntime(), clazz.name)
           .assertSuccessWithOutput(expected);
@@ -371,7 +370,7 @@ public class InvalidDebugInfoTests extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(builder.buildClasses())
         .addOptionsModification(this::optionsModification)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
               if (strict) {
@@ -429,8 +428,8 @@ public class InvalidDebugInfoTests extends TestBase {
         "  return");
 
     String expected = StringUtils.lines("42");
-    if (parameters.isCfRuntime()) {
-      testForJvm()
+    if (parameters.isJvmTestParameters()) {
+      testForJvm(parameters)
           .addProgramClassFileData(builder.buildClasses())
           .run(parameters.getRuntime(), clazz.name)
           .assertSuccessWithOutput(expected);
@@ -438,7 +437,7 @@ public class InvalidDebugInfoTests extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClassFileData(builder.buildClasses())
         .addOptionsModification(this::optionsModification)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(TestDiagnosticMessages::assertNoMessages)
         .run(parameters.getRuntime(), clazz.name)
         .assertSuccessWithOutput(expected)

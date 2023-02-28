@@ -69,8 +69,8 @@ public class InvokeDirect extends InvokeMethodWithReceiver {
   }
 
   @Override
-  public Type getType() {
-    return Type.DIRECT;
+  public InvokeType getType() {
+    return InvokeType.DIRECT;
   }
 
   @Override
@@ -218,7 +218,7 @@ public class InvokeDirect extends InvokeMethodWithReceiver {
   }
 
   @Override
-  public void buildLir(LirBuilder<Value, BasicBlock> builder) {
+  public void buildLir(LirBuilder<Value, ?> builder) {
     builder.addInvokeDirect(getInvokedMethod(), arguments());
   }
 

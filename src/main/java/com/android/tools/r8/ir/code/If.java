@@ -15,68 +15,25 @@ import com.android.tools.r8.ir.conversion.CfBuilder;
 import com.android.tools.r8.ir.conversion.DexBuilder;
 import com.android.tools.r8.lightir.LirBuilder;
 import com.android.tools.r8.utils.BooleanUtils;
-import com.android.tools.r8.utils.CfgPrinter;
 import com.android.tools.r8.utils.InternalOutputMode;
 import java.util.List;
 
 public class If extends JumpInstruction {
 
-  public enum Type {
-    EQ, GE, GT, LE, LT, NE;
-
-    // Returns the comparison type if the operands are swapped.
-    public Type forSwappedOperands() {
-      switch (this) {
-        case EQ:
-        case NE:
-          return this;
-        case GE:
-          return Type.LE;
-        case GT:
-          return Type.LT;
-        case LE:
-          return Type.GE;
-        case LT:
-          return Type.GT;
-        default:
-          throw new Unreachable("Unknown if condition type.");
-      }
-    }
-
-    public Type inverted() {
-      switch (this) {
-        case EQ:
-          return Type.NE;
-        case GE:
-          return Type.LT;
-        case GT:
-          return Type.LE;
-        case LE:
-          return Type.GT;
-        case LT:
-          return Type.GE;
-        case NE:
-          return Type.EQ;
-        default:
-          throw new Unreachable("Unknown if condition type.");
-      }
-    }
-  }
-
-  private static boolean verifyTypeCompatible(TypeElement valueType, If.Type ifType) {
+  private static boolean verifyTypeCompatible(TypeElement valueType, IfType ifType) {
     return valueType.isInt()
-        || (valueType.isFloat() && (ifType == Type.EQ || ifType == Type.NE))
-        || (valueType.isReferenceType() && (ifType == Type.EQ || ifType == Type.NE));
+        || (valueType.isFloat() && (ifType == IfType.EQ || ifType == IfType.NE))
+        || (valueType.isReferenceType() && (ifType == IfType.EQ || ifType == IfType.NE));
   }
 
-  private Type type;
+  private IfType type;
 
-  public If(Type type, Value value) {
+  public If(IfType type, Value value) {
     super(value);
     this.type = type;
   }
 
-  public If(Type type, List<Value> values) {
+  public If(IfType type, List<Value> values) {
     super(values);
     this.type = type;
   }
@@ -112,7 +69,7 @@ public class If extends JumpInstruction {
     return inValues.get(1);
   }
 
-  public Type getType() {
+  public IfType getType() {
     return type;
   }
 
@@ -188,12 +145,6 @@ public class If extends JumpInstruction {
   public int maxOutValueRegister() {
     assert false : "If instructions define no values.";
     return 0;
-  }
-
-  @Override
-  public void print(CfgPrinter printer) {
-    super.print(printer);
-    printer.append(" B").append(getTrueTarget().getNumber());
   }
 
   @Override
@@ -292,7 +243,7 @@ public class If extends JumpInstruction {
   }
 
   @Override
-  public void buildLir(LirBuilder<Value, BasicBlock> builder) {
+  public void buildLir(LirBuilder<Value, ?> builder) {
     ValueType ifType = inValues.get(0).outType();
     if (inValues.size() == 1) {
       builder.addIf(type, ifType, inValues.get(0), getTrueTarget());

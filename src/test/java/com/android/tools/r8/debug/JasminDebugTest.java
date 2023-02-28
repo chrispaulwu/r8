@@ -3,23 +3,17 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.debug;
 
-import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.jasmin.JasminBuilder;
 import com.google.common.collect.ImmutableList;
 import java.nio.file.Path;
 import java.util.List;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 public class JasminDebugTest extends DebugTestBase {
 
   final String className = "UselessCheckCast";
   final String sourcefile = className + ".j";
   final String methodName = "test";
-
-  @Rule
-  public TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
 
   @Test
   public void testUselessCheckcastCF() throws Throwable {

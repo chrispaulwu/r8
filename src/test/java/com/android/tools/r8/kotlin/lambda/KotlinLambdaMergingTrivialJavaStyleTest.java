@@ -65,7 +65,7 @@ public class KotlinLambdaMergingTrivialJavaStyleTest extends KotlinTestBase {
     assumeFalse(allowAccessModification);
     assumeTrue(parameters.isCfRuntime());
     assumeTrue(kotlinParameters.isFirst());
-    testForJvm()
+    testForJvm(parameters)
         .addProgramFiles(getProgramFiles())
         .run(parameters.getRuntime(), getMainClassName())
         .assertSuccessWithOutput(getExpectedOutput());
@@ -79,7 +79,7 @@ public class KotlinLambdaMergingTrivialJavaStyleTest extends KotlinTestBase {
         .addHorizontallyMergedClassesInspector(this::inspect)
         .allowAccessModification(allowAccessModification)
         .allowDiagnosticWarningMessages()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .assertAllWarningMessagesMatch(
             containsString("Resource 'META-INF/MANIFEST.MF' already exists."))

@@ -8,9 +8,7 @@ import com.android.tools.r8.ToolHelper.DexVm.Version;
 import java.util.Collections;
 import org.junit.Assume;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 /**
  * Test single stepping behaviour across reordered blocks.
@@ -22,17 +20,14 @@ public class BlockReorderingTest extends DebugTestBase {
 
   private static D8DebugTestConfig d8Config;
 
-  @ClassRule
-  public static TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
-
   @BeforeClass
-  public static void setup() throws Exception {
+  public static void setup() {
     // Force inversion of all conditionals to reliably construct a regression test for incorrect
     // line information when reordering blocks.
     d8Config =
         new D8DebugTestConfig()
             .compileAndAdd(
-                temp,
+                getStaticTemp(),
                 Collections.singletonList(DEBUGGEE_JAR),
                 options -> options.testing.invertConditionals = true);
   }

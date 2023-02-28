@@ -56,7 +56,7 @@ public class KeepAccessFlagsOnMembersTest extends TestBase {
   @Test
   public void test() throws Exception {
     testForR8(parameters.getBackend())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .enableExperimentalKeepAnnotations()
         .addProgramClassFileData(getTargetClass())
         .addProgramClassFileData(getMainClass())
@@ -167,7 +167,7 @@ public class KeepAccessFlagsOnMembersTest extends TestBase {
           classConstant = A.class,
           memberAccess = {MemberAccessFlags.PUBLIC})
     })
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       Object o = System.nanoTime() > 0 ? new A() : null;
       for (Field f : o.getClass().getDeclaredFields()) {
         System.out.println(f.getName());

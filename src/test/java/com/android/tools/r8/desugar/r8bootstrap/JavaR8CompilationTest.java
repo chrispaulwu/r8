@@ -40,8 +40,7 @@ public class JavaR8CompilationTest extends TestBase {
             .withApiLevelsStartingAtIncluding(AndroidApiLevel.O)
             .withDexRuntimes()
             .build(),
-        ImmutableList.of(
-            ToolHelper.R8_WITH_RELOCATED_DEPS_11_JAR, ToolHelper.R8_WITH_RELOCATED_DEPS_17_JAR));
+        ImmutableList.of(ToolHelper.R8_WITH_RELOCATED_DEPS_17_JAR));
   }
 
   private static final Path MAIN_KEEP = Paths.get("src/main/keep.txt");
@@ -55,7 +54,7 @@ public class JavaR8CompilationTest extends TestBase {
   public void testR8CompiledWithR8() throws Exception {
     Assume.assumeTrue(JavaBootstrapUtils.exists(r8WithRelocatedDeps));
     testForR8(parameters.getBackend())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addProgramFiles(r8WithRelocatedDeps)
         .addKeepRuleFiles(MAIN_KEEP)
         .compile()

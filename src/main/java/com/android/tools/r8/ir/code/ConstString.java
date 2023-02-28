@@ -119,7 +119,7 @@ public class ConstString extends ConstInstruction {
   public boolean instructionInstanceCanThrow() {
     // The const-string instruction can be a throwing instruction in DEX, if decode() fails.
     try {
-      value.toString();
+      String unused = value.toString();
     } catch (RuntimeException e) {
       if (e.getCause() instanceof UTFDataFormatException) {
         return true;
@@ -182,7 +182,7 @@ public class ConstString extends ConstInstruction {
   }
 
   @Override
-  public void buildLir(LirBuilder<Value, BasicBlock> builder) {
+  public void buildLir(LirBuilder<Value, ?> builder) {
     builder.addConstString(value);
   }
 }

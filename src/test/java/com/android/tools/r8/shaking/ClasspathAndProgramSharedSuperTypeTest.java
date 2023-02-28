@@ -28,7 +28,7 @@ public class ClasspathAndProgramSharedSuperTypeTest extends TestBase {
   }
 
   @Test
-  public void testR8() throws Exception {
+  public void testR8() {
     // TODO(b/226054007): R8 should maintain classpath type.
     assertThrows(
         CompilationFailedException.class,
@@ -36,7 +36,7 @@ public class ClasspathAndProgramSharedSuperTypeTest extends TestBase {
             testForR8(parameters.getBackend())
                 .addProgramClasses(SharedSuperType.class, ProgramClass.class, Main.class)
                 .addClasspathClasses(SharedSuperType.class, ClasspathClass.class)
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addKeepMainRule(Main.class)
                 .compileWithExpectedDiagnostics(
                     diagnostics ->

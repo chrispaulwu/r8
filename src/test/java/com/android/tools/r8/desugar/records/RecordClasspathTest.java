@@ -67,18 +67,21 @@ public class RecordClasspathTest extends TestBase {
   }
 
   @Test
-  public void testD8AndJvm() throws Exception {
-    if (parameters.isCfRuntime()) {
-      testForJvm()
-          .addProgramClasses(TestClass.class)
-          .addClasspathClassFileData(getClasspathData())
-          .run(parameters.getRuntime(), TestClass.class)
-          .assertSuccessWithOutput(EXPECTED_RESULT);
-    }
+  public void testJvm() throws Exception {
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
+        .addProgramClasses(TestClass.class)
+        .addClasspathClassFileData(getClasspathData())
+        .run(parameters.getRuntime(), TestClass.class)
+        .assertSuccessWithOutput(EXPECTED_RESULT);
+  }
+
+  @Test
+  public void testD8() throws Exception {
     testForD8(parameters.getBackend())
         .addProgramClasses(TestClass.class)
         .addClasspathClassFileData(getClasspathData())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(this::assertNoRecord)
         .run(parameters.getRuntime(), TestClass.class)
@@ -92,7 +95,7 @@ public class RecordClasspathTest extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClasses(TestClass.class)
         .addClasspathClassFileData(getClasspathData())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .setIntermediate(true)
         .setOutputMode(OutputMode.DexFilePerClassFile)
         .apply(b -> b.getBuilder().setGlobalSyntheticsConsumer(globals))
@@ -110,7 +113,7 @@ public class RecordClasspathTest extends TestBase {
         testForR8(parameters.getBackend())
             .addProgramClasses(TestClass.class)
             .addClasspathClassFileData(getClasspathData())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepMainRule(TestClass.class);
     if (parameters.isCfRuntime()) {
       builder

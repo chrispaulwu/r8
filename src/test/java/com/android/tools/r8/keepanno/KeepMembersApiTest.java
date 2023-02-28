@@ -58,7 +58,7 @@ public class KeepMembersApiTest extends TestBase {
         testForR8(parameters.getBackend())
             .enableExperimentalKeepAnnotations()
             .addProgramClasses(getLibraryClasses())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .compile()
             .inspect(this::checkLibraryOutput)
             .writeToZip();
@@ -66,7 +66,7 @@ public class KeepMembersApiTest extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClasses(getClientClasses())
         .addProgramFiles(lib)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), TestClass.class)
         .assertSuccessWithOutput(EXPECTED);
   }
@@ -133,7 +133,7 @@ public class KeepMembersApiTest extends TestBase {
 
   static class TestClass {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       new A().bar();
       new B().foo();
     }

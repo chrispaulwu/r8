@@ -26,7 +26,6 @@ import com.android.tools.r8.errors.UnsupportedInvokeCustomDiagnostic;
 import com.android.tools.r8.errors.UnsupportedInvokePolymorphicMethodHandleDiagnostic;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexCallSite;
-import com.android.tools.r8.graph.DexItemFactory;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProto;
 import com.android.tools.r8.graph.DexType;
@@ -41,7 +40,6 @@ import com.android.tools.r8.utils.InternalOptions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.Sets;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.objectweb.asm.Opcodes;
@@ -166,6 +164,7 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
                   eventConsumer,
                   context,
                   methodProcessingContext,
+                  desugaringCollection,
                   dexItemFactory) -> {
                 report(context);
                 Builder<CfInstruction> replacement = ImmutableList.builder();
@@ -215,6 +214,7 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
                   eventConsumer,
                   context,
                   methodProcessingContext,
+                  desugaringCollection,
                   dexItemFactory) -> {
                 report(context);
                 Builder<CfInstruction> replacement = ImmutableList.builder();
@@ -260,6 +260,7 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
                   eventConsumer,
                   context,
                   methodProcessingContext,
+                  desugaringCollection,
                   dexItemFactory) -> {
                 report(context);
                 Builder<CfInstruction> replacement = ImmutableList.builder();
@@ -299,6 +300,7 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
                   eventConsumer,
                   context,
                   methodProcessingContext,
+                  desugaringCollection,
                   dexItemFactory) -> {
                 report(context);
                 Builder<CfInstruction> replacement = ImmutableList.builder();
@@ -339,6 +341,7 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
                   eventConsumer,
                   context,
                   methodProcessingContext,
+                  desugaringCollection,
                   dexItemFactory) -> {
                 report(context);
                 Builder<CfInstruction> replacement = ImmutableList.builder();
@@ -361,7 +364,8 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
     matchers = builder.build();
   }
 
-  private DesugarDescription compute(CfInstruction instruction) {
+  @Override
+  public DesugarDescription compute(CfInstruction instruction, ProgramMethod context) {
     for (InstructionMatcher matcher : matchers) {
       DesugarDescription result = matcher.compute(instruction);
       if (result != null) {
@@ -369,30 +373,5 @@ public class UnrepresentableInDexInstructionRemover implements CfInstructionDesu
       }
     }
     return DesugarDescription.nothing();
-  }
-
-  @Override
-  public Collection<CfInstruction> desugarInstruction(
-      CfInstruction instruction,
-      FreshLocalProvider freshLocalProvider,
-      LocalStackAllocator localStackAllocator,
-      CfInstructionDesugaringEventConsumer eventConsumer,
-      ProgramMethod context,
-      MethodProcessingContext methodProcessingContext,
-      CfInstructionDesugaringCollection desugaringCollection,
-      DexItemFactory dexItemFactory) {
-    return compute(instruction)
-        .desugarInstruction(
-            freshLocalProvider,
-            localStackAllocator,
-            eventConsumer,
-            context,
-            methodProcessingContext,
-            dexItemFactory);
-  }
-
-  @Override
-  public boolean needsDesugaring(CfInstruction instruction, ProgramMethod context) {
-    return compute(instruction).needsDesugaring();
   }
 }

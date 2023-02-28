@@ -8,10 +8,10 @@ package com.android.tools.r8.desugar.records;
 import com.android.tools.r8.R8FullTestBuilder;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.utils.AndroidApiLevel;
 import com.android.tools.r8.utils.StringUtils;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -35,13 +35,12 @@ public class EmptyRecordAnnotationTest extends TestBase {
   }
 
   @Parameterized.Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters()
-            .withCfRuntimesStartingFromIncluding(CfVm.JDK17)
-            .withDexRuntimes()
-            .withAllApiLevelsAlsoForCf()
-            .build());
+  public static TestParametersCollection data() {
+    return getTestParameters()
+        .withCfRuntimesStartingFromIncluding(CfVm.JDK17)
+        .withDexRuntimes()
+        .withAllApiLevelsAlsoForCf()
+        .build();
   }
 
   private boolean isDefaultCfParameters() {
@@ -51,14 +50,14 @@ public class EmptyRecordAnnotationTest extends TestBase {
   @Test
   public void testD8AndJvm() throws Exception {
     if (isDefaultCfParameters()) {
-      testForJvm()
+      testForJvm(parameters)
           .addProgramClassFileData(PROGRAM_DATA)
           .run(parameters.getRuntime(), MAIN_TYPE)
           .assertSuccessWithOutput(EXPECTED_RESULT_CF);
     }
     testForD8(parameters.getBackend())
         .addProgramClassFileData(PROGRAM_DATA)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), MAIN_TYPE)
         .assertSuccessWithOutput(EXPECTED_RESULT_DEX);
@@ -70,7 +69,7 @@ public class EmptyRecordAnnotationTest extends TestBase {
     R8FullTestBuilder builder =
         testForR8(parameters.getBackend())
             .addProgramClassFileData(PROGRAM_DATA)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepRules("-keep class records.EmptyRecordAnnotation { *; }")
             .addKeepRules("-keepattributes *Annotation*")
             .addKeepRules("-keep class records.EmptyRecordAnnotation$Empty")

@@ -16,7 +16,6 @@ import com.android.tools.r8.ir.optimize.PeepholeOptimizer;
 import com.android.tools.r8.ir.optimize.RuntimeWorkaroundCodeRewriter;
 import com.android.tools.r8.ir.regalloc.LinearScanRegisterAllocator;
 import com.android.tools.r8.ir.regalloc.RegisterAllocator;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.Timing;
 
@@ -75,10 +74,6 @@ public class IRToDexFinalizer extends IRFinalizer<DexCode> {
     CodeRewriter.removeUnneededMovesOnExitingPaths(code, registerAllocator);
     CodeRewriter.collapseTrivialGotos(appView, code);
     timing.end();
-    if (Log.ENABLED) {
-      Log.debug(
-          getClass(), "Final (non-SSA) flow graph for %s:\n%s", method.toSourceString(), code);
-    }
     return registerAllocator;
   }
 }

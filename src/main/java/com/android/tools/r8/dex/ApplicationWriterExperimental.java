@@ -3,6 +3,8 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.dex;
 
+import static com.android.tools.r8.utils.DexVersion.Layout.CONTAINER_DEX;
+
 import com.android.tools.r8.ByteBufferProvider;
 import com.android.tools.r8.ByteDataView;
 import com.android.tools.r8.DexFilePerClassFileConsumer;
@@ -93,8 +95,7 @@ class ApplicationWriterExperimental extends ApplicationWriter {
       ExecutorService executorService,
       List<VirtualFile> virtualFiles,
       List<DexString> forcedStrings,
-      Timing timing)
-      throws ExecutionException {
+      Timing timing) {
     TimingMerger merger =
         timing.beginMerger("Write files", ThreadUtils.getNumberOfThreads(executorService));
     Collection<Timing> timings;
@@ -274,6 +275,6 @@ class ApplicationWriterExperimental extends ApplicationWriter {
     // Collect the non-fixed sections.
     timing.time("collect", fileWriter::collect);
     // Generate and write the bytes.
-    return timing.time("generate", () -> fileWriter.generate(offset));
+    return timing.time("generate", () -> fileWriter.generate(offset, CONTAINER_DEX));
   }
 }

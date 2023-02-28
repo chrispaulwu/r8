@@ -3,6 +3,7 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.dex;
 
+import static com.android.tools.r8.utils.DexVersion.Layout.SINGLE_DEX;
 import static com.android.tools.r8.utils.LebUtils.sizeAsUleb128;
 
 import com.android.tools.r8.ByteBufferProvider;
@@ -45,7 +46,6 @@ import com.android.tools.r8.graph.ObjectToOffsetMapping;
 import com.android.tools.r8.graph.ParameterAnnotationsList;
 import com.android.tools.r8.graph.ProgramClassVisitor;
 import com.android.tools.r8.graph.ProgramMethod;
-import com.android.tools.r8.logging.Log;
 import com.android.tools.r8.naming.NamingLens;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.position.MethodPosition;
@@ -144,9 +144,6 @@ public class FileWriter {
 
   public static void writeEncodedAnnotation(
       DexEncodedAnnotation annotation, DexOutputBuffer dest, ObjectToOffsetMapping mapping) {
-    if (Log.ENABLED) {
-      Log.verbose(FileWriter.class, "Writing encoded annotation @ %08x", dest.position());
-    }
     List<DexAnnotationElement> elements = new ArrayList<>(Arrays.asList(annotation.elements));
     elements.sort((a, b) -> a.name.acceptCompareTo(b.name, mapping.getCompareToVisitor()));
     dest.putUleb128(mapping.getOffsetFor(annotation.type));
@@ -206,18 +203,18 @@ public class FileWriter {
   }
 
   public ByteBufferResult generate() {
-    DexContainerSection res = generate(0);
+    DexContainerSection res = generate(0, SINGLE_DEX);
     return new ByteBufferResult(res.getBuffer().stealByteBuffer(), res.getLayout().getEndOfFile());
   }
 
-  public DexContainerSection generate(int offset) {
+  public DexContainerSection generate(int offset, DexVersion.Layout layoutType) {
     // Check restrictions on interface methods.
     checkInterfaceMethods();
 
     // Check restriction on the names of fields, methods and classes
     assert verifyNames();
 
-    Layout layout = Layout.from(mapping, offset, includeStringData);
+    Layout layout = Layout.from(mapping, offset, layoutType, includeStringData);
     layout.setCodesOffset(layout.dataSectionOffset);
 
     // Sort the codes first, as their order might impact size due to alignment constraints.
@@ -298,7 +295,7 @@ public class FileWriter {
     layout.setEndOfFile(dest.position());
 
     // Now that we have all mixedSectionOffsets, lets write the indexed items.
-    dest.moveTo(layout.headerOffset + Constants.TYPE_HEADER_ITEM_SIZE);
+    dest.moveTo(layout.headerOffset + layout.getHeaderSize());
     if (includeStringData) {
       writeFixedSectionItems(mapping.getStrings(), layout.stringIdsOffset, this::writeStringItem);
     } else {
@@ -467,9 +464,6 @@ public class FileWriter {
         }
       }
     }
-    if (Log.ENABLED) {
-      Log.verbose(getClass(), "Computed size item %08d.", result);
-    }
     return result;
   }
 
@@ -606,18 +600,12 @@ public class FileWriter {
 
   private void writeAnnotation(DexAnnotation annotation) {
     mixedSectionOffsets.setOffsetFor(annotation, dest.position());
-    if (Log.ENABLED) {
-      Log.verbose(getClass(), "Writing Annotation @ 0x%08x.", dest.position());
-    }
     dest.putByte((byte) annotation.visibility);
     writeEncodedAnnotation(annotation.annotation, dest, mapping);
   }
 
   private void writeAnnotationSet(DexAnnotationSet set) {
     mixedSectionOffsets.setOffsetFor(set, dest.align(4));
-    if (Log.ENABLED) {
-      Log.verbose(getClass(), "Writing AnnotationSet @ 0x%08x.", dest.position());
-    }
     List<DexAnnotation> annotations = new ArrayList<>(Arrays.asList(set.annotations));
     annotations.sort(
         (a, b) ->
@@ -770,9 +758,6 @@ public class FileWriter {
 
   private void writeEncodedArray(DexEncodedArray array) {
     mixedSectionOffsets.setOffsetFor(array, dest.position());
-    if (Log.ENABLED) {
-      Log.verbose(getClass(), "Writing EncodedArray @ 0x%08x [%s].", dest.position(), array);
-    }
     dest.putUleb128(array.values.length);
     for (DexValue value : array.values) {
       value.writeTo(dest, mapping);
@@ -816,7 +801,7 @@ public class FileWriter {
     // Leave out checksum and signature for now.
     dest.moveTo(layout.headerOffset + Constants.FILE_SIZE_OFFSET);
     dest.putInt(layout.getEndOfFile() - layout.headerOffset);
-    dest.putInt(Constants.TYPE_HEADER_ITEM_SIZE);
+    dest.putInt(layout.getHeaderSize());
     dest.putInt(Constants.ENDIAN_CONSTANT);
     dest.putInt(0);
     dest.putInt(0);
@@ -839,8 +824,14 @@ public class FileWriter {
     int numberOfClasses = mapping.getClasses().length;
     dest.putInt(numberOfClasses);
     dest.putInt(numberOfClasses == 0 ? 0 : layout.classDefsOffset);
-    dest.putInt(layout.getDataSectionSize());
-    dest.putInt(layout.dataSectionOffset);
+    if (layout.isContainerSection()) {
+      dest.putInt(0);
+      dest.putInt(0);
+      dest.putInt(layout.headerOffset);
+    } else {
+      dest.putInt(layout.getDataSectionSize());
+      dest.putInt(layout.dataSectionOffset);
+    }
     assert dest.position() == layout.stringIdsOffset;
   }
 
@@ -907,9 +898,6 @@ public class FileWriter {
       if (length == 0) {
         return 0;
       }
-      if (Log.ENABLED) {
-        Log.debug(getClass(), "Map entry 0x%04x @ 0x%08x # %08d.", type, offset, length);
-      }
       dest.putShort((short) type);
       dest.putShort((short) 0);
       dest.putInt(length);
@@ -937,6 +925,7 @@ public class FileWriter {
     final int callSiteIdsOffset;
     final int methodHandleIdsOffset;
     final int dataSectionOffset;
+    final DexVersion.Layout layoutType;
 
     // Mixed size sections
     private int codesOffset = NOT_SET; // aligned
@@ -963,7 +952,8 @@ public class FileWriter {
         int classDefsOffset,
         int callSiteIdsOffset,
         int methodHandleIdsOffset,
-        int dataSectionOffset) {
+        int dataSectionOffset,
+        DexVersion.Layout layoutType) {
       this.headerOffset = headerOffset;
       this.stringIdsOffset = stringIdsOffset;
       this.typeIdsOffset = typeIdsOffset;
@@ -974,6 +964,7 @@ public class FileWriter {
       this.callSiteIdsOffset = callSiteIdsOffset;
       this.methodHandleIdsOffset = methodHandleIdsOffset;
       this.dataSectionOffset = dataSectionOffset;
+      this.layoutType = layoutType;
       assert stringIdsOffset <= typeIdsOffset;
       assert typeIdsOffset <= protoIdsOffset;
       assert protoIdsOffset <= fieldIdsOffset;
@@ -985,13 +976,18 @@ public class FileWriter {
     }
 
     static Layout from(ObjectToOffsetMapping mapping) {
-      return from(mapping, 0, true);
+      return from(mapping, 0, SINGLE_DEX, true);
     }
 
-    static Layout from(ObjectToOffsetMapping mapping, int offset, boolean includeStringData) {
+    static Layout from(
+        ObjectToOffsetMapping mapping,
+        int offset,
+        DexVersion.Layout layoutType,
+        boolean includeStringData) {
+      assert offset == 0 || layoutType.isContainer();
       return new Layout(
           offset,
-          offset += Constants.TYPE_HEADER_ITEM_SIZE,
+          offset += layoutType.getHeaderSize(),
           offset +=
               includeStringData
                   ? mapping.getStrings().size() * Constants.TYPE_STRING_ID_ITEM_SIZE
@@ -1002,7 +998,8 @@ public class FileWriter {
           offset += mapping.getMethods().size() * Constants.TYPE_METHOD_ID_ITEM_SIZE,
           offset += mapping.getClasses().length * Constants.TYPE_CLASS_DEF_ITEM_SIZE,
           offset += mapping.getCallSites().size() * Constants.TYPE_CALL_SITE_ID_ITEM_SIZE,
-          offset += mapping.getMethodHandles().size() * Constants.TYPE_METHOD_HANDLE_ITEM_SIZE);
+          offset += mapping.getMethodHandles().size() * Constants.TYPE_METHOD_HANDLE_ITEM_SIZE,
+          layoutType);
     }
 
     int getDataSectionSize() {
@@ -1125,6 +1122,14 @@ public class FileWriter {
 
     public void setMapOffset(int mapOffset) {
       this.mapOffset = mapOffset;
+    }
+
+    public boolean isContainerSection() {
+      return layoutType.isContainer();
+    }
+
+    public int getHeaderSize() {
+      return layoutType.getHeaderSize();
     }
 
     public List<MapItem> generateMapInfo(FileWriter fileWriter) {

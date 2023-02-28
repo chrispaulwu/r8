@@ -44,7 +44,7 @@ public class RemoveVisibilityBridgeMethodsTest extends TestBase {
         .addKeepMainRule(Main.class)
         .allowAccessModification()
         .minification(minification)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(this::inspect)
         .run(parameters.getRuntime(), Main.class)
@@ -95,7 +95,7 @@ public class RemoveVisibilityBridgeMethodsTest extends TestBase {
 
     // Run input program on java.
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addProgramClassFileData(programClassFileData)
           .run(parameters.getRuntime(), mainClass.name)
           .assertSuccessWithOutputLines("Hello World");
@@ -107,7 +107,7 @@ public class RemoveVisibilityBridgeMethodsTest extends TestBase {
         .addOptionsModification(options -> options.inlinerOptions().enableInlining = false)
         .allowAccessModification()
         .minification(minification)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .inspect(
             inspector -> {

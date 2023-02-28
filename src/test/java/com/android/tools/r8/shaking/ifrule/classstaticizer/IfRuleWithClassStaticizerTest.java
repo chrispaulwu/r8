@@ -43,7 +43,7 @@ public class IfRuleWithClassStaticizerTest extends TestBase {
     String expectedOutput = StringUtils.lines("In method()");
 
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addTestClasspath()
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(expectedOutput);
@@ -60,7 +60,7 @@ public class IfRuleWithClassStaticizerTest extends TestBase {
                 "-keep class " + Unused.class.getTypeName())
             .enableInliningAnnotations()
             .enableNeverClassInliningAnnotations()
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .run(parameters.getRuntime(), TestClass.class)
             .assertSuccessWithOutput(expectedOutput)
             .inspector();

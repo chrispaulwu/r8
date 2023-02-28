@@ -5,7 +5,6 @@
 package com.android.tools.r8.ir.optimize.interfaces;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.NoVerticalClassMerging;
 import com.android.tools.r8.TestBase;
@@ -34,7 +33,7 @@ public class OpenUninstantiatedInterfaceAlwaysNullTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
+    parameters.assumeJvmTestParameters();
     testForRuntime(parameters)
         .addProgramClasses(getProgramClasses())
         .addProgramClassFileData(getTransformedMainClass())
@@ -44,11 +43,11 @@ public class OpenUninstantiatedInterfaceAlwaysNullTest extends TestBase {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClasses(getProgramClasses())
         .addProgramClassFileData(getTransformedMainClass())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(getExpectedOutputLines());
   }
@@ -63,7 +62,7 @@ public class OpenUninstantiatedInterfaceAlwaysNullTest extends TestBase {
             options -> options.getOpenClosedInterfacesOptions().suppressAllOpenInterfaces())
         // TODO(b/214496607): I should not be merged into A in the first place, since I is open.
         .enableNoVerticalClassMergingAnnotations()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(getExpectedOutputLines());
   }

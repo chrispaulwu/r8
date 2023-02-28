@@ -7,10 +7,10 @@ package com.android.tools.r8.desugar.records;
 import com.android.tools.r8.R8FullTestBuilder;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.utils.StringUtils;
 import java.nio.file.Path;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -32,13 +32,12 @@ public class RecordLibMergeTest extends TestBase {
   }
 
   @Parameterized.Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters()
-            .withCfRuntimesStartingFromIncluding(CfVm.JDK17)
-            .withDexRuntimes()
-            .withAllApiLevelsAlsoForCf()
-            .build());
+  public static TestParametersCollection data() {
+    return getTestParameters()
+        .withCfRuntimesStartingFromIncluding(CfVm.JDK17)
+        .withDexRuntimes()
+        .withAllApiLevelsAlsoForCf()
+        .build();
   }
 
   @Test
@@ -47,7 +46,6 @@ public class RecordLibMergeTest extends TestBase {
     Path lib =
         testForR8(Backend.CF)
             .addProgramClassFileData(PROGRAM_DATA_LIB)
-            .setMinApi(parameters.getApiLevel())
             .addKeepRules(
                 "-keep class records.RecordLib { public static java.lang.Object getRecord(); }")
             .addKeepRules("-keep class records.RecordLib$LibRecord")
@@ -58,7 +56,7 @@ public class RecordLibMergeTest extends TestBase {
         testForR8(parameters.getBackend())
             .addProgramFiles(lib)
             .addProgramClassFileData(PROGRAM_DATA_MAIN)
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepMainRule(MAIN_TYPE)
             .addKeepRules("-keep class records.RecordLib$LibRecord")
             .addKeepRules("-keep class records.RecordMain$MainRecord");

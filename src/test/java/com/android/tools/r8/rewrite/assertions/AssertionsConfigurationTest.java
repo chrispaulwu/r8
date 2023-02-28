@@ -73,7 +73,7 @@ public class AssertionsConfigurationTest extends TestBase implements Opcodes {
       throws Exception {
     testForD8()
         .addProgramClasses(testClasses)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .apply(builderConsumer)
         .compile()
         .inspect(inspector)
@@ -100,7 +100,7 @@ public class AssertionsConfigurationTest extends TestBase implements Opcodes {
         .addProgramClasses(testClasses)
         .addKeepMainRule(TestClass.class)
         .addKeepClassAndMembersRules(class1, class2, subpackageClass1, subpackageClass2)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .apply(builderConsumer)
         .compile()
         .inspect(inspector)
@@ -413,7 +413,7 @@ public class AssertionsConfigurationTest extends TestBase implements Opcodes {
             testClassForUnknownPackage(),
             classInUnnamedPackage("Class1"),
             classInUnnamedPackage("Class2"))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAssertionsConfiguration(
             builder -> builder.setCompileTimeEnable().setScopePackage("").build())
         .compile()
@@ -433,7 +433,7 @@ public class AssertionsConfigurationTest extends TestBase implements Opcodes {
   public void testInnerClassForJvm() throws Exception {
     Assume.assumeTrue(parameters.isCfRuntime());
     // Pointing to the outer class enables assertions for the inner as well.
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(TestClassForInnerClass.class, TestClassForInnerClass.InnerClass.class)
         .addVmArguments("-ea:" + TestClassForInnerClass.class.getCanonicalName())
         .run(parameters.getRuntime(), TestClassForInnerClass.class)
@@ -443,12 +443,12 @@ public class AssertionsConfigurationTest extends TestBase implements Opcodes {
             "DONE");
 
     // Pointing to the inner class enables no assertions.
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(TestClassForInnerClass.class, TestClassForInnerClass.InnerClass.class)
         .addVmArguments("-ea:" + TestClassForInnerClass.InnerClass.class.getCanonicalName())
         .run(parameters.getRuntime(), TestClassForInnerClass.class)
         .assertSuccessWithOutputLines("DONE");
-    testForJvm()
+    testForJvm(parameters)
         .addProgramClasses(TestClassForInnerClass.class, TestClassForInnerClass.InnerClass.class)
         .addVmArguments("-ea:" + TestClassForInnerClass.InnerClass.class.getTypeName())
         .run(parameters.getRuntime(), TestClassForInnerClass.class)
@@ -460,7 +460,7 @@ public class AssertionsConfigurationTest extends TestBase implements Opcodes {
     Assume.assumeTrue(parameters.isDexRuntime());
     testForD8()
         .addProgramClasses(TestClassForInnerClass.class, TestClassForInnerClass.InnerClass.class)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addAssertionsConfiguration(
             builder ->
                 builder

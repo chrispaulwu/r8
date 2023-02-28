@@ -173,8 +173,11 @@ public interface DexIndexedConsumer extends ProgramConsumer, ByteBufferProvider 
       outputBuilder.close(handler);
     }
 
-    public static void writeResources(
-        Path archive, List<ProgramResource> resources, Set<DataEntryResource> dataResources)
+    public static void writeResourcesForTesting(
+        Path archive,
+        List<ProgramResource> resources,
+        Set<DataDirectoryResource> dataDirectoryResources,
+        Set<DataEntryResource> dataEntryResources)
         throws IOException, ResourceException {
       OpenOption[] options =
           new OpenOption[] {StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING};
@@ -188,9 +191,14 @@ public interface DexIndexedConsumer extends ProgramConsumer, ByteBufferProvider 
             byte[] bytes = ByteStreams.toByteArray(closer.register(resource.getByteStream()));
             ZipUtils.writeToZipStream(out, entryName, bytes, ZipEntry.STORED);
           }
-          for (DataEntryResource dataResource : dataResources) {
-            String entryName = dataResource.getName();
-            byte[] bytes = ByteStreams.toByteArray(closer.register(dataResource.getByteStream()));
+          for (DataDirectoryResource dataDirectoryResource : dataDirectoryResources) {
+            ZipUtils.writeToZipStream(
+                out, dataDirectoryResource.getName(), new byte[0], ZipEntry.STORED);
+          }
+          for (DataEntryResource dataEntryResource : dataEntryResources) {
+            String entryName = dataEntryResource.getName();
+            byte[] bytes =
+                ByteStreams.toByteArray(closer.register(dataEntryResource.getByteStream()));
             ZipUtils.writeToZipStream(out, entryName, bytes, ZipEntry.STORED);
           }
         }

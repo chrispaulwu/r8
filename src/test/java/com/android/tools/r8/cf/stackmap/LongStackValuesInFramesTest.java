@@ -5,7 +5,6 @@
 package com.android.tools.r8.cf.stackmap;
 
 import static com.android.tools.r8.cf.stackmap.LongStackValuesInFramesTest.LongStackValuesInFramesTest$MainDump.dump;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
@@ -14,6 +13,7 @@ import com.android.tools.r8.TestParametersCollection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -25,21 +25,18 @@ public class LongStackValuesInFramesTest extends TestBase {
 
   private final String[] EXPECTED = new String[] {"52"};
 
-  private final TestParameters parameters;
+  @Parameter(0)
+  public TestParameters parameters;
 
   @Parameters(name = "{0}")
   public static TestParametersCollection data() {
     return getTestParameters().withAllRuntimes().withAllApiLevelsAlsoForCf().build();
   }
 
-  public LongStackValuesInFramesTest(TestParameters parameters) {
-    this.parameters = parameters;
-  }
-
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(Tester.class)
         .addProgramClassFileData(dump())
         .run(parameters.getRuntime(), Main.class)
@@ -51,7 +48,7 @@ public class LongStackValuesInFramesTest extends TestBase {
     testForD8(parameters.getBackend())
         .addProgramClasses(Tester.class)
         .addProgramClassFileData(dump())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(EXPECTED);
   }

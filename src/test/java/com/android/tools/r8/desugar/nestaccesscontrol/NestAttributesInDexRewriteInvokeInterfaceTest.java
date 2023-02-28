@@ -13,6 +13,7 @@ import static org.junit.Assume.assumeTrue;
 import com.android.tools.r8.CompilationFailedException;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.ToolHelper.DexVm.Version;
 import com.android.tools.r8.utils.AndroidApiLevel;
@@ -38,21 +39,20 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
   public TestParameters parameters;
 
   @Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters()
-            .withDexRuntimesStartingFromIncluding(Version.V7_0_0)
-            .withCfRuntimesStartingFromIncluding(CfVm.JDK11)
-            .withApiLevelsStartingAtIncluding(AndroidApiLevel.N)
-            .build());
+  public static TestParametersCollection data() {
+    return getTestParameters()
+        .withDexRuntimesStartingFromIncluding(Version.V7_0_0)
+        .withCfRuntimesStartingFromIncluding(CfVm.JDK11)
+        .withApiLevelsStartingAtIncluding(AndroidApiLevel.N)
+        .build();
   }
 
   private static final List<String> EXPECTED_OUTPUT_LINES = ImmutableList.of("Hello, world!");
 
   @Test
   public void testRuntime() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(
             dumpHost(),
             dumpMember1(),
@@ -75,7 +75,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     // TODO(b/247047415): Update test when a DEX VM natively supporting nests is added.
     assertFalse(parameters.getApiLevel().getLevel() > 33);
     testForD8()
@@ -86,7 +86,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
             dumpHostImpl(),
             dumpMember1Impl(),
             dumpMember2Impl())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .compile()
         .inspect(
@@ -118,7 +118,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
         testForD8()
             .addProgramClassFileData(dumpHost())
             .addClasspathClassFileData(dumpMember1(), dumpMember2())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
             .compile()
             .inspect(
@@ -134,7 +134,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
         testForD8()
             .addProgramClassFileData(dumpMember1())
             .addClasspathClassFileData(dumpHost(), dumpMember2())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
             .compile()
             .inspect(
@@ -150,7 +150,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
         testForD8()
             .addProgramClassFileData(dumpMember2())
             .addClasspathClassFileData(dumpHost(), dumpMember1())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
             .compile()
             .inspect(
@@ -166,7 +166,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
         testForD8()
             .addProgramClassFileData(dumpHostImpl(), dumpMember1Impl(), dumpMember2Impl())
             .addClasspathClassFileData(dumpHost(), dumpMember1(), dumpMember2Impl())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
             .compile()
             .writeToZip();
@@ -174,7 +174,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
     testForD8()
         .addProgramFiles(host, member1, member2, impls)
         .addClasspathClassFileData(dumpMember2())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
         .compile()
         .inspect(
@@ -207,7 +207,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
         () ->
             testForD8()
                 .addProgramClassFileData(dumpHost())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
                 .compileWithExpectedDiagnostics(
                     diagnostics -> {
@@ -228,7 +228,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
         () ->
             testForD8()
                 .addProgramClassFileData(dumpMember1(), dumpMember2())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .addOptionsModification(options -> options.emitNestAnnotationsInDex = true)
                 .compileWithExpectedDiagnostics(
                     diagnostics -> {
@@ -281,7 +281,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
 
   */
 
-  public static byte[] dumpHost() throws Exception {
+  public static byte[] dumpHost() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;
@@ -340,7 +340,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpMember1() throws Exception {
+  public static byte[] dumpMember1() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;
@@ -377,7 +377,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpMember2() throws Exception {
+  public static byte[] dumpMember2() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;
@@ -414,7 +414,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpHostImpl() throws Exception {
+  public static byte[] dumpHostImpl() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;
@@ -488,7 +488,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpMember1Impl() throws Exception {
+  public static byte[] dumpMember1Impl() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;
@@ -515,7 +515,7 @@ public class NestAttributesInDexRewriteInvokeInterfaceTest extends TestBase impl
     return classWriter.toByteArray();
   }
 
-  public static byte[] dumpMember2Impl() throws Exception {
+  public static byte[] dumpMember2Impl() {
 
     ClassWriter classWriter = new ClassWriter(0);
     MethodVisitor methodVisitor;

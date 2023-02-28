@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import org.junit.Assume;
@@ -27,9 +28,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.rules.TemporaryFolder;
 
-public abstract class R8RunExamplesCommon {
+public abstract class R8RunExamplesTestBase extends TestBase {
 
   protected enum Input {
     JAVAC,
@@ -58,9 +58,6 @@ public abstract class R8RunExamplesCommon {
   }
 
   @Rule
-  public TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
-
-  @Rule
   public TestDescriptionWatcher watcher = new TestDescriptionWatcher();
 
   private final Input input;
@@ -70,13 +67,8 @@ public abstract class R8RunExamplesCommon {
   private final String mainClass;
   protected final Output output;
 
-  public R8RunExamplesCommon(
-      String pkg,
-      String input,
-      String compiler,
-      String mode,
-      String mainClass,
-      String output) {
+  public R8RunExamplesTestBase(
+      String pkg, String input, String compiler, String mode, String mainClass, String output) {
     this.pkg = pkg;
     this.input = Input.valueOf(input);
     this.compiler = CompilerUnderTest.valueOf(compiler);
@@ -187,7 +179,6 @@ public abstract class R8RunExamplesCommon {
       return;
     }
 
-    String original = getOriginalDexFile().toString();
     Path generated = getOutputFile();
 
     ToolHelper.ProcessResult javaResult = ToolHelper.runJava(getOriginalJarFile(""), mainClass);
@@ -222,20 +213,12 @@ public abstract class R8RunExamplesCommon {
       return;
     }
 
-    // Check output against Art output on original dex file.
-    String output =
-        ToolHelper.checkArtOutputIdentical(original, generated.toString(), mainClass, vm);
-
-    // Check output against JVM output.
-    if (shouldMatchJVMOutput(vm.getVersion())) {
-      String javaOutput = javaResult.stdout;
-      assertEquals("JVM and Art output differ", javaOutput, output);
-    }
-  }
-
-  private boolean shouldMatchJVMOutput(DexVm.Version version) {
-    TestCondition condition = getOutputNotIdenticalToJVMOutput().get(mainClass);
-    return condition == null || !condition.test(DexTool.NONE, compiler, version, mode);
+    // Check output against JVM output if we have it, otherwise check on art
+    String d8Output =
+        ToolHelper.runArtNoVerificationErrors(
+            Collections.singletonList(generated.toString()), mainClass, null, vm);
+    String javaOutput = javaResult.stdout;
+    assertEquals("JVM and Art output differ", javaOutput, d8Output);
   }
 
   private boolean shouldSkipVm(DexVm.Version version) {
@@ -257,8 +240,6 @@ public abstract class R8RunExamplesCommon {
   protected abstract Set<String> getFailingCompileCf();
 
   protected abstract Set<String> getFailingOutputCf();
-
-  protected abstract Map<String, TestCondition> getOutputNotIdenticalToJVMOutput();
 
   protected abstract Map<String, TestCondition> getSkip();
 }

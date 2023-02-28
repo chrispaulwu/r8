@@ -13,7 +13,6 @@ import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.transformers.ClassFileTransformer.MethodPredicate;
 import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.MethodSubject;
-import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -35,8 +34,8 @@ public class KeepAbstractMethodShadowingTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    Assume.assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClasses(A.class, C.class, Main.class)
         .addProgramClassFileData(getBWithAbstractFoo())
         .run(parameters.getRuntime(), Main.class)
@@ -48,7 +47,7 @@ public class KeepAbstractMethodShadowingTest extends TestBase {
     testForR8(parameters.getBackend())
         .addProgramClasses(A.class, C.class, Main.class)
         .addProgramClassFileData(getBWithAbstractFoo())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(Main.class)
         .addKeepClassAndMembersRules(A.class)
         .run(parameters.getRuntime(), Main.class)

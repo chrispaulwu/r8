@@ -132,7 +132,7 @@ public class Jdk8272564Test extends TestBase {
   @Test
   public void testJvm() throws Exception {
     assumeTrue(isDefaultCfParameters());
-    testForJvm()
+    testForJvm(parameters)
         .addRunClasspathFiles(Jdk8272564.jar())
         .run(parameters.getRuntime(), Jdk8272564.Main.typeName())
         .assertSuccess();
@@ -156,7 +156,7 @@ public class Jdk8272564Test extends TestBase {
     // The R8 lens code rewriter rewrites to the code prior to fixing JDK-8272564.
     testForR8(parameters.getBackend())
         .addProgramFiles(Jdk8272564.jar())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .noTreeShaking()
         .addKeepClassAndMembersRules(Jdk8272564.Main.typeName())
         .run(parameters.getRuntime(), Jdk8272564.Main.typeName())

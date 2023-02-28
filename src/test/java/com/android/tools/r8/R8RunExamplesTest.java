@@ -20,7 +20,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
-public class R8RunExamplesTest extends R8RunExamplesCommon {
+public class R8RunExamplesTest extends R8RunExamplesTestBase {
 
   @Parameters(name = "{0}_{1}_{2}_{3}_{5}_{6}")
   public static Collection<String[]> data() {
@@ -170,39 +170,17 @@ public class R8RunExamplesTest extends R8RunExamplesCommon {
   }
 
   @Override
-  protected Map<String, TestCondition> getOutputNotIdenticalToJVMOutput() {
-    return new ImmutableMap.Builder<String, TestCondition>()
-        // Traverses stack frames that contain Art specific frames.
-        .put("throwing.Throwing", TestCondition.any())
-        // DEX enclosing-class annotations don't distinguish member classes from local classes.
-        // This results in Class.isLocalClass always being false and Class.isMemberClass always
-        // being true even when the converse is the case when running on the JVM.
-        .put("enclosingmethod.Main", TestCondition.any())
-        // Early art versions incorrectly print Float.MIN_VALUE.
-        .put("filledarray.FilledArray",
-            TestCondition.match(TestCondition.runtimesUpTo(Version.V6_0_1)))
-        // Early art versions incorrectly print doubles.
-        .put("regress_70736958.Test",
-            TestCondition.match(TestCondition.runtimesUpTo(Version.V6_0_1)))
-        // Early art versions incorrectly print doubles.
-        .put("regress_72361252.Test",
-            TestCondition.match(TestCondition.runtimesUpTo(Version.V6_0_1)))
-        // TODO(120402200): Triage.
-        .put("regress_62300145.Regress",
-            TestCondition.match(TestCondition.runtimesUpTo(Version.V9_0_0)))
-        .build();
-  }
-
-
-  @Override
   protected Map<String, TestCondition> getSkip() {
     return new ImmutableMap.Builder<String, TestCondition>()
         // Test uses runtime methods which are not available on older Art versions.
-        .put("regress_70703087.Test",
+        .put(
+            "regress_70703087.Test",
             TestCondition.match(TestCondition.runtimesUpTo(Version.V6_0_1)))
+        // Dalvik does not correctly report the enclosing classes.
+        .put(
+            "enclosingmethod.Main", TestCondition.match(TestCondition.runtimesUpTo(Version.V4_4_4)))
         // Test uses runtime methods which are not available on older Art versions.
-        .put("loop.UdpServer",
-            TestCondition.match(TestCondition.runtimesUpTo(Version.V4_0_4)))
+        .put("loop.UdpServer", TestCondition.match(TestCondition.runtimesUpTo(Version.V4_0_4)))
         .build();
   }
 }

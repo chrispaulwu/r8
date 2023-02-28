@@ -41,8 +41,8 @@ public class GenericSignatureStaticMethodTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(
             transformer(Main.class)
                 .removeInnerClasses()
@@ -63,7 +63,7 @@ public class GenericSignatureStaticMethodTest extends TestBase {
         .addKeepAllClassesRule()
         .addKeepAttributeSignature()
         .addKeepAttributeInnerClassesAndEnclosingMethod()
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(EXPECTED);
   }

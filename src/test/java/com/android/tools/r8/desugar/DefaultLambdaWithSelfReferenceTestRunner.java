@@ -30,6 +30,7 @@ import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
@@ -38,15 +39,12 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
   private static final Class<?> CLASS = DefaultLambdaWithSelfReferenceTest.class;
   private static final String EXPECTED = StringUtils.lines("stateful(stateless)");
 
-  private final TestParameters parameters;
+  @Parameter(0)
+  public TestParameters parameters;
 
   @Parameters(name = "{0}")
   public static TestParametersCollection data() {
     return getTestParameters().withAllRuntimesAndApiLevels().build();
-  }
-
-  public DefaultLambdaWithSelfReferenceTestRunner(TestParameters parameters) {
-    this.parameters = parameters;
   }
 
   private void runDebugger(DebugTestConfig config, boolean isR8) throws Throwable {
@@ -89,8 +87,8 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
 
   @Test
   public void testJvm() throws Throwable {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassesAndInnerClasses(CLASS)
         .run(parameters.getRuntime(), CLASS)
         .assertSuccessWithOutput(EXPECTED)
@@ -101,7 +99,7 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
   public void testR8() throws Throwable {
     testForR8(parameters.getBackend())
         .addProgramClassesAndInnerClasses(CLASS)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addDontObfuscate()
         .noTreeShaking()
         .addKeepAllAttributes()
@@ -120,7 +118,7 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
     Path out1 = temp.newFolder().toPath().resolve("out1.zip");
     testForD8()
         .addProgramClassesAndInnerClasses(CLASS)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .assertNoMessages()
         .writeToZip(out1)
@@ -140,7 +138,7 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
           .addProgramClasses(CLASS)
           .addClasspathFiles(ToolHelper.getClassPathForTests())
           .setIntermediate(true)
-          .setMinApi(parameters.getApiLevel())
+          .setMinApi(parameters)
           .compile()
           .assertNoMessages()
           .writeToZip(mainOut);
@@ -152,7 +150,7 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
           .addProgramFiles(innerClass)
           .addClasspathFiles(ToolHelper.getClassPathForTests())
           .setIntermediate(true)
-          .setMinApi(parameters.getApiLevel())
+          .setMinApi(parameters)
           .compile()
           .assertNoMessages()
           .writeToZip(out);
@@ -160,7 +158,7 @@ public class DefaultLambdaWithSelfReferenceTestRunner extends DebugTestBase {
 
     Path out2 = temp.newFolder().toPath().resolve("out2.zip");
     D8TestCompileResult compiledResult =
-        testForD8().addProgramFiles(outs).setMinApi(parameters.getApiLevel()).compile();
+        testForD8().addProgramFiles(outs).setMinApi(parameters).compile();
 
     compiledResult
         .assertNoMessages()

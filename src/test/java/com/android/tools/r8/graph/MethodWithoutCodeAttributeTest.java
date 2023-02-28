@@ -52,8 +52,8 @@ public class MethodWithoutCodeAttributeTest extends TestBase {
 
   @Test
   public void testJVMOutput() throws Exception {
-    assumeTrue("Only run JVM reference on CF runtimes", parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(TestDump.dump())
         .run(parameters.getRuntime(), MAIN)
         .assertFailureWithErrorThatMatches(
@@ -61,7 +61,7 @@ public class MethodWithoutCodeAttributeTest extends TestBase {
   }
 
   static class TestDump implements Opcodes {
-    public static byte[] dump () throws Exception {
+    public static byte[] dump() {
       ClassWriter classWriter = new ClassWriter(0);
       MethodVisitor methodVisitor;
 

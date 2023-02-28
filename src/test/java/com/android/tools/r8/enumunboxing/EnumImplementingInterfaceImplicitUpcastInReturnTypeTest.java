@@ -51,7 +51,7 @@ public class EnumImplementingInterfaceImplicitUpcastInReturnTypeTest extends Enu
         .enableNeverClassInliningAnnotations()
         .enableInliningAnnotations()
         .addOptionsModification(opt -> enableEnumOptions(opt, enumValueOptimization))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addEnumUnboxingInspector(inspector -> inspector.assertNotUnboxed(MyEnum.class))
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(EXPECTED);
@@ -83,7 +83,7 @@ public class EnumImplementingInterfaceImplicitUpcastInReturnTypeTest extends Enu
 
     public static I i;
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
       I i = System.currentTimeMillis() == 0 ? new Main() : identity(MyEnum.C);
       setInterfaceValue(i);
       System.out.println(Main.i.get());

@@ -6,9 +6,9 @@ package com.android.tools.r8.desugar.records;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
+import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.TestRuntime.CfVm;
 import com.android.tools.r8.utils.StringUtils;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -38,14 +38,14 @@ public class RecordReflectionTest extends TestBase {
   }
 
   @Parameterized.Parameters(name = "{0}")
-  public static List<Object[]> data() {
-    return buildParameters(
-        getTestParameters().withCfRuntimesStartingFromIncluding(CfVm.JDK17).build());
+  public static TestParametersCollection data() {
+    return getTestParameters().withCfRuntimesStartingFromIncluding(CfVm.JDK17).build();
   }
 
   @Test
   public void testJvm() throws Exception {
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(PROGRAM_DATA)
         .run(parameters.getRuntime(), MAIN_TYPE)
         .assertSuccessWithOutput(EXPECTED_RESULT);
@@ -55,7 +55,7 @@ public class RecordReflectionTest extends TestBase {
   public void testR8Cf() throws Exception {
     testForR8(parameters.getBackend())
         .addProgramClassFileData(PROGRAM_DATA)
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .addKeepMainRule(MAIN_TYPE)
         .addKeepRules("-keepattributes *")
         .addKeepRules("-keep class * extends java.lang.Record { private final <fields>; }")

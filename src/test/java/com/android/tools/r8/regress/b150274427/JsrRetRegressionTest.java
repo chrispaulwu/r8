@@ -42,7 +42,7 @@ public class JsrRetRegressionTest extends TestBase {
   @Test
   public void testReachableJsrRet() throws Exception {
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addProgramClassFileData(getTransformClass(true))
           .run(parameters.getRuntime(), TestClass.class)
           .assertFailureWithErrorThatThrows(VerifyError.class);
@@ -51,7 +51,7 @@ public class JsrRetRegressionTest extends TestBase {
     try {
       testForD8()
           .addProgramClassFileData(getTransformClass(true))
-          .setMinApi(parameters.getApiLevel())
+          .setMinApi(parameters)
           .compileWithExpectedDiagnostics(
               diagnostics -> {
                 diagnostics.assertErrorMessageThatMatches(containsString("RET"));

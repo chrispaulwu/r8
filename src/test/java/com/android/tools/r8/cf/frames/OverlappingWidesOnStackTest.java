@@ -4,7 +4,6 @@
 package com.android.tools.r8.cf.frames;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -38,8 +37,8 @@ public class OverlappingWidesOnStackTest extends TestBase implements Opcodes {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(getTransformedMain())
         .run(parameters.getRuntime(), Main.class)
         .applyIf(
@@ -63,12 +62,12 @@ public class OverlappingWidesOnStackTest extends TestBase implements Opcodes {
 
   @Test
   public void testD8() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
+    parameters.assumeDexRuntime();
     AssertUtils.assertFailsCompilation(
         () ->
             testForD8()
                 .addProgramClassFileData(getTransformedMain())
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compile());
   }
 
@@ -79,7 +78,7 @@ public class OverlappingWidesOnStackTest extends TestBase implements Opcodes {
             testForR8(parameters.getBackend())
                 .addProgramClassFileData(getTransformedMain())
                 .addKeepMainRule(Main.class)
-                .setMinApi(parameters.getApiLevel())
+                .setMinApi(parameters)
                 .compile());
   }
 

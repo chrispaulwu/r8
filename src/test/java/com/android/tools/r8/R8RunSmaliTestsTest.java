@@ -23,7 +23,6 @@ import java.util.Set;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -178,9 +177,6 @@ public class R8RunSmaliTestsTest extends TestBase {
   );
 
   @Rule
-  public TemporaryFolder temp = ToolHelper.getTemporaryFolderForTest();
-
-  @Rule
   public TestDescriptionWatcher watcher = new TestDescriptionWatcher();
 
   private final TestParameters parameters;
@@ -225,7 +221,7 @@ public class R8RunSmaliTestsTest extends TestBase {
         .addKeepAllClassesRule()
         .addProgramDexFileData(Files.readAllBytes(originalDexFile))
         .addDontWarn(missingClasses.getOrDefault(directoryName, Collections.emptySet()))
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), "Test")
         .applyIf(

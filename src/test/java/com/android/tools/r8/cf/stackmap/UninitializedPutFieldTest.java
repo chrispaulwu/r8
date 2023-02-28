@@ -7,7 +7,6 @@ package com.android.tools.r8.cf.stackmap;
 import static com.android.tools.r8.DiagnosticsMatcher.diagnosticMessage;
 import static com.android.tools.r8.cf.stackmap.UninitializedPutFieldTest.MainDump.dump;
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
@@ -15,6 +14,7 @@ import com.android.tools.r8.TestParametersCollection;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
@@ -24,8 +24,10 @@ import org.objectweb.asm.Opcodes;
 @RunWith(Parameterized.class)
 public class UninitializedPutFieldTest extends TestBase {
 
-  private final String[] EXPECTED = new String[] {"Main::foo"};
-  private final TestParameters parameters;
+  private static final String[] EXPECTED = new String[] {"Main::foo"};
+
+  @Parameter(0)
+  public TestParameters parameters;
 
   @Parameters(name = "{0}")
   public static TestParametersCollection data() {
@@ -34,19 +36,19 @@ public class UninitializedPutFieldTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    testForJvm(parameters)
         .addProgramClassFileData(dump())
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(EXPECTED);
   }
 
-  @Test()
+  @Test
   public void testD8Cf() throws Exception {
-    assumeTrue(parameters.isCfRuntime());
+    parameters.assumeCfRuntime();
     testForD8(parameters.getBackend())
         .addProgramClassFileData(dump())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
               diagnostics.assertNoWarningsMatch(
@@ -58,10 +60,10 @@ public class UninitializedPutFieldTest extends TestBase {
 
   @Test
   public void testD8Dex() throws Exception {
-    assumeTrue(parameters.isDexRuntime());
-    testForD8(parameters.getBackend())
+    parameters.assumeDexRuntime();
+    testForD8()
         .addProgramClassFileData(dump())
-        .setMinApi(parameters.getApiLevel())
+        .setMinApi(parameters)
         .compileWithExpectedDiagnostics(
             diagnostics -> {
               diagnostics.assertNoWarningsMatch(
@@ -69,10 +71,6 @@ public class UninitializedPutFieldTest extends TestBase {
             })
         .run(parameters.getRuntime(), Main.class)
         .assertSuccessWithOutputLines(EXPECTED);
-  }
-
-  public UninitializedPutFieldTest(TestParameters parameters) {
-    this.parameters = parameters;
   }
 
   public static class Main {
@@ -97,7 +95,7 @@ public class UninitializedPutFieldTest extends TestBase {
   // now putfield before initializing this.
   static class MainDump implements Opcodes {
 
-    static byte[] dump() throws Exception {
+    static byte[] dump() {
 
       ClassWriter classWriter = new ClassWriter(0);
       FieldVisitor fieldVisitor;

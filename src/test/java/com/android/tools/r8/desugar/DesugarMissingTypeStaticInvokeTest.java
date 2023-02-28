@@ -49,13 +49,12 @@ public class DesugarMissingTypeStaticInvokeTest extends TestBase {
   @Test
   public void test() throws Exception {
     if (parameters.isCfRuntime()) {
-      testForJvm()
+      testForJvm(parameters)
           .addProgramClasses(TestClass.class, MissingInterface.class)
           .run(parameters.getRuntime(), TestClass.class)
           .assertSuccessWithOutput(EXPECTED);
     } else {
-      D8TestBuilder builder =
-          testForD8().addProgramClasses(TestClass.class).setMinApi(parameters.getApiLevel());
+      D8TestBuilder builder = testForD8().addProgramClasses(TestClass.class).setMinApi(parameters);
       TestDiagnosticMessages messages = builder.getState().getDiagnosticsMessages();
       D8TestCompileResult compileResult = builder.compile();
       if (supportsDefaultInterfaceMethods()) {
@@ -63,7 +62,7 @@ public class DesugarMissingTypeStaticInvokeTest extends TestBase {
         compileResult
             .addRunClasspathFiles(
                 testForD8()
-                    .setMinApi(parameters.getApiLevel())
+                    .setMinApi(parameters)
                     .addProgramClasses(MissingInterface.class)
                     .compile()
                     .writeToZip())

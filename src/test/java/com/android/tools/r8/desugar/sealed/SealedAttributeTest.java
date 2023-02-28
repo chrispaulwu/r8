@@ -39,8 +39,9 @@ public class SealedAttributeTest extends TestBase {
 
   @Test
   public void testJvm() throws Exception {
-    assumeTrue(parameters.isCfRuntime() && parameters.asCfRuntime().isNewerThanOrEqual(CfVm.JDK17));
-    testForJvm()
+    parameters.assumeJvmTestParameters();
+    assumeTrue(parameters.asCfRuntime().isNewerThanOrEqual(CfVm.JDK17));
+    testForJvm(parameters)
         .addRunClasspathFiles(Sealed.jar())
         .run(parameters.getRuntime(), Sealed.Main.typeName())
         .assertSuccessWithOutput(EXPECTED);
@@ -65,7 +66,7 @@ public class SealedAttributeTest extends TestBase {
     R8FullTestBuilder builder =
         testForR8(parameters.getBackend())
             .addProgramFiles(Sealed.jar())
-            .setMinApi(parameters.getApiLevel())
+            .setMinApi(parameters)
             .addKeepMainRule(Sealed.Main.typeName());
     if (parameters.isCfRuntime()) {
       assertThrows(
