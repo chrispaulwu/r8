@@ -12,21 +12,28 @@ import com.android.tools.r8.references.MethodReference;
 import com.android.tools.r8.references.Reference;
 import com.android.tools.r8.references.TypeReference;
 import com.android.tools.r8.utils.Action;
+import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.MethodReferenceUtils;
 import com.android.tools.r8.utils.Reporter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
+import java.util.function.Consumer;
 
 public class HumanReadableArtProfileParser {
 
+  private final Consumer<HumanReadableArtProfileParserErrorDiagnostic> diagnosticConsumer;
   private final ArtProfileBuilder profileBuilder;
   private final ArtProfileRulePredicate rulePredicate;
   private final Reporter reporter;
 
   HumanReadableArtProfileParser(
-      ArtProfileBuilder profileBuilder, ArtProfileRulePredicate rulePredicate, Reporter reporter) {
+      Consumer<HumanReadableArtProfileParserErrorDiagnostic> diagnosticConsumer,
+      ArtProfileBuilder profileBuilder,
+      ArtProfileRulePredicate rulePredicate,
+      Reporter reporter) {
+    this.diagnosticConsumer = diagnosticConsumer;
     this.profileBuilder = profileBuilder;
     this.rulePredicate = rulePredicate;
     this.reporter = reporter;
@@ -44,9 +51,12 @@ public class HumanReadableArtProfileParser {
           BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
         int lineNumber = 1;
         while (bufferedReader.ready()) {
-          String rule = bufferedReader.readLine();
-          if (!parseRule(rule)) {
-            parseError(rule, lineNumber, origin);
+          String line = bufferedReader.readLine();
+          String lineWithoutComment = removeCommentFromLine(line);
+          if (isWhitespace(lineWithoutComment)) {
+            // Skip.
+          } else if (!parseRule(lineWithoutComment)) {
+            parseError(line, lineNumber, origin);
           }
           lineNumber++;
         }
@@ -60,9 +70,19 @@ public class HumanReadableArtProfileParser {
   }
 
   private void parseError(String rule, int lineNumber, Origin origin) {
-    if (reporter != null) {
-      reporter.error(new HumanReadableArtProfileParserErrorDiagnostic(rule, lineNumber, origin));
+    if (diagnosticConsumer != null) {
+      diagnosticConsumer.accept(
+          new HumanReadableArtProfileParserErrorDiagnostic(rule, lineNumber, origin));
     }
+  }
+
+  private boolean isWhitespace(String line) {
+    for (int i = 0; i < line.length(); i++) {
+      if (!Character.isWhitespace(line.charAt(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public boolean parseRule(String rule) {
@@ -98,16 +118,12 @@ public class HumanReadableArtProfileParser {
   }
 
   private boolean parseClassRule(String descriptor) {
+    descriptor = DescriptorUtils.toBaseDescriptor(descriptor);
+    if (!DescriptorUtils.isValidClassDescriptor(descriptor)) {
+      return false;
+    }
     TypeReference typeReference = Reference.typeFromDescriptor(descriptor);
-    if (typeReference == null) {
-      return false;
-    }
-    if (typeReference.isArray()) {
-      typeReference = typeReference.asArray().getBaseType();
-    }
-    if (typeReference.isPrimitive()) {
-      return false;
-    }
+    assert typeReference != null;
     assert typeReference.isClass();
     ClassReference classReference = typeReference.asClass();
     if (rulePredicate.testClassRule(classReference, ArtProfileClassRuleInfoImpl.empty())) {
@@ -126,6 +142,18 @@ public class HumanReadableArtProfileParser {
     if (methodReference == null) {
       return false;
     }
+    if (!DescriptorUtils.isValidClassDescriptor(methodReference.getHolderClass().getDescriptor())) {
+      return false;
+    }
+    for (TypeReference formalType : methodReference.getFormalTypes()) {
+      if (!DescriptorUtils.isValidDescriptor(formalType.getDescriptor())) {
+        return false;
+      }
+    }
+    if (methodReference.getReturnType() != null
+        && !DescriptorUtils.isValidDescriptor(methodReference.getReturnType().getDescriptor())) {
+      return false;
+    }
     if (rulePredicate.testMethodRule(methodReference, methodRuleInfo)) {
       profileBuilder.addMethodRule(
           methodRuleBuilder ->
@@ -141,11 +169,26 @@ public class HumanReadableArtProfileParser {
     return true;
   }
 
+  private static String removeCommentFromLine(String line) {
+    int commentStartIndex = line.indexOf('#');
+    if (commentStartIndex >= 0) {
+      return line.substring(0, commentStartIndex).stripTrailing();
+    }
+    return line;
+  }
+
   public static class Builder implements HumanReadableArtProfileParserBuilder {
 
+    private Consumer<HumanReadableArtProfileParserErrorDiagnostic> diagnosticConsumer;
     private ArtProfileBuilder profileBuilder;
     private ArtProfileRulePredicate rulePredicate = new AlwaysTrueArtProfileRulePredicate();
     private Reporter reporter;
+
+    public Builder setDiagnosticConsumer(
+        Consumer<HumanReadableArtProfileParserErrorDiagnostic> diagnosticConsumer) {
+      this.diagnosticConsumer = diagnosticConsumer;
+      return this;
+    }
 
     public Builder setReporter(Reporter reporter) {
       this.reporter = reporter;
@@ -164,7 +207,11 @@ public class HumanReadableArtProfileParser {
     }
 
     public HumanReadableArtProfileParser build() {
-      return new HumanReadableArtProfileParser(profileBuilder, rulePredicate, reporter);
+      if (diagnosticConsumer == null && reporter != null) {
+        diagnosticConsumer = reporter::error;
+      }
+      return new HumanReadableArtProfileParser(
+          diagnosticConsumer, profileBuilder, rulePredicate, reporter);
     }
   }
 }
