@@ -353,6 +353,12 @@ public final class D8Command extends BaseCompilerCommand {
      */
     @Deprecated
     public Builder setEnableExperimentalMissingLibraryApiModeling(boolean enable) {
+      // Do nothing here due to b/270952777.
+      return self();
+    }
+
+    /** This is only used from tests to check api-modeling */
+    public Builder setEnableExperimentalMissingLibraryApiModelingInternal(boolean enable) {
       this.enableMissingLibraryApiModeling = enable;
       return self();
     }
