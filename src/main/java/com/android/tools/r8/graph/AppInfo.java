@@ -3,7 +3,8 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.graph;
 
-import com.android.tools.r8.ir.desugar.itf.InterfaceMethodRewriter;
+import com.android.tools.r8.DesugarGraphConsumer;
+import com.android.tools.r8.origin.GlobalSyntheticOrigin;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.shaking.MainDexInfo;
@@ -87,7 +88,7 @@ public class AppInfo implements DexDefinitionSupplier {
     return new AppInfo(app, syntheticItems, mainDexInfo, new BooleanBox());
   }
 
-  protected InternalOptions options() {
+  public InternalOptions options() {
     return app.options;
   }
 
@@ -174,19 +175,40 @@ public class AppInfo implements DexDefinitionSupplier {
     }
     DexClass definition = definitionFor(type);
     if (definition != null && !definition.isLibraryClass() && !dependent.isLibraryClass()) {
-      InterfaceMethodRewriter.reportDependencyEdge(dependent, definition, this);
+      reportDependencyEdge(dependent, definition);
     }
     return definition;
   }
 
-  public DexProgramClass unsafeDirectProgramTypeLookup(DexType type) {
-    return app.programDefinitionFor(type);
+  public void reportDependencyEdge(DexClass dependent, DexClass dependency) {
+    assert !dependent.isLibraryClass();
+    assert !dependency.isLibraryClass();
+    DesugarGraphConsumer consumer = options().desugarGraphConsumer;
+    if (consumer == null) {
+      return;
+    }
+    Origin dependencyOrigin = dependency.getOrigin();
+    Collection<Origin> dependentOrigins =
+        getSyntheticItems().getSynthesizingOrigin(dependent.getType());
+    if (dependentOrigins.isEmpty()) {
+      reportDependencyEdge(consumer, dependencyOrigin, dependent.getOrigin());
+    } else {
+      for (Origin dependentOrigin : dependentOrigins) {
+        reportDependencyEdge(consumer, dependencyOrigin, dependentOrigin);
+      }
+    }
   }
 
-  public Origin originFor(DexType type) {
-    assert checkIfObsolete();
-    DexClass definition = app.definitionFor(type);
-    return definition == null ? Origin.unknown() : definition.origin;
+  private void reportDependencyEdge(
+      DesugarGraphConsumer consumer, Origin dependencyOrigin, Origin dependentOrigin) {
+    if (dependencyOrigin == GlobalSyntheticOrigin.instance()
+        || dependentOrigin == GlobalSyntheticOrigin.instance()) {
+      // D8/R8 does not report edges to synthetic classes that D8/R8 generates.
+      return;
+    }
+    if (dependentOrigin != dependencyOrigin) {
+      consumer.accept(dependentOrigin, dependencyOrigin);
+    }
   }
 
   /**

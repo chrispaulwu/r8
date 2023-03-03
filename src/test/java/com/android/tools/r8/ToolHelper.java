@@ -92,13 +92,26 @@ public class ToolHelper {
 
   static final Path[] EMPTY_PATH = {};
 
+  public static boolean isNewGradleSetup() {
+    return "true".equals(System.getenv("USE_NEW_GRADLE_SETUP"));
+  }
+
+  public static String getProjectRoot() {
+    String property = System.getProperty("user.dir");
+    if (property.endsWith("d8_r8/test")) {
+      return "../../";
+    }
+    return "";
+  }
+
   public static final String SOURCE_DIR = "src/main/java/";
   public static final String RESOURCES_DIR = "src/main/resources/";
   public static final String BUILD_DIR = "build/";
+  public static final String TEST_MODULE_DIR = getProjectRoot() + "d8_r8/test_modules/";
   public static final String GENERATED_TEST_BUILD_DIR = BUILD_DIR + "generated/test/";
   public static final String LIBS_DIR = BUILD_DIR + "libs/";
-  public static final String THIRD_PARTY_DIR = "third_party/";
-  public static final String TOOLS_DIR = "tools/";
+  public static final String THIRD_PARTY_DIR = getProjectRoot() + "third_party/";
+  public static final String TOOLS_DIR = getProjectRoot() + "tools/";
   public static final String TESTS_DIR = "src/test/";
   public static final String TESTS_SOURCE_DIR = "src/test/java";
   public static final String EXAMPLES_DIR = TESTS_DIR + "examples/";
@@ -137,29 +150,33 @@ public class ToolHelper {
   public static final String DEFAULT_PROGUARD_MAP_FILE = "proguard.map";
 
   public static final String CORE_LAMBDA_STUBS =
-      "third_party/core-lambda-stubs/core-lambda-stubs.jar";
-  public static final String JSR223_RI_JAR = "third_party/jsr223-api-1.0/jsr223-api-1.0.jar";
+      THIRD_PARTY_DIR + "core-lambda-stubs/core-lambda-stubs.jar";
+  public static final String JSR223_RI_JAR = THIRD_PARTY_DIR + "jsr223-api-1.0/jsr223-api-1.0.jar";
   public static final String RHINO_ANDROID_JAR =
-      "third_party/rhino-android-1.1.1/rhino-android-1.1.1.jar";
-  public static final String RHINO_JAR = "third_party/rhino-1.7.10/rhino-1.7.10.jar";
+      THIRD_PARTY_DIR + "rhino-android-1.1.1/rhino-android-1.1.1.jar";
+  public static final String RHINO_JAR = THIRD_PARTY_DIR + "rhino-1.7.10/rhino-1.7.10.jar";
   public static final String K2JVMCompiler = "org.jetbrains.kotlin.cli.jvm.K2JVMCompiler";
-  private static final String ANDROID_JAR_PATTERN = "third_party/android_jar/lib-v%d/android.jar";
+  private static final String ANDROID_JAR_PATTERN =
+      THIRD_PARTY_DIR + "android_jar/lib-v%d/android.jar";
   private static final String ANDROID_API_VERSIONS_XML_PATTERN =
-      "third_party/android_jar/lib-v%d/api-versions.xml";
+      THIRD_PARTY_DIR + "android_jar/lib-v%d/api-versions.xml";
   private static final AndroidApiLevel DEFAULT_MIN_SDK = AndroidApiLevel.I;
 
-  public static final String OPEN_JDK_DIR = "third_party/openjdk/";
+  public static final String OPEN_JDK_DIR = THIRD_PARTY_DIR + "openjdk/";
   public static final String JAVA_8_RUNTIME = OPEN_JDK_DIR + "openjdk-rt-1.8/rt.jar";
   public static final String JDK_11_TESTS_DIR = OPEN_JDK_DIR + "jdk-11-test/";
   public static final String JDK_11_TIME_TESTS_DIR = JDK_11_TESTS_DIR + "java/time/";
 
-  private static final String PROGUARD5_2_1 = "third_party/proguard/proguard5.2.1/bin/proguard";
-  private static final String PROGUARD6_0_1 = "third_party/proguard/proguard6.0.1/bin/proguard";
+  private static final String PROGUARD5_2_1 =
+      THIRD_PARTY_DIR + "proguard/proguard5.2.1/bin/proguard";
+  private static final String PROGUARD6_0_1 =
+      THIRD_PARTY_DIR + "proguard/proguard6.0.1/bin/proguard";
   private static final String PROGUARD = PROGUARD5_2_1;
   public static final Path JACOCO_ROOT = Paths.get("third_party", "jacoco", "0.8.6");
   public static final Path JACOCO_AGENT = JACOCO_ROOT.resolve(Paths.get("lib", "jacocoagent.jar"));
   public static final Path JACOCO_CLI = JACOCO_ROOT.resolve(Paths.get("lib", "jacococli.jar"));
-  public static final String PROGUARD_SETTINGS_FOR_INTERNAL_APPS = "third_party/proguardsettings/";
+  public static final String PROGUARD_SETTINGS_FOR_INTERNAL_APPS =
+      THIRD_PARTY_DIR + "proguardsettings/";
 
   public static final Path RETRACE_MAPS_DIR = Paths.get(THIRD_PARTY_DIR, "r8mappings");
 
@@ -256,6 +273,8 @@ public class ToolHelper {
     ART_12_0_0_HOST(Version.V12_0_0, Kind.HOST),
     ART_13_0_0_TARGET(Version.V13_0_0, Kind.TARGET),
     ART_13_0_0_HOST(Version.V13_0_0, Kind.HOST),
+    ART_14_0_0_TARGET(Version.V14_0_0, Kind.TARGET),
+    ART_14_0_0_HOST(Version.V14_0_0, Kind.HOST),
     ART_MASTER_TARGET(Version.MASTER, Kind.TARGET),
     ART_MASTER_HOST(Version.MASTER, Kind.HOST);
 
@@ -276,6 +295,7 @@ public class ToolHelper {
       V10_0_0("10.0.0"),
       V12_0_0("12.0.0"),
       V13_0_0("13.0.0"),
+      V14_0_0("14.0.0"),
       MASTER("master");
 
       /** This should generally be the latest DEX VM fully supported. */
@@ -338,7 +358,7 @@ public class ToolHelper {
       }
 
       public static Version last() {
-        return V13_0_0;
+        return V14_0_0;
       }
 
       public static Version master() {
@@ -609,12 +629,11 @@ public class ToolHelper {
     }
   }
 
-  private static final String TOOLS = "tools";
-
   private static final Map<DexVm, String> ART_DIRS =
       ImmutableMap.<DexVm, String>builder()
           .put(DexVm.ART_DEFAULT, "art")
           .put(DexVm.ART_MASTER_HOST, "host/art-master")
+          .put(DexVm.ART_14_0_0_HOST, "host/art-14.0.0-dp1")
           .put(DexVm.ART_13_0_0_HOST, "host/art-13.0.0")
           .put(DexVm.ART_12_0_0_HOST, "host/art-12.0.0-beta4")
           .put(DexVm.ART_10_0_0_HOST, "art-10.0.0")
@@ -630,6 +649,7 @@ public class ToolHelper {
       ImmutableMap.<DexVm, String>builder()
           .put(DexVm.ART_DEFAULT, "bin/art")
           .put(DexVm.ART_MASTER_HOST, "bin/art")
+          .put(DexVm.ART_14_0_0_HOST, "bin/art")
           .put(DexVm.ART_13_0_0_HOST, "bin/art")
           .put(DexVm.ART_12_0_0_HOST, "bin/art")
           .put(DexVm.ART_10_0_0_HOST, "bin/art")
@@ -645,6 +665,7 @@ public class ToolHelper {
   private static final Map<DexVm, String> ART_BINARY_VERSIONS_X64 =
       ImmutableMap.<DexVm, String>builder()
           .put(DexVm.ART_DEFAULT, "bin/art")
+          .put(DexVm.ART_14_0_0_HOST, "bin/art")
           .put(DexVm.ART_13_0_0_HOST, "bin/art")
           .put(DexVm.ART_12_0_0_HOST, "bin/art")
           .put(DexVm.ART_10_0_0_HOST, "bin/art")
@@ -679,6 +700,7 @@ public class ToolHelper {
     ImmutableMap.Builder<DexVm, List<String>> builder = ImmutableMap.builder();
     builder
         .put(DexVm.ART_DEFAULT, ART_BOOT_LIBS)
+        .put(DexVm.ART_14_0_0_HOST, NEWER_ART_BOOT_LIBS)
         .put(DexVm.ART_13_0_0_HOST, NEWER_ART_BOOT_LIBS)
         .put(DexVm.ART_12_0_0_HOST, NEWER_ART_BOOT_LIBS)
         .put(DexVm.ART_10_0_0_HOST, ART_BOOT_LIBS)
@@ -698,6 +720,7 @@ public class ToolHelper {
     ImmutableMap.Builder<DexVm, String> builder = ImmutableMap.builder();
     builder
         .put(DexVm.ART_DEFAULT, "angler")
+        .put(DexVm.ART_14_0_0_HOST, "redfin")
         .put(DexVm.ART_13_0_0_HOST, "redfin")
         .put(DexVm.ART_12_0_0_HOST, "redfin")
         .put(DexVm.ART_10_0_0_HOST, "coral")
@@ -715,7 +738,7 @@ public class ToolHelper {
 
   private static Path getDexVmPath(DexVm vm) {
     DexVm.Version version = vm.getVersion();
-    Path base = Paths.get(TOOLS, "linux");
+    Path base = Paths.get(TOOLS_DIR, "linux");
     switch (version) {
       case DEFAULT:
         return base.resolve("art");
@@ -731,6 +754,7 @@ public class ToolHelper {
       case V12_0_0:
         return base.resolve("host").resolve("art-12.0.0-beta4");
       case V13_0_0:
+      case V14_0_0:
       case MASTER:
         return base.resolve("host").resolve("art-" + version);
       default:
@@ -765,15 +789,12 @@ public class ToolHelper {
         return "arm64";
       case V12_0_0:
       case V13_0_0:
+      case V14_0_0:
       case MASTER:
         return "x86_64";
       default:
         throw new Unimplemented();
     }
-  }
-
-  private static Path getProductBootImagePath(DexVm vm) {
-    return getProductPath(vm).resolve("system").resolve("framework").resolve("boot.art");
   }
 
   public static byte[] getClassAsBytes(Class clazz) throws IOException {
@@ -799,7 +820,7 @@ public class ToolHelper {
     }
     if (isLinux() || isMac()) {
       // The Linux version is used on Mac, where it is run in a Docker container.
-      return TOOLS + "/linux/" + dir;
+      return TOOLS_DIR + "/linux/" + dir;
     }
     fail("Unsupported platform, we currently only support mac and linux: " + getPlatform());
     return ""; //never here
@@ -840,7 +861,7 @@ public class ToolHelper {
   private static Path getDxExecutablePath() {
     String toolsDir = toolsDir();
     String executableName = toolsDir.equals("windows") ? "dx.bat" : "dx";
-    return Paths.get(TOOLS, toolsDir(), "dx", "bin", executableName);
+    return Paths.get(TOOLS_DIR, toolsDir(), "dx", "bin", executableName);
   }
 
   public static String getArtBinary(DexVm version) {
@@ -895,7 +916,7 @@ public class ToolHelper {
 
   private static Path getAndroidJarPath(AndroidApiLevel apiLevel) {
     if (apiLevel == AndroidApiLevel.MASTER) {
-      return Paths.get("third_party/android_jar/lib-master/android.jar");
+      return Paths.get(THIRD_PARTY_DIR + "android_jar/lib-master/android.jar");
     }
     String jar = String.format(
         ANDROID_JAR_PATTERN,
@@ -1058,6 +1079,8 @@ public class ToolHelper {
     switch (dexVm.version) {
       case MASTER:
         return AndroidApiLevel.MASTER;
+      case V14_0_0:
+        return AndroidApiLevel.U;
       case V13_0_0:
         return AndroidApiLevel.T;
       case V12_0_0:
@@ -1135,7 +1158,11 @@ public class ToolHelper {
   }
 
   public static Path getClassPathForTests() {
-    return Paths.get(BUILD_DIR, "classes", "java", "test");
+    if (isNewGradleSetup()) {
+      return Paths.get(TEST_MODULE_DIR, "tests_java_8", "build", "classes", "java", "main");
+    } else {
+      return Paths.get(BUILD_DIR, "classes", "java", "test");
+    }
   }
 
   private static List<String> getNamePartsForTestPackage(Package pkg) {
@@ -1201,7 +1228,7 @@ public class ToolHelper {
   public static Collection<Path> getClassFilesForInnerClasses(Collection<Class<?>> classes)
       throws IOException {
     Set<Path> paths = new HashSet<>();
-    for (Class clazz : classes) {
+    for (Class<?> clazz : classes) {
       Path path = ToolHelper.getClassFileForTestClass(clazz);
       String prefix = path.toString().replace(CLASS_EXTENSION, "$");
       paths.addAll(

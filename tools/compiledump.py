@@ -199,6 +199,16 @@ class Dump(object):
   def main_dex_rules_resource(self):
     return self.if_exists('main-dex-rules.txt')
 
+  def art_profile_resources(self):
+    art_profile_resources = []
+    while True:
+      current_art_profile_index = len(art_profile_resources) + 1
+      art_profile_resource = self.if_exists(
+          'art-profile-%s.txt' % current_art_profile_index)
+      if art_profile_resource is None:
+        return art_profile_resources
+      art_profile_resources.append(art_profile_resource)
+
   def startup_profile_resources(self):
     startup_profile_resources = []
     while True:
@@ -252,6 +262,8 @@ def determine_build_properties(args, dump):
         if stripped:
           pair = stripped.split('=')
           build_properties[pair[0]] = pair[1]
+    if 'mode' not in build_properties:
+      build_properties['mode'] = 'release'
   return build_properties
 
 def determine_version(args, dump):
@@ -260,20 +272,32 @@ def determine_version(args, dump):
   return args.version
 
 def determine_compiler(args, build_properties):
-  compilers = ['d8', 'r8', 'r8full', 'l8', 'l8d8']
+  compilers = ['d8', 'r8', 'r8full', 'l8', 'l8d8', 'tracereferences']
   compiler = args.compiler
   if not compiler and 'tool' in build_properties:
     compiler = build_properties.get('tool').lower()
-    if (compiler == 'r8'):
+    if compiler == 'r8':
       if not 'force-proguard-compatibility' in build_properties:
         error("Unable to determine R8 compiler variant from build.properties."
               " No value for 'force-proguard-compatibility'.")
       if build_properties.get('force-proguard-compatibility').lower() == 'false':
         compiler = compiler + 'full'
+    if compiler == 'TraceReferences':
+      compiler = build_properties.get('tool').lower()
   if compiler not in compilers:
     error("Unable to determine a compiler to use. Specified %s,"
           " Valid options: %s" % (args.compiler, ', '.join(compilers)))
   return compiler
+
+def determine_trace_references_commands(build_properties, output):
+  trace_ref_consumer = build_properties.get('trace_references_consumer')
+  if trace_ref_consumer == 'com.android.tools.r8.tracereferences.TraceReferencesCheckConsumer':
+    return ["--check"]
+  else:
+    assert trace_ref_consumer == 'com.android.tools.r8.tracereferences.TraceReferencesKeepRules'
+    args = ['--allowobfuscation'] if build_properties.get('minification') == 'true' else []
+    args.extend(['--keep-rules', '--output', output])
+    return args
 
 def is_l8_compiler(compiler):
   return compiler.startswith('l8')
@@ -303,6 +327,9 @@ def determine_min_api(args, build_properties):
   if 'min-api' in build_properties:
     return build_properties.get('min-api')
   return None
+
+def determine_residual_art_profile_output(art_profile, temp):
+  return os.path.join(temp, os.path.basename(art_profile)[:-4] + ".out.txt")
 
 def determine_desugared_lib_pg_conf_output(temp):
   return os.path.join(temp, 'desugared-library-keep-rules.config')
@@ -400,7 +427,7 @@ def clean_config_line(line, minify, optimize, shrink):
   return False
 
 def prepare_r8_wrapper(dist, temp, jdkhome):
-  compile_with_javac(
+  compile_wrapper_with_javac(
     dist,
     temp,
     jdkhome,
@@ -409,7 +436,7 @@ def prepare_r8_wrapper(dist, temp, jdkhome):
       'src/main/java/com/android/tools/r8/utils/CompileDumpCompatR8.java'))
 
 def prepare_d8_wrapper(dist, temp, jdkhome):
-  compile_with_javac(
+  compile_wrapper_with_javac(
     dist,
     temp,
     jdkhome,
@@ -417,10 +444,14 @@ def prepare_d8_wrapper(dist, temp, jdkhome):
       utils.REPO_ROOT,
       'src/main/java/com/android/tools/r8/utils/CompileDumpD8.java'))
 
-def compile_with_javac(dist, temp, jdkhome, path):
+def compile_wrapper_with_javac(dist, temp, jdkhome, path):
+  base_path = os.path.join(
+      utils.REPO_ROOT,
+      'src/main/java/com/android/tools/r8/utils/CompileDumpBase.java')
   cmd = [
     jdk.GetJavacExecutable(jdkhome),
     path,
+    base_path,
     '-d', temp,
     '-cp', dist,
   ]
@@ -478,7 +509,7 @@ def run1(out, args, otherargs, jdkhome=None):
     if args.r8_flags:
       cmd.extend(args.r8_flags.split(' '))
     if hasattr(args, 'properties'):
-      cmd.extend(args.properties);
+      cmd.extend(args.properties)
     cmd.extend(determine_properties(build_properties))
     cmd.extend(['-cp', '%s:%s' % (temp, jar)])
     if compiler == 'd8':
@@ -486,25 +517,33 @@ def run1(out, args, otherargs, jdkhome=None):
       cmd.append('com.android.tools.r8.utils.CompileDumpD8')
     if is_l8_compiler(compiler):
       cmd.append('com.android.tools.r8.L8')
+    if compiler == 'tracereferences':
+      cmd.append('com.android.tools.r8.tracereferences.TraceReferences')
+      cmd.extend(determine_trace_references_commands(build_properties, out))
     if compiler.startswith('r8'):
       prepare_r8_wrapper(jar, temp, jdkhome)
       cmd.append('com.android.tools.r8.utils.CompileDumpCompatR8')
     if compiler == 'r8':
       cmd.append('--compat')
-    if mode == 'debug':
-      cmd.append('--debug')
-    else:
-      cmd.append('--release')
+    if compiler != 'tracereferences':
+      assert mode == 'debug' or mode == 'release'
+      cmd.append('--' + mode)
     # For recompilation of dumps run_on_app_dumps pass in a program jar.
-    cmd.append(determine_program_jar(args, dump))
-    cmd.extend(['--output', out])
+    program_jar = determine_program_jar(args, dump)
+    if compiler != 'tracereferences':
+      cmd.append(program_jar)
+      cmd.extend(['--output', out])
+    else:
+      cmd.extend(['--source', program_jar])
     for feature_jar in dump.feature_jars():
       cmd.extend(['--feature-jar', feature_jar,
                  determine_feature_output(feature_jar, temp)])
     if dump.library_jar():
       cmd.extend(['--lib', dump.library_jar()])
     if dump.classpath_jar() and not is_l8_compiler(compiler):
-      cmd.extend(['--classpath', dump.classpath_jar()])
+      cmd.extend(
+        ['--target' if compiler == 'tracereferences' else '--classpath',
+         dump.classpath_jar()])
     if dump.desugared_library_json() and not args.disable_desugared_lib:
       cmd.extend(['--desugared-lib', dump.desugared_library_json()])
       if not is_l8_compiler(compiler):
@@ -525,6 +564,11 @@ def run1(out, args, otherargs, jdkhome=None):
       cmd.extend(['--main-dex-list', dump.main_dex_list_resource()])
     if dump.main_dex_rules_resource():
       cmd.extend(['--main-dex-rules', dump.main_dex_rules_resource()])
+    for art_profile_resource in dump.art_profile_resources():
+      residual_art_profile_output = \
+          determine_residual_art_profile_output(art_profile_resource, temp)
+      cmd.extend([
+          '--art-profile', art_profile_resource, residual_art_profile_output])
     for startup_profile_resource in dump.startup_profile_resources():
       cmd.extend(['--startup-profile', startup_profile_resource])
     if min_api:
