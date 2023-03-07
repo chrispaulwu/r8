@@ -5,8 +5,6 @@
 
 
 import desugaredlibrary.CustomConversionAsmRewriterTask
-import dx.DexMergerTask
-import dx.DxTask
 import net.ltgt.gradle.errorprone.CheckSeverity
 import org.gradle.internal.os.OperatingSystem
 import tasks.DownloadDependency
@@ -397,7 +395,6 @@ def cloudDependencies = [
                 "linux/host/art-master",
                 "linux/dalvik",
                 "linux/dalvik-4.0.4",
-                "${osString}/dx",
         ]
 ]
 
@@ -503,16 +500,6 @@ task downloadOpenJDKrt {
    cloudDependencies.each { entry ->
         entry.value.each { entryFile ->
             if (entryFile.contains("openjdk-rt")) {
-                dependsOn "${getDownloadDepsTaskName(entry.key, entryFile)}"
-            }
-        }
-    }
-}
-
-task downloadDx {
-    cloudDependencies.each { entry ->
-        entry.value.each { entryFile ->
-            if (entryFile.endsWith("/dx")) {
                 dependsOn "${getDownloadDepsTaskName(entry.key, entryFile)}"
             }
         }
@@ -700,21 +687,17 @@ if (!project.hasProperty('without_error_prone') &&
         options.errorprone.check('MultipleTopLevelClasses', CheckSeverity.ERROR)
         options.errorprone.check('NarrowingCompoundAssignment', CheckSeverity.ERROR)
 
-        // TODO(b/270534077): These should likely be fixed/suppressed and become hard failures.
-        options.errorprone.check('JdkObsolete', CheckSeverity.OFF)
+        // TODO(b/270510095): These should likely be fixed/suppressed and become hard failures.
         options.errorprone.check('UnusedVariable', CheckSeverity.OFF)
         options.errorprone.check('EqualsUnsafeCast', CheckSeverity.OFF)
         options.errorprone.check('TypeParameterUnusedInFormals', CheckSeverity.OFF)
-        options.errorprone.check('LoopOverCharArray', CheckSeverity.OFF)
         options.errorprone.check('ImmutableEnumChecker', CheckSeverity.OFF)
         options.errorprone.check('BadImport', CheckSeverity.OFF)
-        options.errorprone.check('StringSplitter', CheckSeverity.OFF)
         options.errorprone.check('ComplexBooleanConstant', CheckSeverity.OFF)
         options.errorprone.check('StreamToIterable', CheckSeverity.OFF)
         options.errorprone.check('HidingField', CheckSeverity.OFF)
         options.errorprone.check('StreamResourceLeak', CheckSeverity.OFF)
         options.errorprone.check('CatchAndPrintStackTrace', CheckSeverity.OFF)
-        options.errorprone.check('ShortCircuitBoolean', CheckSeverity.OFF)
         options.errorprone.check('NonCanonicalType', CheckSeverity.OFF)
         options.errorprone.check('UnusedNestedClass', CheckSeverity.OFF)
         options.errorprone.check('AmbiguousMethodReference', CheckSeverity.OFF)
@@ -1711,26 +1694,10 @@ task buildExamples {
     dependsOn buildExampleJava18Jars
     dependsOn buildExampleAndroidApi
     def examplesDir = file("src/test/examples")
-    def noDexTests = [
-        "multidex",
-        "multidex002",
-        "multidex004",
-    ]
     examplesDir.eachDir { dir ->
-        def name = dir.getName();
-        if (!(name in noDexTests)) {
-            dependsOn "dex_example_${name}"
-            def exampleOutputDir = file("build/test/examples/" + name);
-            def dexPath = file("${exampleOutputDir}")
-            def debug = (name == "throwing")
-            if (!dexPath.exists()) {
-                dexPath.mkdirs()
-            }
-            task "dex_example_${name}"(type: DxTask, dependsOn: "jar_example_${name}") {
-                source = files(tasks.getByPath("jar_example_${name}")).asFileTree
-                destination = dexPath
-                debug = debug
-            }
+        def exampleOutputDir = file("build/test/examples/" + dir.getName());
+        if (!exampleOutputDir.exists()) {
+          exampleOutputDir.mkdirs()
         }
     }
 }
@@ -1759,10 +1726,11 @@ task buildSmali {
                 }
             }
         } else {
-            dependsOn "${taskName}_dexmerger"
+            dependsOn "${taskName}_smali"
+            dependsOn "${taskName}_jar"
             task "${taskName}_smali"(type: SmaliTask) {
                 source = smaliFiles
-                destination = intermediateFile
+                destination = destFile
             }
             task "${taskName}_java"(type: JavaCompile) {
                 source = javaFiles
@@ -1776,15 +1744,6 @@ task buildSmali {
                 archiveName = "Test.jar"
                 destinationDir = destDir
                 from fileTree(dir: destDir, include: 'Test.class')
-            }
-            task "${taskName}_dx"(type: DxTask, dependsOn: "${taskName}_jar") {
-                source = fileTree(dir: destDir, include: 'Test.jar')
-                destination = destDir
-            }
-            task "${taskName}_dexmerger"(
-                    type: DexMergerTask, dependsOn: ["${taskName}_dx", "${taskName}_smali"]) {
-                source = fileTree(dir: destDir, include: ["classes.dex", intermediateFileName])
-                destination = destFile
             }
         }
     }

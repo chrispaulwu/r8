@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -323,6 +324,8 @@ public final class D8 {
 
       timing.end(); // post-converter
 
+      reportSyntheticInformation(appView);
+
       if (options.isGeneratingClassFiles()) {
         new CfApplicationWriter(appView, marker).write(options.getClassFileConsumer(), inputApp);
       } else {
@@ -339,6 +342,15 @@ public final class D8 {
         timing.report();
       }
     }
+  }
+
+  private static void reportSyntheticInformation(AppView<?> appView) {
+    SyntheticInfoConsumer consumer = appView.options().getSyntheticInfoConsumer();
+    if (consumer == null || !appView.options().intermediate) {
+      return;
+    }
+    appView.getSyntheticItems().reportSyntheticsInformation(consumer);
+    consumer.finished();
   }
 
   private static void initializeAssumeInfoCollection(AppView<AppInfo> appView) {
@@ -440,14 +452,12 @@ public final class D8 {
     private final List<ProgramResource> resources = new ArrayList<>();
 
     @Override
-    public synchronized void acceptDexIndexedFile(DexIndexedConsumerData data) {
+    public synchronized void accept(
+        int fileIndex, ByteDataView data, Set<String> descriptors, DiagnosticsHandler handler) {
       // TODO(b/154106502): Map Origin information.
       resources.add(
           ProgramResource.fromBytes(
-              Origin.unknown(),
-              ProgramResource.Kind.DEX,
-              data.getByteDataCopy(),
-              data.getClassDescriptors()));
+              Origin.unknown(), ProgramResource.Kind.DEX, data.copyByteData(), descriptors));
     }
 
     @Override

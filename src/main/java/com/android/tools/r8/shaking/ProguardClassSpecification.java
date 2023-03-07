@@ -34,6 +34,8 @@ public abstract class ProguardClassSpecification {
         ImmutableList.builder();
     protected ProguardTypeMatcher inheritanceClassName;
     protected boolean inheritanceIsExtends = false;
+    // TODO(b/270398965): Replace LinkedList.
+    @SuppressWarnings("JdkObsolete")
     protected List<ProguardMemberRule> memberRules = new LinkedList<>();
 
     protected Builder() {
@@ -348,10 +350,11 @@ public abstract class ProguardClassSpecification {
 
   protected StringBuilder append(StringBuilder builder) {
     appendAnnotations(classAnnotations, builder);
-    boolean needsSpaceBeforeClassType =
-        StringUtils.appendNonEmpty(builder, null, classAccessFlags, null)
-            | StringUtils.appendNonEmpty(
-                builder, "!", negatedClassAccessFlags.toString().replace(" ", " !"), null);
+    boolean hasAccessFlags = StringUtils.appendNonEmpty(builder, null, classAccessFlags, null);
+    boolean hasNegatedAccessFlags =
+        StringUtils.appendNonEmpty(
+            builder, "!", negatedClassAccessFlags.toString().replace(" ", " !"), null);
+    boolean needsSpaceBeforeClassType = hasAccessFlags || hasNegatedAccessFlags;
     if (needsSpaceBeforeClassType) {
       builder.append(' ');
     }
