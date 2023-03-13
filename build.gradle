@@ -23,7 +23,7 @@ buildscript {
 }
 
 plugins {
-  id "net.ltgt.errorprone" version "0.7"
+    id "net.ltgt.errorprone" version "0.7"
 }
 
 apply plugin: 'java'
@@ -50,7 +50,7 @@ ext {
 
 repositories {
     maven {
-       url 'https://storage.googleapis.com/r8-deps/maven_mirror/'
+        url 'https://storage.googleapis.com/r8-deps/maven_mirror/'
     }
     google()
     mavenCentral()
@@ -243,35 +243,35 @@ dependencies {
     main11Implementation group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
     main11Implementation group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
 
-    examplesTestNGRunnerCompile group: 'org.testng', name: 'testng', version: testngVersion
+    examplesTestNGRunnerImplementation group: 'org.testng', name: 'testng', version: testngVersion
 
-    testCompile sourceSets.examples.output
-    testCompile "junit:junit:$junitVersion"
-    testCompile "com.google.guava:guava:$guavaVersion"
-    testCompile "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
-    testCompile "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
-    testCompile group: 'org.smali', name: 'smali', version: smaliVersion
-    testCompile files('third_party/jasmin/jasmin-2.4.jar')
-    testCompile files('third_party/jdwp-tests/apache-harmony-jdwp-tests-host.jar')
-    testCompile files('third_party/ddmlib/ddmlib.jar')
-    testCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-commons', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-tree', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
-    testCompile group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
-    testCompile group: 'it.unimi.dsi', name: 'fastutil', version: fastutilVersion
+    testImplementation sourceSets.examples.output
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "com.google.guava:guava:$guavaVersion"
+    testImplementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+    testImplementation "org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion"
+    testImplementation group: 'org.smali', name: 'smali', version: smaliVersion
+    testImplementation files('third_party/jasmin/jasmin-2.4.jar')
+    testImplementation files('third_party/jdwp-tests/apache-harmony-jdwp-tests-host.jar')
+    testImplementation files('third_party/ddmlib/ddmlib.jar')
+    testImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-commons', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-tree', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-analysis', version: asmVersion
+    testImplementation group: 'org.ow2.asm', name: 'asm-util', version: asmVersion
+    testImplementation group: 'it.unimi.dsi', name: 'fastutil', version: fastutilVersion
 
-    examplesAndroidOCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
-    examplesAndroidPCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    examplesAndroidOImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    examplesAndroidPImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
     // Import Guava for @Nullable annotation
-    examplesCompile "com.google.guava:guava:$guavaVersion"
-    examplesCompile "junit:junit:$junitVersion"
-    examplesCompile "org.mockito:mockito-core:$mockitoVersion"
+    examplesImplementation "com.google.guava:guava:$guavaVersion"
+    examplesImplementation "junit:junit:$junitVersion"
+    examplesImplementation "org.mockito:mockito-core:$mockitoVersion"
     supportLibs "com.android.support:support-v4:$androidSupportVersion"
     supportLibs "junit:junit:$junitVersion"
     supportLibs "com.android.support.test.espresso:espresso-core:$espressoVersion"
-    apiUsageSampleCompile sourceSets.main.output
-    apiUsageSampleCompile "com.google.guava:guava:$guavaVersion"
+    apiUsageSampleImplementation sourceSets.main.output
+    apiUsageSampleImplementation "com.google.guava:guava:$guavaVersion"
     kotlinR8TestResourcesCompileOnly "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     errorprone("com.google.errorprone:error_prone_core:$errorproneVersion")
 }
@@ -429,30 +429,30 @@ cloudDependencies.each { entry ->
 }
 
 def x20Dependencies = [
-    "third_party": [
-        "benchmarks/kotlin-benches",
-        "chrome/chrome_180917_ffbaa8",
-        "chrome/chrome_200430",
-        "chrome/monochrome_public_minimal_apks/chrome_200520",
-        "chrome/clank_google3_prebuilt",
-        "classlib",
-        "cf_segments",
-        "desugar/desugar_20180308",
-        "internal/issue-127524985",
-        "framework",
-        "gmail/gmail_android_170604.16",
-        "gmail/gmail_android_180826.15",
-        "gmscore/gmscore_v10",
-        "gmscore/latest",
-        "nest/nest_20180926_7c6cfb",
-        "proguard/proguard_internal_159423826",
-        "proguardsettings",
-        "proto",
-        "protobuf-lite",
-        "retrace_internal",
-        "youtube/youtube.android_15.33",
-        "youtube/youtube.android_16.20"
-    ],
+        "third_party": [
+                "benchmarks/kotlin-benches",
+                "chrome/chrome_180917_ffbaa8",
+                "chrome/chrome_200430",
+                "chrome/monochrome_public_minimal_apks/chrome_200520",
+                "chrome/clank_google3_prebuilt",
+                "classlib",
+                "cf_segments",
+                "desugar/desugar_20180308",
+                "internal/issue-127524985",
+                "framework",
+                "gmail/gmail_android_170604.16",
+                "gmail/gmail_android_180826.15",
+                "gmscore/gmscore_v10",
+                "gmscore/latest",
+                "nest/nest_20180926_7c6cfb",
+                "proguard/proguard_internal_159423826",
+                "proguardsettings",
+                "proto",
+                "protobuf-lite",
+                "retrace_internal",
+                "youtube/youtube.android_15.33",
+                "youtube/youtube.android_16.20"
+        ],
 ]
 
 x20Dependencies.each { entry ->
@@ -475,7 +475,7 @@ task downloadProguard {
 }
 
 task downloadOpenJDKrt {
-   cloudDependencies.each { entry ->
+    cloudDependencies.each { entry ->
         entry.value.each { entryFile ->
             if (entryFile.contains("openjdk-rt")) {
                 dependsOn "${getDownloadDepsTaskName(entry.key, entryFile)}"
@@ -700,7 +700,7 @@ task consolidatedLicense {
         def libraryLicenses = file('LIBRARY-LICENSE').text
         dependencies.each {
             if (!libraryLicenses.contains("- artifact: $it")) {
-                 throw new GradleException("No license for $it in LIBRARY_LICENSE")
+                throw new GradleException("No license for $it in LIBRARY_LICENSE")
             }
         }
 
@@ -749,10 +749,11 @@ task repackageDeps(type: Jar) {
     archiveFileName = 'deps_all.jar'
 }
 
+project.configurations.testImplementation.setCanBeResolved(true)
 task repackageTestDeps(type: Jar) {
     dependsOn downloadCloudDeps
-    dependsOn project.configurations.testCompile
-    project.configurations.testCompile.forEach {
+    dependsOn project.configurations.testImplementation
+    project.configurations.testImplementation.forEach {
         from repackageDepFile(it)
     }
     archiveFileName = 'test_deps_all.jar'
@@ -1271,8 +1272,8 @@ task buildExampleJars {
         proguardScript = "third_party/proguard/proguard5.2.1/bin/proguard.sh"
     }
     task extractExamplesRuntime(type: Sync) {
-        dependsOn configurations.examplesRuntime
-        from { configurations.examplesRuntime.collect { zipTree(it) } }
+        dependsOn configurations.examplesImplementation
+        from { configurations.examplesImplementation.collect { zipTree(it) } }
         include "**/*.class"
         includeEmptyDirs false
         into "$buildDir/runtime/examples/"
@@ -1471,7 +1472,7 @@ task buildExampleAndroidOJars {
         def jarName = "${name}.jar"
         dependsOn "jar_examplesAndroidO_${name}"
         task "jar_examplesAndroidO_${name}"(type: Jar, dependsOn: ["compile_examplesAndroidO",
-                "generate_examplesAndroidO_${name}"]) {
+                                                                   "generate_examplesAndroidO_${name}"]) {
             archiveName = jarName
             destinationDir = exampleOutputDir
             from "build/test/examplesAndroidO/classes"        // Java 1.8 classes
@@ -1600,9 +1601,9 @@ task buildExamples {
         logger.lifecycle("WARNING: Testing (including building examples) is only partially supported on your " +
                 "platform (" + OperatingSystem.current().getName() + ").")
     } else if (!OperatingSystem.current().isLinux()) {
-      logger.lifecycle("WARNING: Testing (including building examples) is not supported on your platform. " +
-          "It is fully supported on Linux and partially supported on Mac OS and Windows")
-      return;
+        logger.lifecycle("WARNING: Testing (including building examples) is not supported on your platform. " +
+                "It is fully supported on Linux and partially supported on Mac OS and Windows")
+        return;
     }
     dependsOn buildDebugTestResourcesJars
     dependsOn buildExampleJars
@@ -1617,9 +1618,9 @@ task buildExamples {
     dependsOn buildExampleAndroidApi
     def examplesDir = file("src/test/examples")
     def noDexTests = [
-        "multidex",
-        "multidex002",
-        "multidex004",
+            "multidex",
+            "multidex002",
+            "multidex004",
     ]
     examplesDir.eachDir { dir ->
         def name = dir.getName();
@@ -1701,14 +1702,14 @@ tasks.withType(Test) {
     def processors = Runtime.runtime.availableProcessors()
     // See https://docs.gradle.org/current/dsl/org.gradle.api.tasks.testing.Test.html.
     if (userDefinedCoresPerFork) {
-      maxParallelForks = processors.intdiv(userDefinedCoresPerFork.toInteger()) ?: 1
+        maxParallelForks = processors.intdiv(userDefinedCoresPerFork.toInteger()) ?: 1
     } else {
-      // On normal work machines this seems to give the best test execution time (without freezing)
-      maxParallelForks = processors.intdiv(3) ?: 1
-      // On low cpu count machines (bots) we under subscribe, so increase the count.
-      if (processors == 8) {
-        maxParallelForks = 3
-      }
+        // On normal work machines this seems to give the best test execution time (without freezing)
+        maxParallelForks = processors.intdiv(3) ?: 1
+        // On low cpu count machines (bots) we under subscribe, so increase the count.
+        if (processors == 8) {
+            maxParallelForks = 3
+        }
     }
     println("NOTE: Max parallel forks " + maxParallelForks)
 
@@ -1718,9 +1719,9 @@ tasks.withType(Test) {
     }
     // TODO(b/124091860): Increase the max heap size to avoid OOM when running tests.
     if (project.hasProperty('test_xmx')) {
-      maxHeapSize = project.property('test_xmx')
+        maxHeapSize = project.property('test_xmx')
     } else {
-      maxHeapSize = "4G"
+        maxHeapSize = "4G"
     }
 }
 
@@ -1986,8 +1987,8 @@ def setUpTestingState(Test task) {
     task.testLogging { events = [] }
 
     def branch = project.hasProperty('testing-state-name')
-        ? project.getProperty('testing-state-name')
-        : getGitBranchName()
+            ? project.getProperty('testing-state-name')
+            : getGitBranchName()
     def reportDir = file("${buildDir}/test-state/${branch}")
     def index = reportDir.toPath().resolve("index.html").toFile()
     def resetState = project.hasProperty('reset-testing-state')
@@ -2261,21 +2262,21 @@ test { task ->
         exclude "com/android/tools/r8/art/dx/**"
     }
     if (project.hasProperty('shard_count') ) {
-      assert project.hasProperty('shard_number')
-      int shard_count = project.getProperty('shard_count') as Integer
-      int shard_number = project.getProperty('shard_number') as Integer
-      assert shard_count < 65536
-      assert shard_number < shard_count
-      exclude {
-        entry ->
-          // Don't leave out directories. Leaving out a directory means all entries below.
-          if (entry.file.isDirectory()) {
-           return false
-          }
-          def first4 = entry.getRelativePath().toString().md5().substring(0, 4)
-          int hash = Integer.parseInt(first4, 16)
-          return hash % shard_count != shard_number
-      }
+        assert project.hasProperty('shard_number')
+        int shard_count = project.getProperty('shard_count') as Integer
+        int shard_number = project.getProperty('shard_number') as Integer
+        assert shard_count < 65536
+        assert shard_number < shard_count
+        exclude {
+            entry ->
+                // Don't leave out directories. Leaving out a directory means all entries below.
+                if (entry.file.isDirectory()) {
+                    return false
+                }
+                def first4 = entry.getRelativePath().toString().md5().substring(0, 4)
+                int hash = Integer.parseInt(first4, 16)
+                return hash % shard_count != shard_number
+        }
     }
     if (project.hasProperty('test_dir')) {
         systemProperty 'test_dir', project.property('test_dir')
@@ -2295,8 +2296,8 @@ test { task ->
             || OperatingSystem.current().isWindows()) {
         if (OperatingSystem.current().isMacOsX()) {
             logger.lifecycle("WARNING: Testing in only partially supported on Mac OS. " +
-                "Art only runs on Linux and tests requiring Art runs in a Docker container, which must be present. " +
-                "See tools/docker/README.md for details.")
+                    "Art only runs on Linux and tests requiring Art runs in a Docker container, which must be present. " +
+                    "See tools/docker/README.md for details.")
         }
         if (OperatingSystem.current().isWindows()) {
             logger.lifecycle("WARNING: Testing in only partially supported on Windows. " +
@@ -2312,7 +2313,7 @@ test { task ->
         dependsOn provideArtFrameworksDependencies
     } else {
         logger.lifecycle("WARNING: Testing in not supported on your platform. Testing is only fully supported on " +
-            "Linux and partially supported on Mac OS and Windows. Art does not run on other platforms.")
+                "Linux and partially supported on Mac OS and Windows. Art does not run on other platforms.")
     }
 }
 
@@ -2589,69 +2590,69 @@ def buildArtTest(androidCheckoutDir, artTestBuildDir, dir) {
 }
 
 task javadocD8(type: Javadoc) {
-  title "D8 API"
-  classpath = sourceSets.main.compileClasspath
-  source = sourceSets.main.allJava
-  include '**/com/android/tools/r8/ArchiveClassFileProvider.java'
-  include '**/com/android/tools/r8/ArchiveProgramResourceProvider.java'
-  include '**/com/android/tools/r8/BaseCommand.java'
-  include '**/com/android/tools/r8/BaseCompilerCommand.java'
-  include '**/com/android/tools/r8/ClassFileResourceProvider.java'
-  include '**/com/android/tools/r8/CompilationFailedException.java'
-  include '**/com/android/tools/r8/CompilationMode.java'
-  include '**/com/android/tools/r8/D8.java'
-  include '**/com/android/tools/r8/D8Command.java'
-  include '**/com/android/tools/r8/DexIndexedConsumer.java'
-  include '**/com/android/tools/r8/DexFilePerClassFileConsumer.java'
-  include '**/com/android/tools/r8/Diagnostic.java'
-  include '**/com/android/tools/r8/DiagnosticsHandler.java'
-  include '**/com/android/tools/r8/DirectoryClassFileProvider.java'
-  include '**/com/android/tools/r8/OutputMode.java'
-  include '**/com/android/tools/r8/ProgramConsumer.java'
-  include '**/com/android/tools/r8/ProgramResource.java'
-  include '**/com/android/tools/r8/ProgramResourceProvider.java'
-  include '**/com/android/tools/r8/Resource.java'
-  include '**/com/android/tools/r8/ResourceException.java'
-  include '**/com/android/tools/r8/StringConsumer.java'
-  include '**/com/android/tools/r8/StringResource.java'
-  include '**/com/android/tools/r8/Version.java'
-  include '**/com/android/tools/r8/origin/*.java'
+    title "D8 API"
+    classpath = sourceSets.main.compileClasspath
+    source = sourceSets.main.allJava
+    include '**/com/android/tools/r8/ArchiveClassFileProvider.java'
+    include '**/com/android/tools/r8/ArchiveProgramResourceProvider.java'
+    include '**/com/android/tools/r8/BaseCommand.java'
+    include '**/com/android/tools/r8/BaseCompilerCommand.java'
+    include '**/com/android/tools/r8/ClassFileResourceProvider.java'
+    include '**/com/android/tools/r8/CompilationFailedException.java'
+    include '**/com/android/tools/r8/CompilationMode.java'
+    include '**/com/android/tools/r8/D8.java'
+    include '**/com/android/tools/r8/D8Command.java'
+    include '**/com/android/tools/r8/DexIndexedConsumer.java'
+    include '**/com/android/tools/r8/DexFilePerClassFileConsumer.java'
+    include '**/com/android/tools/r8/Diagnostic.java'
+    include '**/com/android/tools/r8/DiagnosticsHandler.java'
+    include '**/com/android/tools/r8/DirectoryClassFileProvider.java'
+    include '**/com/android/tools/r8/OutputMode.java'
+    include '**/com/android/tools/r8/ProgramConsumer.java'
+    include '**/com/android/tools/r8/ProgramResource.java'
+    include '**/com/android/tools/r8/ProgramResourceProvider.java'
+    include '**/com/android/tools/r8/Resource.java'
+    include '**/com/android/tools/r8/ResourceException.java'
+    include '**/com/android/tools/r8/StringConsumer.java'
+    include '**/com/android/tools/r8/StringResource.java'
+    include '**/com/android/tools/r8/Version.java'
+    include '**/com/android/tools/r8/origin/*.java'
 }
 
 task javadocR8(type: Javadoc) {
-  title "R8 API"
-  classpath = sourceSets.main.compileClasspath
-  source = sourceSets.main.allJava
-  include '**/com/android/tools/r8/ArchiveClassFileProvider.java'
-  include '**/com/android/tools/r8/ArchiveProgramResourceProvider.java'
-  include '**/com/android/tools/r8/BaseCommand.java'
-  include '**/com/android/tools/r8/BaseCompilerCommand.java'
-  include '**/com/android/tools/r8/ClassFileConsumer.java'
-  include '**/com/android/tools/r8/ClassFileResourceProvider.java'
-  include '**/com/android/tools/r8/CompilationFailedException.java'
-  include '**/com/android/tools/r8/CompilationMode.java'
-  include '**/com/android/tools/r8/R8.java'
-  include '**/com/android/tools/r8/R8Command.java'
-  include '**/com/android/tools/r8/DexIndexedConsumer.java'
-  include '**/com/android/tools/r8/Diagnostic.java'
-  include '**/com/android/tools/r8/DiagnosticsHandler.java'
-  include '**/com/android/tools/r8/DirectoryClassFileProvider.java'
-  include '**/com/android/tools/r8/OutputMode.java'
-  include '**/com/android/tools/r8/ProgramConsumer.java'
-  include '**/com/android/tools/r8/ProgramResource.java'
-  include '**/com/android/tools/r8/ProgramResourceProvider.java'
-  include '**/com/android/tools/r8/Resource.java'
-  include '**/com/android/tools/r8/ResourceException.java'
-  include '**/com/android/tools/r8/StringConsumer.java'
-  include '**/com/android/tools/r8/StringResource.java'
-  include '**/com/android/tools/r8/Version.java'
-  include '**/com/android/tools/r8/origin/*.java'
+    title "R8 API"
+    classpath = sourceSets.main.compileClasspath
+    source = sourceSets.main.allJava
+    include '**/com/android/tools/r8/ArchiveClassFileProvider.java'
+    include '**/com/android/tools/r8/ArchiveProgramResourceProvider.java'
+    include '**/com/android/tools/r8/BaseCommand.java'
+    include '**/com/android/tools/r8/BaseCompilerCommand.java'
+    include '**/com/android/tools/r8/ClassFileConsumer.java'
+    include '**/com/android/tools/r8/ClassFileResourceProvider.java'
+    include '**/com/android/tools/r8/CompilationFailedException.java'
+    include '**/com/android/tools/r8/CompilationMode.java'
+    include '**/com/android/tools/r8/R8.java'
+    include '**/com/android/tools/r8/R8Command.java'
+    include '**/com/android/tools/r8/DexIndexedConsumer.java'
+    include '**/com/android/tools/r8/Diagnostic.java'
+    include '**/com/android/tools/r8/DiagnosticsHandler.java'
+    include '**/com/android/tools/r8/DirectoryClassFileProvider.java'
+    include '**/com/android/tools/r8/OutputMode.java'
+    include '**/com/android/tools/r8/ProgramConsumer.java'
+    include '**/com/android/tools/r8/ProgramResource.java'
+    include '**/com/android/tools/r8/ProgramResourceProvider.java'
+    include '**/com/android/tools/r8/Resource.java'
+    include '**/com/android/tools/r8/ResourceException.java'
+    include '**/com/android/tools/r8/StringConsumer.java'
+    include '**/com/android/tools/r8/StringResource.java'
+    include '**/com/android/tools/r8/Version.java'
+    include '**/com/android/tools/r8/origin/*.java'
 }
 
 task copyMavenDeps(type: Copy) {
-    from configurations.compile into "$buildDir/deps"
+    from configurations.implementation into "$buildDir/deps"
     from configurations.compileClasspath into "$buildDir/deps"
-    from configurations.testCompile into "$buildDir/deps"
+    from configurations.testImplementation into "$buildDir/deps"
 }
 
 task printMavenDeps {
@@ -2665,9 +2666,9 @@ task printMavenDeps {
                 it.selected.id
             }
             def result = dependencies.createArtifactResolutionQuery()
-                .forComponents(componentIds)
-                .withArtifacts(MavenModule, MavenPomArtifact)
-                .execute()
+                    .forComponents(componentIds)
+                    .withArtifacts(MavenModule, MavenPomArtifact)
+                    .execute()
             for (component in result.resolvedComponents) {
                 component.getArtifacts(MavenPomArtifact).each {
                     println "POM: ${it.file} ${component.id}"
@@ -2681,9 +2682,9 @@ task printMavenDeps {
 }
 
 allprojects {
-  tasks.withType(Exec) {
-    doFirst {
-      println commandLine.join(' ')
+    tasks.withType(Exec) {
+        doFirst {
+            println commandLine.join(' ')
+        }
     }
-  }
 }
