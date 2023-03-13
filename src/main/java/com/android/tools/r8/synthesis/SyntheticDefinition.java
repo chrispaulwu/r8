@@ -58,7 +58,7 @@ abstract class SyntheticDefinition<
     return context;
   }
 
-  final String getPrefixForExternalSyntheticType() {
+  public final String getPrefixForExternalSyntheticType() {
     return SyntheticNaming.getPrefixForExternalSyntheticType(getKind(), getHolder().getType());
   }
 

@@ -86,6 +86,11 @@ public class PrefixRewritingNamingLens extends NonIdentityNamingLens {
   }
 
   @Override
+  public void recordName(DexMethod method, DexString renamedName) {
+
+  }
+
+  @Override
   public DexString lookupName(DexField field) {
     if (isRenamed(field.holder)) {
       // Prefix rewriting does not influence the field name.

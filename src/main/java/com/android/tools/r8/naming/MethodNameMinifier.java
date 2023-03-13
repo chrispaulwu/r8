@@ -5,6 +5,7 @@ package com.android.tools.r8.naming;
 
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClass;
+import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexEncodedMethod;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexString;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -127,6 +129,7 @@ class MethodNameMinifier {
   private final MemberNamingStrategy strategy;
 
   private final Map<DexMethod, DexString> renaming = new IdentityHashMap<>();
+  private final Map<DexMethod, DexString> keepRenaming = new IdentityHashMap<>();
 
   private final State minifierState = new State();
 
@@ -171,13 +174,15 @@ class MethodNameMinifier {
   static class MethodRenaming {
 
     final Map<DexMethod, DexString> renaming;
+    final Map<DexMethod, DexString> keepRenaming;
 
-    private MethodRenaming(Map<DexMethod, DexString> renaming) {
+    private MethodRenaming(Map<DexMethod, DexString> renaming, Map<DexMethod, DexString> keepRenaming) {
       this.renaming = renaming;
+      this.keepRenaming = keepRenaming;
     }
 
     public static MethodRenaming empty() {
-      return new MethodRenaming(ImmutableMap.of());
+      return new MethodRenaming(ImmutableMap.of(), ImmutableMap.of());
     }
   }
 
@@ -211,7 +216,7 @@ class MethodNameMinifier {
     renameNonReboundReferences(executorService);
     timing.end();
 
-    return new MethodRenaming(renaming);
+    return new MethodRenaming(renaming, keepRenaming);
   }
 
   private void assignNamesToClassesMethods() {
@@ -235,7 +240,7 @@ class MethodNameMinifier {
               DexClass holder = appView.definitionFor(type);
               if (holder != null && strategy.allowMemberRenaming(holder)) {
                 for (DexEncodedMethod method : holder.allMethodsSorted()) {
-                  assignNameToMethod(holder, method, namingState);
+                  assignNameToMethod(holder, method, namingState, minifierState);
                 }
               }
             });
@@ -258,7 +263,7 @@ class MethodNameMinifier {
   }
 
   private void assignNameToMethod(
-      DexClass holder, DexEncodedMethod method, MethodNamingState<?> state) {
+          DexClass holder, DexEncodedMethod method, MethodNamingState<?> state, State minifierState) {
     if (method.isInitializer()) {
       return;
     }
@@ -267,10 +272,39 @@ class MethodNameMinifier {
     // renaming tracked by the state.
     DexString newName = strategy.getReservedName(method, holder);
     if (newName == null || newName == method.getName()) {
-      newName = state.newOrReservedNameFor(method);
+      newName = state.newOrReservedNameFor(method, minifierState, holder);
+    } else {
+      DexString assignedName = state.getAssignedName(method.getReference());
+      if (assignedName != null && newName != assignedName && state.isAvailable(assignedName, method.getReference())) {
+        System.out.printf("Found no same assigned and reserved name, method: %s, reservedName: %s, assignedName:%s\n", method.getReference().toSourceString(), newName, assignedName);
+        newName = assignedName;
+      } else {
+        Set<DexString> reservedNamesFor = state.getReservedNamesFor(method.getReference());
+        if (holder != null && reservedNamesFor != null && reservedNamesFor.size() > 1) {
+          for (DexString candidate : reservedNamesFor) {
+            if (state.isAvailableForInterface(candidate, holder, method, minifierState) && state.isAvailable(candidate, method.getReference())) {
+              System.out.printf("Found multi reservedNames and match interface's candidate: %s, reservedName: %s, method holder: %s, method: %s\n", candidate.toString(), newName, holder.getSimpleName(), method.getReference().toSourceString());
+              newName = candidate;
+              if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method.getReference())) { //假设interface的method被keep，这时newName=method.getName()， 导致renaming无法被更新，
+                DexClassAndMethod interfaceResult = appView.appInfo().lookupMaximallySpecificMethod(holder, method.getReference());
+                if (interfaceResult != null) {
+                  DexMethod dexMethod = interfaceResult.getReference();
+                  if (dexMethod != null && !appView.appInfo().isMinificationAllowed(dexMethod)) {
+                    System.out.printf("Found interface's method candidate: %s, method: %s\n", candidate, dexMethod.toSourceString());
+                    keepRenaming.put(method.getReference(), newName);
+                  }
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
     }
     if (method.getName() != newName) {
       renaming.put(method.getReference(), newName);
+    } else if (!appView.appInfo().isMinificationAllowed(method.getReference())) {
+      keepRenaming.put(method.getReference(), newName);
     }
     state.addRenaming(newName, method);
   }

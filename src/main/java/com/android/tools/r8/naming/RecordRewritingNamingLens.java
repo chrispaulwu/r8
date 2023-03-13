@@ -74,6 +74,11 @@ public class RecordRewritingNamingLens extends NonIdentityNamingLens {
   }
 
   @Override
+  public void recordName(DexMethod method, DexString renamedName) {
+
+  }
+
+  @Override
   public boolean hasPrefixRewritingLogic() {
     return namingLens.hasPrefixRewritingLogic();
   }

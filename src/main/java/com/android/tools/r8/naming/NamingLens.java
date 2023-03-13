@@ -51,6 +51,8 @@ public abstract class NamingLens {
 
   public abstract DexString lookupName(DexMethod method);
 
+  public abstract void recordName(DexMethod method, DexString renamedName);
+
   public final DexString lookupMethodName(DexCallSite callSite, AppView<?> appView) {
     if (!appView.appInfo().hasLiveness()) {
       return callSite.methodName;
@@ -234,6 +236,10 @@ public abstract class NamingLens {
     @Override
     public DexString lookupName(DexField field) {
       return field.name;
+    }
+
+    @Override
+    public void recordName(DexMethod method, DexString renamedName) {
     }
 
     @Override

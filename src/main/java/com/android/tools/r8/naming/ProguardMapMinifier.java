@@ -160,6 +160,9 @@ public class ProguardMapMinifier {
     MethodRenaming methodRenaming =
         new MethodNameMinifier(appView, nameStrategy)
             .computeRenaming(interfaces, subtypingInfo, executorService, timing);
+
+    filterAdditionalMethodNamings(methodRenaming.keepRenaming);
+
     // Amend the method renamings with the default interface methods.
     methodRenaming.renaming.putAll(defaultInterfaceMethodImplementationNames);
     methodRenaming.renaming.putAll(additionalMethodNamings);
@@ -183,6 +186,10 @@ public class ProguardMapMinifier {
     timing.end();
 
     return lens;
+  }
+
+  private void filterAdditionalMethodNamings(Map<DexMethod, DexString> keepRenaming) {
+    additionalMethodNamings.replaceAll(keepRenaming::getOrDefault);
   }
 
   private void computeMapping(

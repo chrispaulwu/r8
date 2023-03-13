@@ -13,12 +13,15 @@ import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndField;
 import com.android.tools.r8.graph.DexClassAndMethod;
+import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexProto;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.InnerClassAttribute;
 import com.android.tools.r8.graph.ProgramOrClasspathClass;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
+import com.android.tools.r8.synthesis.SyntheticNaming;
+import com.android.tools.r8.synthesis.SyntheticProgramClassDefinition;
 import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.InternalOptions;
 import com.android.tools.r8.utils.Timing;
@@ -224,6 +227,14 @@ class ClassNameMinifier {
           separator = String.valueOf(INNER_CLASS_SEPARATOR);
         }
         state = getStateForOuterClass(outerClass, separator);
+      } else if (appView.app().options.getProguardConfiguration().hasApplyMappingFile()) {
+        DexClass clazz = appView.definitionFor(type);
+        if (clazz instanceof DexProgramClass && SyntheticNaming.isSynthetic(clazz.getClassReference(), SyntheticNaming.Phase.EXTERNAL, new SyntheticNaming().LAMBDA)) {
+          String prefixForExternalSyntheticType = new SyntheticProgramClassDefinition(new SyntheticNaming.SyntheticClassKind(1, "", false), null, (DexProgramClass) clazz).getPrefixForExternalSyntheticType();
+          DexType outerClazzType = appView.dexItemFactory().createType(DescriptorUtils.javaTypeToDescriptor((prefixForExternalSyntheticType)));
+          state = getStateForOuterClass(outerClazzType, SyntheticNaming.SYNTHETIC_CLASS_SEPARATOR);
+          System.out.printf("Found synthetic clazz: %s\n, renaming", clazz.toSourceString());
+        }
       }
     }
     if (state == null) {

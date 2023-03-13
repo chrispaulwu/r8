@@ -309,10 +309,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   // Optimization-related flags. These should conform to -dontoptimize and disableAllOptimizations.
   public boolean enableFieldBitAccessAnalysis =
       System.getProperty("com.android.tools.r8.fieldBitAccessAnalysis") != null;
-  public boolean enableVerticalClassMerging = true;
+  public boolean enableVerticalClassMerging = false;
   public boolean enableUnusedInterfaceRemoval = true;
   public boolean enableDevirtualization = true;
-  public boolean enableEnumUnboxing = true;
+  public boolean enableEnumUnboxing = false;
   public boolean enableSimpleInliningConstraints = true;
   public final int simpleInliningConstraintThreshold = 0;
   public boolean enableClassInlining = true;
@@ -1296,7 +1296,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   public static class OutlineOptions {
-    public boolean enabled = true;
+    public boolean enabled = false;
     public int minSize = 3;
     public int maxSize = 99;
     public int threshold = 20;

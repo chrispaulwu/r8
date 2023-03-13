@@ -95,6 +95,11 @@ class MinifiedRenaming extends NonIdentityNamingLens {
     return renaming.getOrDefault(field, field.getName());
   }
 
+  @Override
+  public void recordName(DexMethod method, DexString renamedName) {
+    renaming.put(method, renamedName);
+  }
+
   /**
    * Checks that the renaming of the method reference {@param method} is consistent with the
    * renaming of the resolution target of {@param method}.
