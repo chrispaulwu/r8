@@ -15,6 +15,7 @@ import com.android.tools.r8.compilerapi.classconflictresolver.ClassConflictResol
 import com.android.tools.r8.compilerapi.desugardependencies.DesugarDependenciesTest;
 import com.android.tools.r8.compilerapi.diagnostics.ProguardKeepRuleDiagnosticsApiTest;
 import com.android.tools.r8.compilerapi.diagnostics.UnsupportedFeaturesDiagnosticApiTest;
+import com.android.tools.r8.compilerapi.extractmarker.ExtractMarkerApiTest;
 import com.android.tools.r8.compilerapi.globalsynthetics.GlobalSyntheticsTest;
 import com.android.tools.r8.compilerapi.inputdependencies.InputDependenciesTest;
 import com.android.tools.r8.compilerapi.mapid.CustomMapIdTest;
@@ -52,15 +53,16 @@ public class CompilerApiTestCollection extends BinaryCompatibilityTestCollection
           CommandLineParserTest.ApiTest.class,
           EnableMissingLibraryApiModelingTest.ApiTest.class,
           AndroidPlatformBuildApiTest.ApiTest.class,
-          UnsupportedFeaturesDiagnosticApiTest.ApiTest.class);
-
-  private static final List<Class<? extends CompilerApiTest>> CLASSES_PENDING_BINARY_COMPATIBILITY =
-      ImmutableList.of(
+          UnsupportedFeaturesDiagnosticApiTest.ApiTest.class,
           ArtProfilesForRewritingApiTest.ApiTest.class,
           StartupProfileApiTest.ApiTest.class,
           ClassConflictResolverTest.ApiTest.class,
           ProguardKeepRuleDiagnosticsApiTest.ApiTest.class,
-          SyntheticContextsConsumerTest.ApiTest.class);
+          SyntheticContextsConsumerTest.ApiTest.class,
+          ExtractMarkerApiTest.ApiTest.class);
+
+  private static final List<Class<? extends CompilerApiTest>> CLASSES_PENDING_BINARY_COMPATIBILITY =
+      ImmutableList.of();
 
   private final TemporaryFolder temp;
 
