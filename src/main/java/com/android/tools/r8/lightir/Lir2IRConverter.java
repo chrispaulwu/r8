@@ -3,17 +3,21 @@
 // BSD-style license that can be found in the LICENSE file.
 package com.android.tools.r8.lightir;
 
+import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexField;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.ProgramMethod;
+import com.android.tools.r8.ir.analysis.type.Nullability;
 import com.android.tools.r8.ir.analysis.type.TypeElement;
 import com.android.tools.r8.ir.code.Argument;
 import com.android.tools.r8.ir.code.ArrayLength;
 import com.android.tools.r8.ir.code.BasicBlock;
 import com.android.tools.r8.ir.code.CatchHandlers;
+import com.android.tools.r8.ir.code.Cmp;
+import com.android.tools.r8.ir.code.Cmp.Bias;
 import com.android.tools.r8.ir.code.ConstNumber;
 import com.android.tools.r8.ir.code.ConstString;
 import com.android.tools.r8.ir.code.DebugLocalWrite;
@@ -23,10 +27,15 @@ import com.android.tools.r8.ir.code.Goto;
 import com.android.tools.r8.ir.code.IRCode;
 import com.android.tools.r8.ir.code.If;
 import com.android.tools.r8.ir.code.IfType;
+import com.android.tools.r8.ir.code.InstanceGet;
+import com.android.tools.r8.ir.code.InstancePut;
 import com.android.tools.r8.ir.code.Instruction;
 import com.android.tools.r8.ir.code.InvokeDirect;
+import com.android.tools.r8.ir.code.InvokeInterface;
+import com.android.tools.r8.ir.code.InvokeStatic;
 import com.android.tools.r8.ir.code.InvokeVirtual;
 import com.android.tools.r8.ir.code.MoveException;
+import com.android.tools.r8.ir.code.NewInstance;
 import com.android.tools.r8.ir.code.NumberGenerator;
 import com.android.tools.r8.ir.code.NumericType;
 import com.android.tools.r8.ir.code.Phi;
@@ -91,8 +100,6 @@ public class Lir2IRConverter {
         AppView<?> appView,
         LirDecodingStrategy<Value, EV> strategy) {
       super(code);
-      assert code.getPositionTable().length > 0;
-      assert code.getPositionTable()[0].fromInstructionIndex == 0;
       this.appView = appView;
       this.code = code;
       this.strategy = strategy;
@@ -370,6 +377,23 @@ public class Lir2IRConverter {
       addInstruction(instruction);
     }
 
+    @Override
+    public void onInvokeStatic(DexMethod target, List<EV> arguments) {
+      // TODO(b/225838009): Maintain is-interface bit.
+      Value dest = getInvokeInstructionOutputValue(target);
+      List<Value> ssaArgumentValues = getValues(arguments);
+      InvokeStatic instruction = new InvokeStatic(target, dest, ssaArgumentValues);
+      addInstruction(instruction);
+    }
+
+    @Override
+    public void onInvokeInterface(DexMethod target, List<EV> arguments) {
+      Value dest = getInvokeInstructionOutputValue(target);
+      List<Value> ssaArgumentValues = getValues(arguments);
+      InvokeInterface instruction = new InvokeInterface(target, dest, ssaArgumentValues);
+      addInstruction(instruction);
+    }
+
     private Value getInvokeInstructionOutputValue(DexMethod target) {
       return target.getReturnType().isVoidType()
           ? null
@@ -377,9 +401,27 @@ public class Lir2IRConverter {
     }
 
     @Override
+    public void onNewInstance(DexType clazz) {
+      TypeElement type = TypeElement.fromDexType(clazz, Nullability.definitelyNotNull(), appView);
+      Value dest = getOutValueForNextInstruction(type);
+      addInstruction(new NewInstance(clazz, dest));
+    }
+
+    @Override
     public void onStaticGet(DexField field) {
       Value dest = getOutValueForNextInstruction(field.getTypeElement(appView));
       addInstruction(new StaticGet(dest, field));
+    }
+
+    @Override
+    public void onInstanceGet(DexField field, EV object) {
+      Value dest = getOutValueForNextInstruction(field.getTypeElement(appView));
+      addInstruction(new InstanceGet(dest, getValue(object), field));
+    }
+
+    @Override
+    public void onInstancePut(DexField field, EV object, EV value) {
+      addInstruction(new InstancePut(field, getValue(object), getValue(value)));
     }
 
     @Override
@@ -424,6 +466,40 @@ public class Lir2IRConverter {
       TypeElement type = dest.getLocalInfo().type.toTypeElement(appView);
       dest.setType(type);
       addInstruction(new DebugLocalWrite(dest, src));
+    }
+
+    @Override
+    public void onCmpInstruction(int opcode, EV leftIndex, EV rightIndex) {
+      NumericType type;
+      Bias bias;
+      switch (opcode) {
+        case LirOpcodes.LCMP:
+          type = NumericType.LONG;
+          bias = Bias.NONE;
+          break;
+        case LirOpcodes.FCMPL:
+          type = NumericType.FLOAT;
+          bias = Bias.LT;
+          break;
+        case LirOpcodes.FCMPG:
+          type = NumericType.FLOAT;
+          bias = Bias.GT;
+          break;
+        case LirOpcodes.DCMPL:
+          type = NumericType.DOUBLE;
+          bias = Bias.LT;
+          break;
+        case LirOpcodes.DCMPG:
+          type = NumericType.DOUBLE;
+          bias = Bias.GT;
+          break;
+        default:
+          throw new Unreachable("Unexpected cmp opcode: " + opcode);
+      }
+      Value leftValue = getValue(leftIndex);
+      Value rightValue = getValue(rightIndex);
+      Value dest = getOutValueForNextInstruction(TypeElement.getInt());
+      addInstruction(new Cmp(type, bias, dest, leftValue, rightValue));
     }
   }
 }

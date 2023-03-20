@@ -11,6 +11,7 @@ import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.ir.code.IfType;
 import com.android.tools.r8.ir.code.NumericType;
 import com.android.tools.r8.utils.StringUtils;
+import java.util.Arrays;
 import java.util.List;
 
 public class LirPrinter<EV> extends LirParsedInstructionCallback<EV> {
@@ -58,6 +59,11 @@ public class LirPrinter<EV> extends LirParsedInstructionCallback<EV> {
 
   private String fmtInsnIndex(int instructionIndex) {
     return instructionIndex < 0 ? "--" : ("" + instructionIndex);
+  }
+
+  @SafeVarargs
+  private void appendValueArguments(EV... arguments) {
+    appendValueArguments(Arrays.asList(arguments));
   }
 
   private void appendValueArguments(List<EV> arguments) {
@@ -183,6 +189,19 @@ public class LirPrinter<EV> extends LirParsedInstructionCallback<EV> {
   }
 
   @Override
+  public void onInstanceGet(DexField field, EV object) {
+    appendOutValue();
+    builder.append(field).append(' ');
+    appendValueArguments(object);
+  }
+
+  @Override
+  public void onInstancePut(DexField field, EV object, EV value) {
+    builder.append(field).append(' ');
+    appendValueArguments(object, value);
+  }
+
+  @Override
   public void onReturnVoid() {
     // Nothing to append.
   }
@@ -202,5 +221,11 @@ public class LirPrinter<EV> extends LirParsedInstructionCallback<EV> {
     appendOutValue();
     appendValueArguments(operands);
     builder.append(type);
+  }
+
+  @Override
+  public void onCmpInstruction(int opcode, EV leftValue, EV rightValue) {
+    appendOutValue();
+    appendValueArguments(leftValue, rightValue);
   }
 }

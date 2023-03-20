@@ -5,7 +5,7 @@
 package com.android.tools.r8.features;
 
 import com.android.tools.r8.FeatureSplit;
-import com.android.tools.r8.experimental.startup.StartupOrder;
+import com.android.tools.r8.experimental.startup.StartupProfile;
 import com.android.tools.r8.graph.AppInfoWithClassHierarchy;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexEncodedMember;
@@ -44,10 +44,10 @@ public class FeatureSplitBoundaryOptimizationUtils {
       ProgramDefinition accessor,
       ClassToFeatureSplitMap classToFeatureSplitMap,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
     return classToFeatureSplitMap.isInBaseOrSameFeatureAs(
-        accessedClass, accessor, options, startupOrder, syntheticItems);
+        accessedClass, accessor, options, startupProfile, syntheticItems);
   }
 
   public static boolean isSafeForInlining(
@@ -66,34 +66,32 @@ public class FeatureSplitBoundaryOptimizationUtils {
     }
 
     // Next perform startup checks.
-    StartupOrder startupOrder = appView.appInfo().getStartupOrder();
-    SyntheticItems syntheticItems = appView.getSyntheticItems();
-    OptionalBool callerIsStartupMethod = isStartupMethod(caller, startupOrder, syntheticItems);
+    StartupProfile startupProfile = appView.getStartupProfile();
+    OptionalBool callerIsStartupMethod = isStartupMethod(caller, startupProfile);
     if (callerIsStartupMethod.isTrue()) {
       // If the caller is a startup method, then only allow inlining if the callee is also a startup
       // method.
-      if (isStartupMethod(callee, startupOrder, syntheticItems).isFalse()) {
+      if (isStartupMethod(callee, startupProfile).isFalse()) {
         return false;
       }
     } else if (callerIsStartupMethod.isFalse()) {
       // If the caller is not a startup method, then only allow inlining if the caller is not a
       // startup class or the callee is a startup class.
-      if (startupOrder.contains(caller.getHolderType(), syntheticItems)
-          && !startupOrder.contains(callee.getHolderType(), syntheticItems)) {
+      if (startupProfile.containsClassRule(caller.getHolderType())
+          && !startupProfile.containsClassRule(callee.getHolderType())) {
         return false;
       }
     }
     return true;
   }
 
-  private static OptionalBool isStartupMethod(
-      ProgramMethod method, StartupOrder startupOrder, SyntheticItems syntheticItems) {
+  private static OptionalBool isStartupMethod(ProgramMethod method, StartupProfile startupProfile) {
     if (method.getDefinition().isD8R8Synthesized()) {
       // Due to inadequate rewriting of the startup list during desugaring, we do not give an
       // accurate result in this case.
       return OptionalBool.unknown();
     }
-    return OptionalBool.of(startupOrder.contains(method.getReference(), syntheticItems));
+    return OptionalBool.of(startupProfile.containsMethodRule(method.getReference()));
   }
 
   public static boolean isSafeForVerticalClassMerging(
@@ -115,10 +113,9 @@ public class FeatureSplitBoundaryOptimizationUtils {
 
     // If the source class is a startup class then require that the target class is also a startup
     // class.
-    StartupOrder startupOrder = appView.appInfo().getStartupOrder();
-    SyntheticItems syntheticItems = appView.getSyntheticItems();
-    if (startupOrder.contains(sourceClass.getType(), syntheticItems)
-        && !startupOrder.contains(targetClass.getType(), syntheticItems)) {
+    StartupProfile startupProfile = appView.getStartupProfile();
+    if (startupProfile.containsClassRule(sourceClass.getType())
+        && !startupProfile.containsClassRule(targetClass.getType())) {
       return false;
     }
     return true;

@@ -5,10 +5,10 @@
 package com.android.tools.r8.dex;
 
 import com.android.tools.r8.dex.FileWriter.MixedSectionOffsets;
-import com.android.tools.r8.experimental.startup.StartupOrder;
-import com.android.tools.r8.experimental.startup.profile.StartupClass;
-import com.android.tools.r8.experimental.startup.profile.StartupItem;
-import com.android.tools.r8.experimental.startup.profile.StartupMethod;
+import com.android.tools.r8.experimental.startup.StartupProfile;
+import com.android.tools.r8.experimental.startup.profile.StartupProfileClassRule;
+import com.android.tools.r8.experimental.startup.profile.StartupProfileMethodRule;
+import com.android.tools.r8.experimental.startup.profile.StartupProfileRule;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexAnnotation;
 import com.android.tools.r8.graph.DexAnnotationDirectory;
@@ -36,7 +36,7 @@ import java.util.Map;
 
 public class StartupMixedSectionLayoutStrategy extends DefaultMixedSectionLayoutStrategy {
 
-  private final StartupOrder startupOrderForWriting;
+  private final StartupProfile startupProfileForWriting;
 
   private final LinkedHashSet<DexAnnotation> annotationLayout;
   private final LinkedHashSet<DexAnnotationDirectory> annotationDirectoryLayout;
@@ -51,10 +51,10 @@ public class StartupMixedSectionLayoutStrategy extends DefaultMixedSectionLayout
   public StartupMixedSectionLayoutStrategy(
       AppView<?> appView,
       MixedSectionOffsets mixedSectionOffsets,
-      StartupOrder startupOrderForWriting,
+      StartupProfile startupProfileForWriting,
       VirtualFile virtualFile) {
     super(appView, mixedSectionOffsets);
-    this.startupOrderForWriting = startupOrderForWriting;
+    this.startupProfileForWriting = startupProfileForWriting;
 
     // Initialize startup layouts.
     this.annotationLayout = new LinkedHashSet<>(mixedSectionOffsets.getAnnotations().size());
@@ -82,23 +82,18 @@ public class StartupMixedSectionLayoutStrategy extends DefaultMixedSectionLayout
             virtualFile.classes().size());
     LensCodeRewriterUtils rewriter = new LensCodeRewriterUtils(appView, true);
     StartupIndexedItemCollection indexedItemCollection = new StartupIndexedItemCollection();
-    for (StartupItem startupItem : startupOrderForWriting.getItems()) {
+    for (StartupProfileRule startupItem : startupProfileForWriting.getRules()) {
       startupItem.accept(
           startupClass ->
               collectStartupItems(startupClass, indexedItemCollection, virtualFileDefinitions),
           startupMethod ->
               collectStartupItems(
-                  startupMethod, indexedItemCollection, virtualFileDefinitions, rewriter),
-          syntheticStartupMethod -> {
-            // All synthetic startup items should be removed after calling
-            // StartupOrder#toStartupOrderForWriting.
-            assert false;
-          });
+                  startupMethod, indexedItemCollection, virtualFileDefinitions, rewriter));
     }
   }
 
   private void collectStartupItems(
-      StartupClass startupClass,
+      StartupProfileClassRule startupClass,
       StartupIndexedItemCollection indexedItemCollection,
       Map<DexType, DexProgramClass> virtualFileDefinitions) {
     DexProgramClass definition = virtualFileDefinitions.get(startupClass.getReference());
@@ -121,7 +116,7 @@ public class StartupMixedSectionLayoutStrategy extends DefaultMixedSectionLayout
   }
 
   private void collectStartupItems(
-      StartupMethod startupMethod,
+      StartupProfileMethodRule startupMethod,
       StartupIndexedItemCollection indexedItemCollection,
       Map<DexType, DexProgramClass> virtualFileDefinitions,
       LensCodeRewriterUtils rewriter) {

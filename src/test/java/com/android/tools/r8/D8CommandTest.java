@@ -21,12 +21,10 @@ import com.android.tools.r8.D8CommandParser.OrderedClassFileResourceProvider;
 import com.android.tools.r8.ToolHelper.ProcessResult;
 import com.android.tools.r8.dex.Marker;
 import com.android.tools.r8.dex.Marker.Tool;
-import com.android.tools.r8.experimental.startup.profile.StartupItem;
-import com.android.tools.r8.experimental.startup.profile.StartupMethod;
-import com.android.tools.r8.experimental.startup.profile.StartupProfile;
+import com.android.tools.r8.experimental.startup.StartupProfile;
+import com.android.tools.r8.experimental.startup.profile.StartupProfileRule;
 import com.android.tools.r8.origin.EmbeddedOrigin;
 import com.android.tools.r8.origin.Origin;
-import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
 import com.android.tools.r8.references.Reference;
 import com.android.tools.r8.startup.StartupProfileProvider;
 import com.android.tools.r8.startup.diagnostic.MissingStartupProfileItemsDiagnostic;
@@ -807,24 +805,19 @@ public class D8CommandTest extends CommandTestBase<D8Command> {
     MissingStartupProfileItemsDiagnostic.Builder missingStartupProfileItemsDiagnosticBuilder =
         MissingStartupProfileItemsDiagnostic.Builder.nop();
     StartupProfileProvider startupProfileProvider = startupProfileProviders.get(0);
-    SyntheticToSyntheticContextGeneralization syntheticToSyntheticContextGeneralization =
-        SyntheticToSyntheticContextGeneralization.createForD8();
     StartupProfile.Builder startupProfileBuilder =
         StartupProfile.builder(
-            options,
-            missingStartupProfileItemsDiagnosticBuilder,
-            startupProfileProvider,
-            syntheticToSyntheticContextGeneralization);
+            options, missingStartupProfileItemsDiagnosticBuilder, startupProfileProvider);
     startupProfileProvider.getStartupProfile(startupProfileBuilder);
 
     // Verify we found the same rule.
     StartupProfile startupProfile = startupProfileBuilder.build();
-    Collection<StartupItem> startupItems = startupProfile.getStartupItems();
+    Collection<StartupProfileRule> startupItems = startupProfile.getRules();
     assertEquals(1, startupItems.size());
-    StartupItem startupItem = startupItems.iterator().next();
-    assertTrue(startupItem.isStartupMethod());
-    StartupMethod startupMethod = startupItem.asStartupMethod();
-    assertEquals(profileRule, startupMethod.getReference().toSmaliString());
+    StartupProfileRule startupItem = startupItems.iterator().next();
+    startupItem.accept(
+        startupClass -> fail(),
+        startupMethod -> assertEquals(profileRule, startupMethod.getReference().toSmaliString()));
   }
 
   @Test

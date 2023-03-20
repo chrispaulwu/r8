@@ -122,7 +122,7 @@ import com.android.tools.r8.kotlin.KotlinMetadataEnqueuerExtension;
 import com.android.tools.r8.naming.identifiernamestring.IdentifierNameStringLookupResult;
 import com.android.tools.r8.naming.identifiernamestring.IdentifierNameStringTypeLookupResult;
 import com.android.tools.r8.position.Position;
-import com.android.tools.r8.profile.art.rewriting.ArtProfileCollectionAdditions;
+import com.android.tools.r8.profile.art.rewriting.ProfileCollectionAdditions;
 import com.android.tools.r8.shaking.AnnotationMatchResult.MatchedAnnotation;
 import com.android.tools.r8.shaking.DelayedRootSetActionItem.InterfaceMethodSyntheticBridgeAction;
 import com.android.tools.r8.shaking.EnqueuerEvent.ClassEnqueuerEvent;
@@ -465,11 +465,11 @@ public class Enqueuer {
 
   private final Thread mainThreadForTesting = Thread.currentThread();
 
-  private final ArtProfileCollectionAdditions artProfileCollectionAdditions;
+  private final ProfileCollectionAdditions profileCollectionAdditions;
 
   Enqueuer(
       AppView<? extends AppInfoWithClassHierarchy> appView,
-      ArtProfileCollectionAdditions artProfileCollectionAdditions,
+      ProfileCollectionAdditions profileCollectionAdditions,
       ExecutorService executorService,
       SubtypingInfo subtypingInfo,
       GraphConsumer keptGraphConsumer,
@@ -478,7 +478,7 @@ public class Enqueuer {
     InternalOptions options = appView.options();
     this.appInfo = appView.appInfo();
     this.appView = appView.withClassHierarchy();
-    this.artProfileCollectionAdditions = artProfileCollectionAdditions;
+    this.profileCollectionAdditions = profileCollectionAdditions;
     this.deferredTracing = EnqueuerDeferredTracing.create(appView, this, mode);
     this.executorService = executorService;
     this.subtypingInfo = subtypingInfo;
@@ -528,8 +528,8 @@ public class Enqueuer {
     return appView.appInfo();
   }
 
-  public ArtProfileCollectionAdditions getArtProfileCollectionAdditions() {
-    return artProfileCollectionAdditions;
+  public ProfileCollectionAdditions getProfileCollectionAdditions() {
+    return profileCollectionAdditions;
   }
 
   public Mode getMode() {
@@ -1155,7 +1155,7 @@ public class Enqueuer {
       }
     }
 
-    LambdaDescriptor descriptor = LambdaDescriptor.tryInfer(callSite, appInfo(), context);
+    LambdaDescriptor descriptor = LambdaDescriptor.tryInfer(callSite, appView, appInfo(), context);
     if (descriptor == null) {
       for (DexValue bootstrapArgument : callSite.getBootstrapArgs()) {
         if (bootstrapArgument.isDexValueMethodHandle()) {
@@ -2877,7 +2877,7 @@ public class Enqueuer {
                               LookupResult lookupResult =
                                   singleResolution.lookupVirtualDispatchTargets(
                                       contextHolder,
-                                      appInfo,
+                                      appView,
                                       (type, subTypeConsumer, lambdaConsumer) -> {
                                         assert appInfo.isSubtype(currentClass.type, type);
                                         instantiation.apply(subTypeConsumer, lambdaConsumer);
@@ -3364,7 +3364,7 @@ public class Enqueuer {
               DexProgramClass resolvedHolder = resolution.getResolvedHolder().asProgramClass();
               DexEncodedMethod resolvedMethod = resolution.getResolvedMethod();
               markMethodAsTargeted(new ProgramMethod(resolvedHolder, resolvedMethod), reason);
-              if (resolution.isAccessibleForVirtualDispatchFrom(contextHolder, appInfo).isFalse()) {
+              if (resolution.isAccessibleForVirtualDispatchFrom(contextHolder, appView).isFalse()) {
                 // Not accessible from this context, so this call will cause a runtime exception.
                 return;
               }
@@ -3378,7 +3378,7 @@ public class Enqueuer {
               resolution
                   .lookupVirtualDispatchTargets(
                       contextHolder,
-                      appInfo,
+                      appView,
                       (type, subTypeConsumer, lambdaConsumer) ->
                           objectAllocationInfoCollection.forEachInstantiatedSubType(
                               type, subTypeConsumer, lambdaConsumer, appInfo),
@@ -3500,7 +3500,7 @@ public class Enqueuer {
               // If invoke target is invalid (inaccessible or not an instance-method) record it and
               // stop.
               DexClassAndMethod target =
-                  resolution.lookupInvokeSuperTarget(from.getHolder(), appInfo);
+                  resolution.lookupInvokeSuperTarget(from.getHolder(), appView);
               if (target == null) {
                 failedMethodResolutionTargets.add(resolution.getResolvedMethod().getReference());
                 analyses.forEach(
@@ -3628,7 +3628,7 @@ public class Enqueuer {
     }
     timing.begin("Create result");
     EnqueuerResult result = createEnqueuerResult(appInfo, timing);
-    artProfileCollectionAdditions.commit(appView);
+    profileCollectionAdditions.commit(appView);
     timing.end();
     return result;
   }
@@ -4024,7 +4024,7 @@ public class Enqueuer {
     CfInstructionDesugaringEventConsumer eventConsumer =
         CfInstructionDesugaringEventConsumer.createForR8(
             appView,
-            artProfileCollectionAdditions,
+            profileCollectionAdditions,
             lambdaCallback,
             this::recordConstantDynamicSynthesizingContext,
             this::recordTwrCloseResourceMethodSynthesizingContext,
@@ -4100,7 +4100,7 @@ public class Enqueuer {
       DexProgramClass holder = bridge.getHolder();
       DexEncodedMethod method = bridge.getDefinition();
       holder.addVirtualMethod(method);
-      artProfileCollectionAdditions.addMethodIfContextIsInProfile(bridge, action.getSingleTarget());
+      profileCollectionAdditions.addMethodIfContextIsInProfile(bridge, action.getSingleTarget());
     }
     syntheticInterfaceMethodBridges.clear();
   }
@@ -4216,7 +4216,6 @@ public class Enqueuer {
                 ? missingClassesBuilder.reportMissingClasses(
                     appView, lambdaSynthesizingContextOracle)
                 : missingClassesBuilder.assertNoMissingClasses(appView),
-            appInfo.getStartupOrder(),
             deadProtoTypes,
             SetUtils.mapIdentityHashSet(liveTypes.getItems(), DexProgramClass::getType),
             Enqueuer.toDescriptorSet(targetedMethods.getItems()),
@@ -4490,7 +4489,7 @@ public class Enqueuer {
         CfPostProcessingDesugaringEventConsumer.createForR8(
             appView,
             syntheticAdditions,
-            artProfileCollectionAdditions,
+            profileCollectionAdditions,
             desugaring,
             (context, missing) ->
                 missingClassesBuilder.addNewMissingClassWithDesugarDiagnostic(

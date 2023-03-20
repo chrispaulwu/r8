@@ -8,7 +8,7 @@ import com.android.tools.r8.FeatureSplit;
 import com.android.tools.r8.ProgramResource;
 import com.android.tools.r8.ProgramResourceProvider;
 import com.android.tools.r8.ResourceException;
-import com.android.tools.r8.experimental.startup.StartupOrder;
+import com.android.tools.r8.experimental.startup.StartupProfile;
 import com.android.tools.r8.graph.AppInfoWithClassHierarchy;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexItemFactory;
@@ -106,20 +106,17 @@ public class ClassToFeatureSplitMap {
   public Map<FeatureSplit, Set<DexProgramClass>> getFeatureSplitClasses(
       Set<DexProgramClass> classes, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return getFeatureSplitClasses(
-        classes,
-        appView.options(),
-        appView.appInfo().getStartupOrder(),
-        appView.getSyntheticItems());
+        classes, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 
   public Map<FeatureSplit, Set<DexProgramClass>> getFeatureSplitClasses(
       Set<DexProgramClass> classes,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
     Map<FeatureSplit, Set<DexProgramClass>> result = new IdentityHashMap<>();
     for (DexProgramClass clazz : classes) {
-      FeatureSplit featureSplit = getFeatureSplit(clazz, options, startupOrder, syntheticItems);
+      FeatureSplit featureSplit = getFeatureSplit(clazz, options, startupProfile, syntheticItems);
       if (featureSplit != null && !featureSplit.isBase()) {
         result.computeIfAbsent(featureSplit, ignore -> Sets.newIdentityHashSet()).add(clazz);
       }
@@ -130,34 +127,31 @@ public class ClassToFeatureSplitMap {
   public FeatureSplit getFeatureSplit(
       ProgramDefinition definition, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return getFeatureSplit(
-        definition,
-        appView.options(),
-        appView.appInfo().getStartupOrder(),
-        appView.getSyntheticItems());
+        definition, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 
   public FeatureSplit getFeatureSplit(
       ProgramDefinition definition,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
-    return getFeatureSplit(definition.getContextType(), options, startupOrder, syntheticItems);
+    return getFeatureSplit(definition.getContextType(), options, startupProfile, syntheticItems);
   }
 
   public FeatureSplit getFeatureSplit(
       DexType type, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return getFeatureSplit(
-        type, appView.options(), appView.appInfo().getStartupOrder(), appView.getSyntheticItems());
+        type, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 
   public FeatureSplit getFeatureSplit(
       DexType type,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
     if (syntheticItems == null) {
       // Called from AndroidApp.dumpProgramResources().
-      assert startupOrder.isEmpty();
+      assert startupProfile.isEmpty();
       return classToFeatureSplitMap.getOrDefault(type, FeatureSplit.BASE);
     }
     FeatureSplit feature;
@@ -168,7 +162,7 @@ public class ClassToFeatureSplitMap {
         // the shared utility class in case it is used during startup. The use of base startup
         // allows for merging startup classes with the shared utility class, however, which could be
         // bad for startup if the shared utility class is not used during startup.
-        return startupOrder.isEmpty()
+        return startupProfile.isEmpty()
                 || options.getStartupOptions().isStartupBoundaryOptimizationsEnabled()
             ? FeatureSplit.BASE
             : FeatureSplit.BASE_STARTUP;
@@ -181,7 +175,7 @@ public class ClassToFeatureSplitMap {
       feature = classToFeatureSplitMap.getOrDefault(type, FeatureSplit.BASE);
     }
     if (feature.isBase()) {
-      return !startupOrder.contains(type, syntheticItems)
+      return !startupProfile.containsClassRule(type)
               || options.getStartupOptions().isStartupBoundaryOptimizationsEnabled()
           ? FeatureSplit.BASE
           : FeatureSplit.BASE_STARTUP;
@@ -199,15 +193,15 @@ public class ClassToFeatureSplitMap {
   public boolean isInBase(
       DexProgramClass clazz, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return isInBase(
-        clazz, appView.options(), appView.appInfo().getStartupOrder(), appView.getSyntheticItems());
+        clazz, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 
   public boolean isInBase(
       DexProgramClass clazz,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
-    return getFeatureSplit(clazz, options, startupOrder, syntheticItems).isBase();
+    return getFeatureSplit(clazz, options, startupProfile, syntheticItems).isBase();
   }
 
   public boolean isInBaseOrSameFeatureAs(
@@ -218,7 +212,7 @@ public class ClassToFeatureSplitMap {
         clazz,
         context,
         appView.options(),
-        appView.appInfo().getStartupOrder(),
+        appView.getStartupProfile(),
         appView.getSyntheticItems());
   }
 
@@ -226,10 +220,10 @@ public class ClassToFeatureSplitMap {
       DexProgramClass clazz,
       ProgramDefinition context,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
     return isInBaseOrSameFeatureAs(
-        clazz.getContextType(), context, options, startupOrder, syntheticItems);
+        clazz.getContextType(), context, options, startupProfile, syntheticItems);
   }
 
   public boolean isInBaseOrSameFeatureAs(
@@ -240,7 +234,7 @@ public class ClassToFeatureSplitMap {
         clazz,
         context,
         appView.options(),
-        appView.appInfo().getStartupOrder(),
+        appView.getStartupProfile(),
         appView.getSyntheticItems());
   }
 
@@ -248,51 +242,51 @@ public class ClassToFeatureSplitMap {
       DexType clazz,
       ProgramDefinition context,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
-    FeatureSplit split = getFeatureSplit(clazz, options, startupOrder, syntheticItems);
+    FeatureSplit split = getFeatureSplit(clazz, options, startupProfile, syntheticItems);
     return split.isBase()
-        || split == getFeatureSplit(context, options, startupOrder, syntheticItems);
+        || split == getFeatureSplit(context, options, startupProfile, syntheticItems);
   }
 
   public boolean isInFeature(
       DexProgramClass clazz,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
-    return !isInBase(clazz, options, startupOrder, syntheticItems);
+    return !isInBase(clazz, options, startupProfile, syntheticItems);
   }
 
   public boolean isInSameFeatureOrBothInSameBase(
       ProgramMethod a, ProgramMethod b, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return isInSameFeatureOrBothInSameBase(
-        a, b, appView.options(), appView.appInfo().getStartupOrder(), appView.getSyntheticItems());
+        a, b, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 
   public boolean isInSameFeatureOrBothInSameBase(
       ProgramMethod a,
       ProgramMethod b,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
     return isInSameFeatureOrBothInSameBase(
-        a.getHolder(), b.getHolder(), options, startupOrder, syntheticItems);
+        a.getHolder(), b.getHolder(), options, startupProfile, syntheticItems);
   }
 
   public boolean isInSameFeatureOrBothInSameBase(
       DexProgramClass a, DexProgramClass b, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return isInSameFeatureOrBothInSameBase(
-        a, b, appView.options(), appView.appInfo().getStartupOrder(), appView.getSyntheticItems());
+        a, b, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 
   public boolean isInSameFeatureOrBothInSameBase(
       DexProgramClass a,
       DexProgramClass b,
       InternalOptions options,
-      StartupOrder startupOrder,
+      StartupProfile startupProfile,
       SyntheticItems syntheticItems) {
-    return getFeatureSplit(a, options, startupOrder, syntheticItems)
-        == getFeatureSplit(b, options, startupOrder, syntheticItems);
+    return getFeatureSplit(a, options, startupProfile, syntheticItems)
+        == getFeatureSplit(b, options, startupProfile, syntheticItems);
   }
 
   public ClassToFeatureSplitMap rewrittenWithLens(GraphLens lens) {
@@ -335,9 +329,6 @@ public class ClassToFeatureSplitMap {
       DexProgramClass clazz, AppView<? extends AppInfoWithClassHierarchy> appView) {
     return getMap(appView)
         .isInFeature(
-            clazz,
-            appView.options(),
-            appView.appInfo().getStartupOrder(),
-            appView.getSyntheticItems());
+            clazz, appView.options(), appView.getStartupProfile(), appView.getSyntheticItems());
   }
 }

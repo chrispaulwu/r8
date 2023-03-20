@@ -4,40 +4,32 @@
 
 package com.android.tools.r8.experimental.startup;
 
-import com.android.tools.r8.experimental.startup.profile.StartupItem;
+import com.android.tools.r8.experimental.startup.profile.StartupProfileRule;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.DexEncodedMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexReference;
-import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.MethodAccessFlags;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.graph.ThrowNullCode;
-import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
+import com.android.tools.r8.startup.diagnostic.MissingStartupProfileItemsDiagnostic;
 import com.android.tools.r8.utils.InternalOptions;
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceMaps;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class StartupCompleteness {
 
   private final AppView<?> appView;
-  private final StartupOrder startupOrder;
+  private final StartupProfile startupProfile;
 
   private StartupCompleteness(AppView<?> appView) {
-    SyntheticToSyntheticContextGeneralization syntheticToSyntheticContextGeneralization =
-        appView.enableWholeProgramOptimizations()
-            ? SyntheticToSyntheticContextGeneralization.createForR8()
-            : SyntheticToSyntheticContextGeneralization.createForD8();
     this.appView = appView;
-    this.startupOrder =
+    this.startupProfile =
         appView.hasClassHierarchy()
-            ? appView.appInfoWithClassHierarchy().getStartupOrder()
-            : StartupOrder.createInitialStartupOrder(
-                appView.options(), null, syntheticToSyntheticContextGeneralization);
+            ? appView.getStartupProfile()
+            : StartupProfile.createInitialStartupProfile(
+                appView.options(), origin -> MissingStartupProfileItemsDiagnostic.Builder.nop());
   }
 
   /**
@@ -82,22 +74,10 @@ public class StartupCompleteness {
 
   private Set<DexReference> computeStartupItems() {
     Set<DexReference> startupItems = Sets.newIdentityHashSet();
-    Map<DexType, List<DexProgramClass>> syntheticContextsToSyntheticClasses =
-        appView.getSyntheticItems().computeSyntheticContextsToSyntheticClasses(appView);
-    for (StartupItem startupItem : startupOrder.getItems()) {
+    for (StartupProfileRule startupItem : startupProfile.getRules()) {
       startupItem.accept(
           startupClass -> startupItems.add(startupClass.getReference()),
-          startupMethod -> startupItems.add(startupMethod.getReference()),
-          syntheticStartupMethod -> {
-            List<DexProgramClass> syntheticClasses =
-                syntheticContextsToSyntheticClasses.getOrDefault(
-                    syntheticStartupMethod.getSyntheticContextType(), Collections.emptyList());
-            for (DexProgramClass syntheticClass : syntheticClasses) {
-              startupItems.add(syntheticClass.getType());
-              syntheticClass.forEachProgramMethod(
-                  method -> startupItems.add(method.getReference()));
-            }
-          });
+          startupMethod -> startupItems.add(startupMethod.getReference()));
     }
     return startupItems;
   }

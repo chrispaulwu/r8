@@ -6,11 +6,9 @@ package com.android.tools.r8.experimental.startup;
 
 import static com.android.tools.r8.utils.ConsumerUtils.emptyConsumer;
 
-import com.android.tools.r8.experimental.startup.profile.StartupItem;
-import com.android.tools.r8.experimental.startup.profile.StartupProfile;
+import com.android.tools.r8.experimental.startup.profile.StartupProfileRule;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.origin.PathOrigin;
-import com.android.tools.r8.profile.art.ArtProfileBuilderUtils.SyntheticToSyntheticContextGeneralization;
 import com.android.tools.r8.profile.art.HumanReadableArtProfileParserBuilder;
 import com.android.tools.r8.startup.StartupProfileBuilder;
 import com.android.tools.r8.startup.StartupProfileProvider;
@@ -51,27 +49,21 @@ public class StartupProfileProviderUtils {
 
   /** Serialize the given {@param startupProfileProvider} to a string for writing it to a dump. */
   public static String serializeToString(
-      InternalOptions options, StartupProfileProvider startupProfileProvider) {
+      InternalOptions options, StartupProfileProvider startupProfileProvider) throws IOException {
     // Do not report missing items.
     MissingStartupProfileItemsDiagnostic.Builder missingItemsDiagnosticBuilder =
         MissingStartupProfileItemsDiagnostic.Builder.nop();
-    // Do not generalize synthetic items to their synthetic context.
-    SyntheticToSyntheticContextGeneralization syntheticToSyntheticContextGeneralization =
-        SyntheticToSyntheticContextGeneralization.createForD8();
     StartupProfile.Builder startupProfileBuilder =
-        StartupProfile.builder(
-            options,
-            missingItemsDiagnosticBuilder,
-            startupProfileProvider,
-            syntheticToSyntheticContextGeneralization);
+        StartupProfile.builder(options, missingItemsDiagnosticBuilder, startupProfileProvider);
     // Do not report warnings for lines that cannot be parsed.
     startupProfileBuilder.setIgnoreWarnings();
     // Populate the startup profile builder.
     startupProfileProvider.getStartupProfile(startupProfileBuilder);
     // Serialize the startup items.
     StringBuilder resultBuilder = new StringBuilder();
-    for (StartupItem startupItem : startupProfileBuilder.build().getStartupItems()) {
-      resultBuilder.append(startupItem.serializeToString()).append('\n');
+    for (StartupProfileRule startupItem : startupProfileBuilder.build().getRules()) {
+      startupItem.write(resultBuilder);
+      resultBuilder.append('\n');
     }
     return resultBuilder.toString();
   }

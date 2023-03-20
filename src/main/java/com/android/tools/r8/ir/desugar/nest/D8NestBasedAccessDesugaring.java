@@ -18,7 +18,7 @@ import com.android.tools.r8.graph.ProgramField;
 import com.android.tools.r8.graph.ProgramMethod;
 import com.android.tools.r8.graph.UseRegistry;
 import com.android.tools.r8.ir.conversion.D8MethodProcessor;
-import com.android.tools.r8.profile.art.rewriting.ArtProfileRewritingNestBasedAccessDesugaringEventConsumer;
+import com.android.tools.r8.profile.art.rewriting.ProfileRewritingNestBasedAccessDesugaringEventConsumer;
 import com.android.tools.r8.utils.ThreadUtils;
 import com.google.common.collect.Iterables;
 import java.util.ArrayList;
@@ -92,8 +92,8 @@ public class D8NestBasedAccessDesugaring extends NestBasedAccessDesugaring {
         });
 
     NestBasedAccessDesugaringEventConsumer eventConsumer =
-        ArtProfileRewritingNestBasedAccessDesugaringEventConsumer.attach(
-            methodProcessor.getArtProfileCollectionAdditions(),
+        ProfileRewritingNestBasedAccessDesugaringEventConsumer.attach(
+            methodProcessor.getProfileCollectionAdditions(),
             new NestBasedAccessDesugaringEventConsumer() {
 
               @Override
@@ -143,7 +143,7 @@ public class D8NestBasedAccessDesugaring extends NestBasedAccessDesugaring {
 
     NestBasedAccessDesugaringUseRegistry(
         ClasspathMethod context, NestBasedAccessDesugaringEventConsumer eventConsumer) {
-      super(appView, context);
+      super(D8NestBasedAccessDesugaring.this.appView, context);
       this.eventConsumer = eventConsumer;
     }
 

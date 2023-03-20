@@ -48,10 +48,11 @@ public abstract class ArtProfileCollection {
   private static ArtProfile createCompleteArtProfile(AppInfo appInfo) {
     ArtProfile.Builder artProfileBuilder = ArtProfile.builder();
     for (DexProgramClass clazz : appInfo.classesWithDeterministicOrder()) {
-      artProfileBuilder.addRule(ArtProfileClassRule.builder().setType(clazz.getType()).build());
+      artProfileBuilder.addClassRule(
+          ArtProfileClassRule.builder().setType(clazz.getType()).build());
       clazz.forEachMethod(
           method ->
-              artProfileBuilder.addRule(
+              artProfileBuilder.addMethodRule(
                   ArtProfileMethodRule.builder().setMethod(method.getReference()).build()));
     }
     return artProfileBuilder.build();
@@ -60,6 +61,8 @@ public abstract class ArtProfileCollection {
   public static EmptyArtProfileCollection empty() {
     return EmptyArtProfileCollection.getInstance();
   }
+
+  public abstract boolean isEmpty();
 
   public abstract boolean isNonEmpty();
 

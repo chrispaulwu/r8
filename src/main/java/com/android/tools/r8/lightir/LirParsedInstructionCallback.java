@@ -106,6 +106,18 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
     onInvokeMethodInstruction(method, arguments);
   }
 
+  public void onInvokeStatic(DexMethod method, List<EV> arguments) {
+    onInvokeMethodInstruction(method, arguments);
+  }
+
+  public void onInvokeInterface(DexMethod method, List<EV> arguments) {
+    onInvokeMethodInstruction(method, arguments);
+  }
+
+  public void onNewInstance(DexType clazz) {
+    onInstruction();
+  }
+
   public void onFieldInstruction(DexField field) {
     onInstruction();
   }
@@ -113,6 +125,10 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
   public void onStaticGet(DexField field) {
     onFieldInstruction(field);
   }
+
+  public abstract void onInstanceGet(DexField field, EV object);
+
+  public abstract void onInstancePut(DexField field, EV object, EV value);
 
   public void onReturnVoid() {
     onInstruction();
@@ -127,6 +143,11 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
   }
 
   public void onPhi(DexType type, List<EV> operands) {
+    onInstruction();
+  }
+
+  public void onCmpInstruction(int opcode, EV leftValue, EV rightValue) {
+    assert LirOpcodes.LCMP <= opcode && opcode <= LirOpcodes.DCMPG;
     onInstruction();
   }
 
@@ -204,10 +225,48 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
           onInvokeVirtual(target, arguments);
           return;
         }
+      case LirOpcodes.INVOKESTATIC:
+        {
+          DexMethod target = getInvokeInstructionTarget(view);
+          List<EV> arguments = getInvokeInstructionArguments(view);
+          onInvokeStatic(target, arguments);
+          return;
+        }
+      case LirOpcodes.INVOKEINTERFACE:
+        {
+          DexMethod target = getInvokeInstructionTarget(view);
+          List<EV> arguments = getInvokeInstructionArguments(view);
+          onInvokeInterface(target, arguments);
+          return;
+        }
+      case LirOpcodes.NEW:
+        {
+          DexItem item = getConstantItem(view.getNextConstantOperand());
+          if (item instanceof DexType) {
+            onNewInstance((DexType) item);
+            return;
+          }
+          throw new Unimplemented();
+        }
       case LirOpcodes.GETSTATIC:
         {
           DexField field = (DexField) getConstantItem(view.getNextConstantOperand());
           onStaticGet(field);
+          return;
+        }
+      case LirOpcodes.GETFIELD:
+        {
+          DexField field = (DexField) getConstantItem(view.getNextConstantOperand());
+          EV object = getNextValueOperand(view);
+          onInstanceGet(field, object);
+          return;
+        }
+      case LirOpcodes.PUTFIELD:
+        {
+          DexField field = (DexField) getConstantItem(view.getNextConstantOperand());
+          EV object = getNextValueOperand(view);
+          EV value = getNextValueOperand(view);
+          onInstancePut(field, object, value);
           return;
         }
       case LirOpcodes.RETURN:
@@ -250,6 +309,17 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
         {
           EV srcIndex = getNextValueOperand(view);
           onDebugLocalWrite(srcIndex);
+          return;
+        }
+      case LirOpcodes.LCMP:
+      case LirOpcodes.FCMPL:
+      case LirOpcodes.FCMPG:
+      case LirOpcodes.DCMPL:
+      case LirOpcodes.DCMPG:
+        {
+          EV leftValue = getNextValueOperand(view);
+          EV rightValue = getNextValueOperand(view);
+          onCmpInstruction(opcode, leftValue, rightValue);
           return;
         }
       default:
