@@ -650,7 +650,7 @@ public class R8 {
             appView.protoShrinker().enumLiteProtoShrinker.verifyDeadEnumLiteMapsAreDead();
           }
 
-          IRConverter converter = new IRConverter(appView, timing);
+          IRConverter converter = new IRConverter(appView);
 
           // If proto shrinking is enabled, we need to reprocess every dynamicMethod(). This ensures
           // that proto fields that have been removed by the second round of tree shaking are also
@@ -1017,7 +1017,7 @@ public class R8 {
 
   static void processWhyAreYouKeepingAndCheckDiscarded(
       RootSet rootSet,
-      Supplier<Iterable<DexProgramClass>> classes,
+      Supplier<Collection<DexProgramClass>> classes,
       WhyAreYouKeepingConsumer whyAreYouKeepingConsumer,
       AppView<? extends AppInfoWithClassHierarchy> appView,
       Enqueuer enqueuer,
