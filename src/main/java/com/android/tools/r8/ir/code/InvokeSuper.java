@@ -22,11 +22,13 @@ import com.android.tools.r8.ir.conversion.CfBuilder;
 import com.android.tools.r8.ir.conversion.DexBuilder;
 import com.android.tools.r8.ir.optimize.Inliner.ConstraintWithTarget;
 import com.android.tools.r8.ir.optimize.InliningConstraints;
+import com.android.tools.r8.lightir.LirBuilder;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import java.util.List;
 
 public class InvokeSuper extends InvokeMethodWithReceiver {
 
+  // TODO(b/145775365): The interface bit should never be needed once invoke special is in the IR.
   public final boolean isInterface;
 
   public InvokeSuper(DexMethod target, Value result, List<Value> arguments, boolean isInterface) {
@@ -139,5 +141,10 @@ public class InvokeSuper extends InvokeMethodWithReceiver {
   @Override
   void internalRegisterUse(UseRegistry<?> registry, DexClassAndMethod context) {
     registry.registerInvokeSuper(getInvokedMethod());
+  }
+
+  @Override
+  public void buildLir(LirBuilder<Value, ?> builder) {
+    builder.addInvokeSuper(getInvokedMethod(), arguments(), isInterface);
   }
 }

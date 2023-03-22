@@ -181,12 +181,16 @@ public interface LirOpcodes {
   int LCONST = 201;
   int FCONST = 202;
   int DCONST = 203;
-  int INVOKEDIRECT = 204;
-  int DEBUGPOS = 205;
-  int PHI = 206;
-  int FALLTHROUGH = 207;
-  int MOVEEXCEPTION = 208;
-  int DEBUGLOCALWRITE = 209;
+  int INVOKESTATIC_ITF = 204;
+  int INVOKEDIRECT = 205;
+  int INVOKEDIRECT_ITF = 206;
+  int INVOKESUPER = 207;
+  int INVOKESUPER_ITF = 208;
+  int DEBUGPOS = 209;
+  int PHI = 210;
+  int FALLTHROUGH = 211;
+  int MOVEEXCEPTION = 212;
+  int DEBUGLOCALWRITE = 213;
 
   static String toString(int opcode) {
     switch (opcode) {
@@ -489,8 +493,16 @@ public interface LirOpcodes {
         return "FCONST";
       case DCONST:
         return "DCONST";
+      case INVOKESTATIC_ITF:
+        return "INVOKESTATIC_ITF";
       case INVOKEDIRECT:
         return "INVOKEDIRECT";
+      case INVOKEDIRECT_ITF:
+        return "INVOKEDIRECT_ITF";
+      case INVOKESUPER:
+        return "INVOKESUPER";
+      case INVOKESUPER_ITF:
+        return "INVOKESUPER_ITF";
       case DEBUGPOS:
         return "DEBUGPOS";
       case PHI:
