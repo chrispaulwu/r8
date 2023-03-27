@@ -475,9 +475,9 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
     return isInstanceInitializer() || willBeInlinedIntoInstanceInitializer(dexItemFactory);
   }
 
-  public boolean isDefaultInitializer() {
+  public boolean isDefaultInstanceInitializer() {
     checkIfObsolete();
-    return isInstanceInitializer() && getReference().proto.parameters.isEmpty();
+    return isInstanceInitializer() && getParameters().isEmpty();
   }
 
   public boolean isClassInitializer() {
@@ -580,10 +580,10 @@ public class DexEncodedMethod extends DexEncodedMember<DexEncodedMethod, DexMeth
       return false;
     } else if (accessFlags.isPrivate()) {
       return getHolderType() == other.getHolderType();
-    } else if (accessFlags.isPublic() || accessFlags.isProtected()) {
+    } else if (accessFlags.isPublic()) {
       return true;
     } else {
-      assert accessFlags.isPackagePrivate();
+      assert accessFlags.isPackagePrivate() || accessFlags.isProtected();
       return getHolderType().getPackageName().equals(other.getHolderType().getPackageName());
     }
   }

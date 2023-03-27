@@ -18,6 +18,7 @@ import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecific
 import com.android.tools.r8.keepanno.asm.KeepEdgeReader;
 import com.android.tools.r8.keepanno.ast.KeepEdge;
 import com.android.tools.r8.keepanno.keeprules.KeepRuleExtractor;
+import com.android.tools.r8.naming.ProguardMapStringConsumer;
 import com.android.tools.r8.naming.SourceFileRewriter;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.origin.PathOrigin;
@@ -659,7 +660,7 @@ public final class R8Command extends BaseCompilerCommand {
               getArtProfilesForRewriting(),
               getStartupProfileProviders(),
               getClassConflictResolver(),
-              fakeCompilerVersion);
+              getCancelCompilationChecker());
 
       if (inputDependencyGraphConsumer != null) {
         inputDependencyGraphConsumer.finished();
@@ -846,7 +847,6 @@ public final class R8Command extends BaseCompilerCommand {
   private final FeatureSplitConfiguration featureSplitConfiguration;
   private final String synthesizedClassPrefix;
   private final boolean enableMissingLibraryApiModeling;
-  private final SemanticVersion fakeCompilerVersion;
 
   /** Get a new {@link R8Command.Builder}. */
   public static Builder builder() {
@@ -940,7 +940,7 @@ public final class R8Command extends BaseCompilerCommand {
       List<ArtProfileForRewriting> artProfilesForRewriting,
       List<StartupProfileProvider> startupProfileProviders,
       ClassConflictResolver classConflictResolver,
-      SemanticVersion fakeCompilerVersion) {
+      CancelCompilationChecker cancelCompilationChecker) {
     super(
         inputApp,
         mode,
@@ -961,7 +961,8 @@ public final class R8Command extends BaseCompilerCommand {
         isAndroidPlatformBuild,
         artProfilesForRewriting,
         startupProfileProviders,
-        classConflictResolver);
+        classConflictResolver,
+        cancelCompilationChecker);
     assert proguardConfiguration != null;
     assert mainDexKeepRules != null;
     this.mainDexKeepRules = mainDexKeepRules;
@@ -983,7 +984,6 @@ public final class R8Command extends BaseCompilerCommand {
     this.featureSplitConfiguration = featureSplitConfiguration;
     this.synthesizedClassPrefix = synthesizedClassPrefix;
     this.enableMissingLibraryApiModeling = enableMissingLibraryApiModeling;
-    this.fakeCompilerVersion = fakeCompilerVersion;
   }
 
   private R8Command(boolean printHelp, boolean printVersion) {
@@ -1007,7 +1007,6 @@ public final class R8Command extends BaseCompilerCommand {
     featureSplitConfiguration = null;
     synthesizedClassPrefix = null;
     enableMissingLibraryApiModeling = false;
-    fakeCompilerVersion = null;
   }
 
   public DexItemFactory getDexItemFactory() {
@@ -1070,11 +1069,18 @@ public final class R8Command extends BaseCompilerCommand {
     }
 
     // Amend the proguard-map consumer with options from the proguard configuration.
-    internal.proguardMapConsumer =
+    StringConsumer stringConsumer =
         wrapStringConsumer(
             proguardMapConsumer,
             proguardConfiguration.isPrintMapping(),
             proguardConfiguration.getPrintMappingFile());
+    internal.proguardMapConsumer =
+        stringConsumer == null
+            ? null
+            : ProguardMapStringConsumer.builder()
+                .setStringConsumer(stringConsumer)
+                .setDiagnosticsHandler(getReporter())
+                .build();
 
     // Amend the usage information consumer with options from the proguard configuration.
     internal.usageInformationConsumer =
@@ -1172,6 +1178,8 @@ public final class R8Command extends BaseCompilerCommand {
     internal.programClassConflictResolver =
         ProgramClassCollection.wrappedConflictResolver(
             getClassConflictResolver(), internal.reporter);
+
+    internal.cancelCompilationChecker = getCancelCompilationChecker();
 
     if (!DETERMINISTIC_DEBUGGING) {
       assert internal.threadCount == ThreadUtils.NOT_SPECIFIED;

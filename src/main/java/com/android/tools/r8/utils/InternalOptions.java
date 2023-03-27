@@ -6,6 +6,7 @@ package com.android.tools.r8.utils;
 import static com.android.tools.r8.utils.AndroidApiLevel.B;
 import static com.android.tools.r8.utils.SystemPropertyUtils.parseSystemPropertyForDevelopmentOrDefault;
 
+import com.android.tools.r8.CancelCompilationChecker;
 import com.android.tools.r8.ClassFileConsumer;
 import com.android.tools.r8.CompilationMode;
 import com.android.tools.r8.DataResourceConsumer;
@@ -16,6 +17,7 @@ import com.android.tools.r8.FeatureSplit;
 import com.android.tools.r8.GlobalSyntheticsConsumer;
 import com.android.tools.r8.MapIdProvider;
 import com.android.tools.r8.ProgramConsumer;
+import com.android.tools.r8.ProguardMapConsumer;
 import com.android.tools.r8.SourceFileProvider;
 import com.android.tools.r8.StringConsumer;
 import com.android.tools.r8.SyntheticInfoConsumer;
@@ -74,6 +76,7 @@ import com.android.tools.r8.ir.optimize.enums.EnumDataMap;
 import com.android.tools.r8.naming.ClassNameMapper;
 import com.android.tools.r8.naming.MapVersion;
 import com.android.tools.r8.optimize.argumentpropagation.ArgumentPropagatorEventConsumer;
+import com.android.tools.r8.optimize.redundantbridgeremoval.RedundantBridgeRemovalOptions;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.position.Position;
 import com.android.tools.r8.profile.art.ArtProfileOptions;
@@ -163,6 +166,27 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public DexItemFactory dexItemFactory() {
     return itemFactory;
+  }
+
+  // Internal state signifying that the compilation is cancelled.
+  // The state can only ever transition from false to true.
+  private final AtomicBoolean cancelled = new AtomicBoolean(false);
+  public CancelCompilationChecker cancelCompilationChecker = null;
+
+  public boolean checkIfCancelled() {
+    if (cancelCompilationChecker == null) {
+      assert !cancelled.get();
+      return false;
+    }
+    if (cancelled.get()) {
+      return true;
+    }
+    if (cancelCompilationChecker.cancel()) {
+      cancelled.set(true);
+      return true;
+    }
+    // Return the cancelled value in case another thread has cancelled.
+    return cancelled.get();
   }
 
   public boolean hasProguardConfiguration() {
@@ -862,6 +886,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   private final OpenClosedInterfacesOptions openClosedInterfacesOptions =
       new OpenClosedInterfacesOptions();
   private final ProtoShrinkingOptions protoShrinking = new ProtoShrinkingOptions();
+  private final RedundantBridgeRemovalOptions redundantBridgeRemovalOptions =
+      new RedundantBridgeRemovalOptions(this);
   private final KotlinOptimizationOptions kotlinOptimizationOptions =
       new KotlinOptimizationOptions();
   private final ApiModelTestingOptions apiModelTestingOptions = new ApiModelTestingOptions();
@@ -928,6 +954,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public CfCodeAnalysisOptions getCfCodeAnalysisOptions() {
     return cfCodeAnalysisOptions;
+  }
+
+  public RedundantBridgeRemovalOptions getRedundantBridgeRemovalOptions() {
+    return redundantBridgeRemovalOptions;
   }
 
   public DumpInputFlags getDumpInputFlags() {
@@ -1018,7 +1048,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   // If null, no proguard map needs to be computed.
   // If non null it must be and passed to the consumer.
-  public StringConsumer proguardMapConsumer = null;
+  public ProguardMapConsumer proguardMapConsumer = null;
 
   // If null, no usage information needs to be computed.
   // If non-null, it must be and is passed to the consumer.
@@ -2884,8 +2914,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   public boolean canHaveNonReboundConstructorInvoke() {
-    // TODO(b/246679983): Turned off while diagnosing b/246679983.
-    return false && isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
+    return isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
   }
 
   // b/238399429 Some art 6 vms have issues with multiple monitors in the same method

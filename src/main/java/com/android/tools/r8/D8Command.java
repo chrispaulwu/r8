@@ -12,6 +12,7 @@ import com.android.tools.r8.graph.DexItemFactory;
 import com.android.tools.r8.inspector.Inspector;
 import com.android.tools.r8.inspector.internal.InspectorImpl;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.DesugaredLibrarySpecification;
+import com.android.tools.r8.naming.ProguardMapStringConsumer;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.profile.art.ArtProfileForRewriting;
 import com.android.tools.r8.shaking.ProguardConfigurationParser;
@@ -490,6 +491,7 @@ public final class D8Command extends BaseCompilerCommand {
           getArtProfilesForRewriting(),
           getStartupProfileProviders(),
           getClassConflictResolver(),
+          getCancelCompilationChecker(),
           factory);
     }
   }
@@ -585,6 +587,7 @@ public final class D8Command extends BaseCompilerCommand {
       List<ArtProfileForRewriting> artProfilesForRewriting,
       List<StartupProfileProvider> startupProfileProviders,
       ClassConflictResolver classConflictResolver,
+      CancelCompilationChecker cancelCompilationChecker,
       DexItemFactory factory) {
     super(
         inputApp,
@@ -606,7 +609,8 @@ public final class D8Command extends BaseCompilerCommand {
         isAndroidPlatformBuild,
         artProfilesForRewriting,
         startupProfileProviders,
-        classConflictResolver);
+        classConflictResolver,
+        cancelCompilationChecker);
     this.intermediate = intermediate;
     this.globalSyntheticsConsumer = globalSyntheticsConsumer;
     this.syntheticInfoConsumer = syntheticInfoConsumer;
@@ -665,7 +669,13 @@ public final class D8Command extends BaseCompilerCommand {
     internal.setSyntheticInfoConsumer(syntheticInfoConsumer);
     internal.desugarGraphConsumer = desugarGraphConsumer;
     internal.mainDexKeepRules = mainDexKeepRules;
-    internal.proguardMapConsumer = proguardMapConsumer;
+    internal.proguardMapConsumer =
+        proguardMapConsumer == null
+            ? null
+            : ProguardMapStringConsumer.builder()
+                .setStringConsumer(proguardMapConsumer)
+                .setDiagnosticsHandler(getReporter())
+                .build();
     internal.lineNumberOptimization =
         !internal.debug && proguardMapConsumer != null
             ? LineNumberOptimization.ON
@@ -741,6 +751,8 @@ public final class D8Command extends BaseCompilerCommand {
     internal.programClassConflictResolver =
         ProgramClassCollection.wrappedConflictResolver(
             getClassConflictResolver(), internal.reporter);
+
+    internal.cancelCompilationChecker = getCancelCompilationChecker();
 
     internal.tool = Tool.D8;
     internal.setDumpInputFlags(getDumpInputFlags());

@@ -62,8 +62,80 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
     onConstNumber(NumericType.INT, value);
   }
 
+  public void onConstFloat(int value) {
+    onConstNumber(NumericType.FLOAT, value);
+  }
+
+  public void onConstLong(long value) {
+    onConstNumber(NumericType.LONG, value);
+  }
+
+  public void onConstDouble(long value) {
+    onConstNumber(NumericType.DOUBLE, value);
+  }
+
   public void onConstString(DexString string) {
     onInstruction();
+  }
+
+  public void onAdd(NumericType type, EV leftValueIndex, EV rightValueIndex) {
+    onInstruction();
+  }
+
+  public void onAddInt(EV leftValueIndex, EV rightValueIndex) {
+    onAdd(NumericType.INT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onAddLong(EV leftValueIndex, EV rightValueIndex) {
+    onAdd(NumericType.LONG, leftValueIndex, rightValueIndex);
+  }
+
+  public void onAddFloat(EV leftValueIndex, EV rightValueIndex) {
+    onAdd(NumericType.FLOAT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onAddDouble(EV leftValueIndex, EV rightValueIndex) {
+    onAdd(NumericType.DOUBLE, leftValueIndex, rightValueIndex);
+  }
+
+  public void onSub(NumericType type, EV leftValueIndex, EV rightValueIndex) {
+    onInstruction();
+  }
+
+  public void onSubInt(EV leftValueIndex, EV rightValueIndex) {
+    onSub(NumericType.INT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onSubLong(EV leftValueIndex, EV rightValueIndex) {
+    onSub(NumericType.LONG, leftValueIndex, rightValueIndex);
+  }
+
+  public void onSubFloat(EV leftValueIndex, EV rightValueIndex) {
+    onSub(NumericType.FLOAT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onSubDouble(EV leftValueIndex, EV rightValueIndex) {
+    onSub(NumericType.DOUBLE, leftValueIndex, rightValueIndex);
+  }
+
+  public void onMul(NumericType type, EV leftValueIndex, EV rightValueIndex) {
+    onInstruction();
+  }
+
+  public void onMulInt(EV leftValueIndex, EV rightValueIndex) {
+    onMul(NumericType.INT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onMulLong(EV leftValueIndex, EV rightValueIndex) {
+    onMul(NumericType.LONG, leftValueIndex, rightValueIndex);
+  }
+
+  public void onMulFloat(EV leftValueIndex, EV rightValueIndex) {
+    onMul(NumericType.FLOAT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onMulDouble(EV leftValueIndex, EV rightValueIndex) {
+    onMul(NumericType.DOUBLE, leftValueIndex, rightValueIndex);
   }
 
   public void onDiv(NumericType type, EV leftValueIndex, EV rightValueIndex) {
@@ -72,6 +144,38 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
 
   public void onDivInt(EV leftValueIndex, EV rightValueIndex) {
     onDiv(NumericType.INT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onDivLong(EV leftValueIndex, EV rightValueIndex) {
+    onDiv(NumericType.LONG, leftValueIndex, rightValueIndex);
+  }
+
+  public void onDivFloat(EV leftValueIndex, EV rightValueIndex) {
+    onDiv(NumericType.FLOAT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onDivDouble(EV leftValueIndex, EV rightValueIndex) {
+    onDiv(NumericType.DOUBLE, leftValueIndex, rightValueIndex);
+  }
+
+  public void onRem(NumericType type, EV leftValueIndex, EV rightValueIndex) {
+    onInstruction();
+  }
+
+  public void onRemInt(EV leftValueIndex, EV rightValueIndex) {
+    onRem(NumericType.INT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onRemLong(EV leftValueIndex, EV rightValueIndex) {
+    onRem(NumericType.LONG, leftValueIndex, rightValueIndex);
+  }
+
+  public void onRemFloat(EV leftValueIndex, EV rightValueIndex) {
+    onRem(NumericType.FLOAT, leftValueIndex, rightValueIndex);
+  }
+
+  public void onRemDouble(EV leftValueIndex, EV rightValueIndex) {
+    onRem(NumericType.DOUBLE, leftValueIndex, rightValueIndex);
   }
 
   public void onIf(IfType ifKind, int blockIndex, EV valueIndex) {
@@ -197,11 +301,190 @@ public abstract class LirParsedInstructionCallback<EV> implements LirInstruction
           onConstInt(value);
           return;
         }
+      case LirOpcodes.FCONST_0:
+      case LirOpcodes.FCONST_1:
+      case LirOpcodes.FCONST_2:
+        {
+          float value = opcode - LirOpcodes.FCONST_0;
+          onConstFloat(Float.floatToRawIntBits(value));
+          return;
+        }
+      case LirOpcodes.FCONST:
+        {
+          int value = view.getNextIntegerOperand();
+          onConstFloat(value);
+          return;
+        }
+      case LirOpcodes.LCONST_0:
+        {
+          onConstLong(0);
+          return;
+        }
+      case LirOpcodes.LCONST_1:
+        {
+          onConstLong(1);
+          return;
+        }
+      case LirOpcodes.LCONST:
+        {
+          long value = view.getNextLongOperand();
+          onConstLong(value);
+          return;
+        }
+      case LirOpcodes.DCONST_0:
+        {
+          onConstDouble(Double.doubleToRawLongBits(0));
+          return;
+        }
+      case LirOpcodes.DCONST_1:
+        {
+          onConstDouble(Double.doubleToRawLongBits(1));
+          return;
+        }
+      case LirOpcodes.DCONST:
+        {
+          long value = view.getNextLongOperand();
+          onConstDouble(value);
+          return;
+        }
+      case LirOpcodes.IADD:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onAddInt(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.LADD:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onAddLong(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.FADD:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onAddFloat(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.DADD:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onAddDouble(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.ISUB:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onSubInt(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.LSUB:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onSubLong(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.FSUB:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onSubFloat(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.DSUB:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onSubDouble(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.IMUL:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onMulInt(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.LMUL:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onMulLong(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.FMUL:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onMulFloat(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.DMUL:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onMulDouble(leftValueIndex, rightValueIndex);
+          return;
+        }
       case LirOpcodes.IDIV:
         {
           EV leftValueIndex = getNextValueOperand(view);
           EV rightValueIndex = getNextValueOperand(view);
           onDivInt(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.LDIV:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onDivLong(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.FDIV:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onDivFloat(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.DDIV:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onDivDouble(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.IREM:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onRemInt(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.LREM:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onRemLong(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.FREM:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onRemFloat(leftValueIndex, rightValueIndex);
+          return;
+        }
+      case LirOpcodes.DREM:
+        {
+          EV leftValueIndex = getNextValueOperand(view);
+          EV rightValueIndex = getNextValueOperand(view);
+          onRemDouble(leftValueIndex, rightValueIndex);
           return;
         }
       case LirOpcodes.IFNE:
