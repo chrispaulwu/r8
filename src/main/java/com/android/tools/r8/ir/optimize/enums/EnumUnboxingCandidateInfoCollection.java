@@ -9,8 +9,8 @@ import com.android.tools.r8.graph.DexField;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexType;
-import com.android.tools.r8.graph.GraphLens;
 import com.android.tools.r8.graph.ProgramMethod;
+import com.android.tools.r8.graph.lens.GraphLens;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.utils.collections.LongLivedProgramMethodSetBuilder;
 import com.android.tools.r8.utils.collections.ProgramMethodSet;
@@ -36,6 +36,10 @@ public class EnumUnboxingCandidateInfoCollection {
     enumTypeToInfo.put(
         enumClass.type,
         new EnumUnboxingCandidateInfo(appView, enumClass, graphLensForPrimaryOptimizationPass));
+  }
+
+  public void setEnumSubclasses(DexType superEnum, Set<DexProgramClass> subclasses) {
+    enumTypeToInfo.get(superEnum).setSubclasses(subclasses);
   }
 
   public void addPrunedMethod(ProgramMethod method) {
@@ -128,11 +132,20 @@ public class EnumUnboxingCandidateInfoCollection {
     enumTypeToInfo.clear();
   }
 
+  public boolean verifyAllSubtypesAreSet() {
+    for (EnumUnboxingCandidateInfo value : enumTypeToInfo.values()) {
+      assert value.subclasses != null;
+    }
+    return true;
+  }
+
   private static class EnumUnboxingCandidateInfo {
 
     private final DexProgramClass enumClass;
     private final LongLivedProgramMethodSetBuilder<ProgramMethodSet> methodDependencies;
     private final Set<DexField> requiredInstanceFieldData = Sets.newConcurrentHashSet();
+
+    private Set<DexProgramClass> subclasses = null;
 
     public EnumUnboxingCandidateInfo(
         AppView<AppInfoWithLiveness> appView,
@@ -144,6 +157,10 @@ public class EnumUnboxingCandidateInfoCollection {
       this.methodDependencies =
           LongLivedProgramMethodSetBuilder.createConcurrentForIdentitySet(
               graphLensForPrimaryOptimizationPass);
+    }
+
+    public void setSubclasses(Set<DexProgramClass> subclasses) {
+      this.subclasses = subclasses;
     }
 
     public DexProgramClass getEnumClass() {

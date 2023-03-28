@@ -40,8 +40,6 @@ import com.android.tools.r8.errors.InvalidLibrarySuperclassDiagnostic;
 import com.android.tools.r8.errors.MissingNestHostNestDesugarDiagnostic;
 import com.android.tools.r8.errors.Unreachable;
 import com.android.tools.r8.experimental.graphinfo.GraphConsumer;
-import com.android.tools.r8.experimental.startup.StartupOptions;
-import com.android.tools.r8.experimental.startup.instrumentation.StartupInstrumentationOptions;
 import com.android.tools.r8.features.FeatureSplitConfiguration;
 import com.android.tools.r8.graph.AppInfoWithClassHierarchy;
 import com.android.tools.r8.graph.AppView;
@@ -80,6 +78,8 @@ import com.android.tools.r8.optimize.redundantbridgeremoval.RedundantBridgeRemov
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.position.Position;
 import com.android.tools.r8.profile.art.ArtProfileOptions;
+import com.android.tools.r8.profile.startup.StartupOptions;
+import com.android.tools.r8.profile.startup.instrumentation.StartupInstrumentationOptions;
 import com.android.tools.r8.references.ClassReference;
 import com.android.tools.r8.references.FieldReference;
 import com.android.tools.r8.references.MethodReference;
@@ -449,6 +449,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   // Flag to allow record annotations in DEX. See b/231930852 for context.
   public boolean emitRecordAnnotationsInDex =
       System.getProperty("com.android.tools.r8.emitRecordAnnotationsInDex") != null;
+  public boolean emitRecordAnnotationsExInDex =
+      System.getProperty("com.android.tools.r8.emitRecordAnnotationsExInDex") != null;
 
   // Flag to allow nest annotations in DEX. See b/231930852 for context.
   public boolean emitNestAnnotationsInDex =
@@ -2144,6 +2146,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     public boolean enableSwitchToIfRewriting = true;
     public boolean enableEnumUnboxingDebugLogs =
         System.getProperty("com.android.tools.r8.enableEnumUnboxingDebugLogs") != null;
+    public boolean enableEnumWithSubtypesUnboxing = false;
     public boolean forceRedundantConstNumberRemoval = false;
     public boolean enableExperimentalDesugaredLibraryKeepRuleGenerator = false;
     public boolean invertConditionals = false;

@@ -24,8 +24,6 @@ import com.android.tools.r8.dex.FileWriter.ByteBufferResult;
 import com.android.tools.r8.dex.VirtualFile.FilePerInputClassDistributor;
 import com.android.tools.r8.dex.VirtualFile.ItemUseInfo;
 import com.android.tools.r8.errors.CompilationError;
-import com.android.tools.r8.experimental.startup.StartupCompleteness;
-import com.android.tools.r8.experimental.startup.StartupProfile;
 import com.android.tools.r8.features.FeatureSplitConfiguration.DataResourceProvidersAndConsumer;
 import com.android.tools.r8.graph.AppServices;
 import com.android.tools.r8.graph.AppView;
@@ -53,6 +51,8 @@ import com.android.tools.r8.naming.KotlinModuleSynthesizer;
 import com.android.tools.r8.naming.NamingLens;
 import com.android.tools.r8.naming.ProguardMapSupplier.ProguardMapId;
 import com.android.tools.r8.origin.Origin;
+import com.android.tools.r8.profile.startup.StartupCompleteness;
+import com.android.tools.r8.profile.startup.profile.StartupProfile;
 import com.android.tools.r8.shaking.MainDexInfo;
 import com.android.tools.r8.utils.AndroidApp;
 import com.android.tools.r8.utils.ArrayUtils;
@@ -773,7 +773,8 @@ public class ApplicationWriter {
     if (enclosingMethod == null
         && innerClasses.isEmpty()
         && clazz.getClassSignature().hasNoSignature()
-        && !clazz.isInANest()) {
+        && !clazz.isInANest()
+        && !clazz.isRecord()) {
       return;
     }
 
@@ -853,6 +854,10 @@ public class ApplicationWriter {
               clazz.getPermittedSubclassAttributes(), options.itemFactory));
     }
 
+    if (clazz.isRecord() && options.canUseRecords()) {
+      annotations.add(DexAnnotation.createRecordAnnotation(clazz, appView));
+    }
+
     if (!annotations.isEmpty()) {
       // Append the annotations to annotations array of the class.
       DexAnnotation[] copy =
@@ -868,6 +873,7 @@ public class ApplicationWriter {
     clazz.clearInnerClasses();
     clazz.clearClassSignature();
     clazz.clearPermittedSubclasses();
+    clazz.clearRecordComponents();
   }
 
   private void insertAttributeAnnotationsForField(DexEncodedField field) {
