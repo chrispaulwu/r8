@@ -488,9 +488,8 @@ public class ToolHelper {
         result.add("/bin/bash");
       }
       result.add(getExecutable());
-      for (String option : options) {
-        result.add(option);
-      }
+      result.addAll(getExecutableArguments());
+      result.addAll(options);
       for (Map.Entry<String, String> entry : systemProperties.entrySet()) {
         StringBuilder builder = new StringBuilder("-D");
         builder.append(entry.getKey());
@@ -508,9 +507,7 @@ public class ToolHelper {
       if (mainClass != null) {
         result.add(mainClass);
       }
-      for (String argument : programArguments) {
-        result.add(argument);
-      }
+      result.addAll(programArguments);
       return result;
     }
 
@@ -529,6 +526,8 @@ public class ToolHelper {
     protected abstract boolean shouldUseDocker();
 
     protected abstract String getExecutable();
+
+    protected abstract List<String> getExecutableArguments();
   }
 
   public static class ArtCommandBuilder extends CommandBuilder {
@@ -563,6 +562,11 @@ public class ToolHelper {
       return version != null ? getArtBinary(version) : getArtBinary();
     }
 
+    @Override
+    protected List<String> getExecutableArguments() {
+      return force32BitArt() ? ImmutableList.of("--32") : ImmutableList.of();
+    }
+
     public boolean isForDevice() {
       return version.getKind() == Kind.TARGET;
     }
@@ -586,23 +590,6 @@ public class ToolHelper {
 
   private static List<File> toFileList(List<String> filePathList) {
     return filePathList.stream().map(File::new).collect(Collectors.toList());
-  }
-
-  public static class DXCommandBuilder extends CommandBuilder {
-
-    public DXCommandBuilder() {
-      appendProgramArgument("--dex");
-    }
-
-    @Override
-    protected boolean shouldUseDocker() {
-      return false;
-    }
-
-    @Override
-    protected String getExecutable() {
-      return DX.toAbsolutePath().toString();
-    }
   }
 
   private static class StreamReader implements Runnable {
@@ -734,7 +721,6 @@ public class ToolHelper {
     PRODUCT = builder.build();
   }
 
-  private static final Path DX = getDxExecutablePath();
 
   private static Path getDexVmPath(DexVm vm) {
     DexVm.Version version = vm.getVersion();
@@ -856,12 +842,6 @@ public class ToolHelper {
       return Backend.values();
     }
     return new Backend[]{Backend.DEX};
-  }
-
-  private static Path getDxExecutablePath() {
-    String toolsDir = toolsDir();
-    String executableName = toolsDir.equals("windows") ? "dx.bat" : "dx";
-    return Paths.get(TOOLS_DIR, toolsDir(), "dx", "bin", executableName);
   }
 
   public static String getArtBinary(DexVm version) {
@@ -1472,41 +1452,6 @@ public class ToolHelper {
     InternalOptions internalOptions = command.getInternalOptions();
     optionsConsumer.accept(internalOptions);
     return GenerateMainDexList.runForTesting(command.getInputApp(), internalOptions);
-  }
-
-  public static AndroidApp runDexer(String fileName, String outDir, String... extraArgs)
-      throws IOException {
-    List<String> args = new ArrayList<>();
-    Collections.addAll(args, extraArgs);
-    Collections.addAll(args, "--output=" + outDir + "/classes.dex", fileName);
-    int result = runDX(args.toArray(StringUtils.EMPTY_ARRAY)).exitCode;
-    return result != 0 ? null : builderFromProgramDirectory(Paths.get(outDir)).build();
-  }
-
-  public static ProcessResult runDX(String... args) throws IOException {
-    return runDX(null, args);
-  }
-
-  public static ProcessResult runDX(Path workingDirectory, String... args) throws IOException {
-    return runProcess(createProcessBuilderForRunningDx(workingDirectory, args));
-  }
-
-  public static ProcessBuilder createProcessBuilderForRunningDx(String... args) {
-    return createProcessBuilderForRunningDx(null, args);
-  }
-
-  public static ProcessBuilder createProcessBuilderForRunningDx(
-      Path workingDirectory, String... args) {
-    Assume.assumeTrue(ToolHelper.artSupported());
-    DXCommandBuilder builder = new DXCommandBuilder();
-    for (String arg : args) {
-      builder.appendProgramArgument(arg);
-    }
-    ProcessBuilder pb = builder.asProcessBuilder();
-    if (workingDirectory != null) {
-      pb.directory(workingDirectory.toFile());
-    }
-    return pb;
   }
 
   @Deprecated
