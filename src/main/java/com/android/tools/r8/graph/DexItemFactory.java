@@ -85,6 +85,16 @@ public class DexItemFactory {
       "Ljava/lang/invoke/MethodHandles$Lookup;";
   public static final String dalvikAnnotationOptimizationPrefixString =
       "Ldalvik/annotation/optimization/";
+  public static final String androidUtilSparseArrayDescriptorString = "Landroid/util/SparseArray;";
+  public static final String androidContentResTypedArrayDescriptorString =
+      "Landroid/content/res/TypedArray;";
+  public static final String androidContentContentProviderClientDescriptorString =
+      "Landroid/content/ContentProviderClient;";
+  public static final String androidDrmDrmManagerClientDescriptorString =
+      "Landroid/drm/DrmManagerClient;";
+  public static final String androidMediaMediaDrmDescriptorString = "Landroid/media/MediaDrm;";
+  public static final String androidMediaMediaMetadataRetrieverDescriptorString =
+      "Landroid/media/MediaMetadataRetriever;";
 
   /** Set of types that may be synthesized during compilation. */
   private final Set<DexType> possibleCompilerSynthesizedTypes = Sets.newIdentityHashSet();
@@ -608,7 +618,17 @@ public class DexItemFactory {
       createStaticallyKnownType("Landroid/util/Property;");
   public final DexType androidViewViewType = createStaticallyKnownType("Landroid/view/View;");
   public final DexType androidUtilSparseArrayType =
-      createStaticallyKnownType("Landroid/util/SparseArray;");
+      createStaticallyKnownType(androidUtilSparseArrayDescriptorString);
+  public final DexType androidContentResTypedArrayType =
+      createStaticallyKnownType(androidContentResTypedArrayDescriptorString);
+  public final DexType androidContentContentProviderClientType =
+      createStaticallyKnownType(androidContentContentProviderClientDescriptorString);
+  public final DexType androidDrmDrmManagerClientType =
+      createStaticallyKnownType(androidDrmDrmManagerClientDescriptorString);
+  public final DexType androidMediaMediaDrmType =
+      createStaticallyKnownType(androidMediaMediaDrmDescriptorString);
+  public final DexType androidMediaMediaMetadataRetrieverType =
+      createStaticallyKnownType(androidMediaMediaMetadataRetrieverDescriptorString);
 
   public final StringBuildingMethods stringBuilderMethods =
       new StringBuildingMethods(stringBuilderType);
@@ -662,6 +682,16 @@ public class DexItemFactory {
   public final AndroidViewViewMembers androidViewViewMembers = new AndroidViewViewMembers();
   public final AndroidUtilSparseArrayMembers androidUtilSparseArrayMembers =
       new AndroidUtilSparseArrayMembers();
+  public final AndroidContentResTypedArrayMembers androidContentResTypedArrayMembers =
+      new AndroidContentResTypedArrayMembers();
+  public final AndroidContentContentProviderClientMembers
+      androidContentContentProviderClientMembers = new AndroidContentContentProviderClientMembers();
+  public final AndroidDrmDrmManagerClientMembers androidDrmDrmManagerClientMembers =
+      new AndroidDrmDrmManagerClientMembers();
+  public final AndroidMediaMediaDrmMembers androidMediaMediaDrmMembers =
+      new AndroidMediaMediaDrmMembers();
+  public final AndroidMediaMetadataRetrieverMembers androidMediaMetadataRetrieverMembers =
+      new AndroidMediaMetadataRetrieverMembers();
 
   // java.**
   public final JavaIoFileMembers javaIoFileMembers = new JavaIoFileMembers();
@@ -1135,12 +1165,53 @@ public class DexItemFactory {
     }
   }
 
+  // android.util.SparseArray
   public class AndroidUtilSparseArrayMembers extends LibraryMembers {
     public final DexMethod put =
         createMethod(androidUtilSparseArrayType, createProto(voidType, intType, objectType), "put");
     public final DexMethod set =
         createMethod(
             androidUtilSparseArrayType, createProto(voidType, intType, objectType), setString);
+  }
+
+  // android.content.res.TypedArray
+  public class AndroidContentResTypedArrayMembers extends LibraryMembers {
+    public final DexMethod recycle =
+        createMethod(androidContentResTypedArrayType, createProto(voidType), "recycle");
+    public final DexMethod close =
+        createMethod(androidContentResTypedArrayType, createProto(voidType), "close");
+  }
+
+  // android.content.ContentProviderClient
+  public class AndroidContentContentProviderClientMembers extends LibraryMembers {
+    public final DexMethod release =
+        createMethod(androidContentContentProviderClientType, createProto(voidType), "release");
+    public final DexMethod close =
+        createMethod(androidContentContentProviderClientType, createProto(voidType), "close");
+  }
+
+  // android.drm.DrmManagerClient
+  public class AndroidDrmDrmManagerClientMembers extends LibraryMembers {
+    public final DexMethod release =
+        createMethod(androidDrmDrmManagerClientType, createProto(voidType), "release");
+    public final DexMethod close =
+        createMethod(androidDrmDrmManagerClientType, createProto(voidType), "close");
+  }
+
+  // android.media.MediaDrm
+  public class AndroidMediaMediaDrmMembers extends LibraryMembers {
+    public final DexMethod release =
+        createMethod(androidMediaMediaDrmType, createProto(voidType), "release");
+    public final DexMethod close =
+        createMethod(androidMediaMediaDrmType, createProto(voidType), "close");
+  }
+
+  // android.media.MediaMetadataRetriever
+  public class AndroidMediaMetadataRetrieverMembers extends LibraryMembers {
+    public final DexMethod release =
+        createMethod(androidMediaMediaMetadataRetrieverType, createProto(voidType), "release");
+    public final DexMethod close =
+        createMethod(androidMediaMediaMetadataRetrieverType, createProto(voidType), "close");
   }
 
   public class BooleanMembers extends BoxedPrimitiveMembers {

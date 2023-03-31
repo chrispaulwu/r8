@@ -45,12 +45,17 @@ import com.android.tools.r8.ir.desugar.backports.BackportedMethods;
 import com.android.tools.r8.ir.desugar.backports.BooleanMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.CollectionMethodGenerators;
 import com.android.tools.r8.ir.desugar.backports.CollectionMethodRewrites;
+import com.android.tools.r8.ir.desugar.backports.ContentProviderClientMethodRewrites;
+import com.android.tools.r8.ir.desugar.backports.DrmManagerClientMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.FloatMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.LongMethodRewrites;
+import com.android.tools.r8.ir.desugar.backports.MediaDrmMethodRewrites;
+import com.android.tools.r8.ir.desugar.backports.MediaMetadataRetrieverMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.NumericMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.ObjectsMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.OptionalMethodRewrites;
 import com.android.tools.r8.ir.desugar.backports.SparseArrayMethodRewrites;
+import com.android.tools.r8.ir.desugar.backports.TypedArrayMethodRewrites;
 import com.android.tools.r8.ir.desugar.desugaredlibrary.retargeter.DesugaredLibraryRetargeter;
 import com.android.tools.r8.position.MethodPosition;
 import com.android.tools.r8.synthesis.SyntheticItems.GlobalSyntheticsStrategy;
@@ -234,6 +239,12 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
         if (typeIsPresent(factory.supplierType)) {
           initializeAndroidOThreadLocalMethodProviderWithSupplier(factory);
         }
+      }
+      if (options.getMinApiLevel().isLessThan(AndroidApiLevel.P)) {
+        initializeAndroidPMethodProviders(factory);
+      }
+      if (options.getMinApiLevel().isLessThan(AndroidApiLevel.Q)) {
+        initializeAndroidQMethodProviders(factory);
       }
       if (options.getMinApiLevel().isLessThan(AndroidApiLevel.R)) {
         if (options.testing.alwaysBackportListSetMapMethods
@@ -813,6 +824,22 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
       }
 
       initializeMathExactApis(factory, factory.mathType);
+
+      // android.content.res.ContentProviderClient
+
+      // void android.content.ContentProviderClient.close()
+      addProvider(
+          new InvokeRewriter(
+              factory.androidContentContentProviderClientMembers.close,
+              ContentProviderClientMethodRewrites.rewriteClose()));
+
+      // android.drm.DrmManagerClient
+
+      // void android.drm.DrmManagerClient.close()
+      addProvider(
+          new InvokeRewriter(
+              factory.androidDrmDrmManagerClientMembers.close,
+              DrmManagerClientMethodRewrites.rewriteClose()));
     }
 
     /**
@@ -1051,6 +1078,21 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
               method, BackportedMethods::StringMethods_joinIterable, "joinIterable"));
     }
 
+    private void initializeAndroidPMethodProviders(DexItemFactory factory) {
+      // void android.drm.DrmManagerClient.close()
+      addProvider(
+          new InvokeRewriter(
+              factory.androidMediaMediaDrmMembers.close, MediaDrmMethodRewrites.rewriteClose()));
+    }
+
+    private void initializeAndroidQMethodProviders(DexItemFactory factory) {
+      // void android.drm.DrmManagerClient.close()
+      addProvider(
+          new InvokeRewriter(
+              factory.androidMediaMetadataRetrieverMembers.close,
+              MediaMetadataRetrieverMethodRewrites.rewriteClose()));
+    }
+
     private void initializeAndroidRObjectsMethodProviderWithSupplier(DexItemFactory factory) {
       // Objects
       DexType type = factory.objectsType;
@@ -1286,10 +1328,18 @@ public final class BackportedMethodRewriter implements CfInstructionDesugaring {
 
       // android.util.SparseArray
 
-      // void android.util.SparseArray.set(int, Object))
+      // void android.util.SparseArray.set(int, Object)
       addProvider(
           new InvokeRewriter(
               factory.androidUtilSparseArrayMembers.set, SparseArrayMethodRewrites.rewriteSet()));
+
+      // android.content.res.TypedArray
+
+      // void android.content.res.TypedArray.close()
+      addProvider(
+          new InvokeRewriter(
+              factory.androidContentResTypedArrayMembers.close,
+              TypedArrayMethodRewrites.rewriteClose()));
     }
 
     private void initializeAndroidSv2MethodProviders(DexItemFactory factory) {

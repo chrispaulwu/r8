@@ -7,6 +7,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
@@ -75,20 +76,21 @@ public class ArrayUtils {
    * @param emptyArray an empty array
    * @return an array with written elements
    */
-  public static <T> T[] map(T[] original, Function<T, T> mapper, T[] emptyArray) {
+  @SuppressWarnings("unchecked")
+  public static <S, T> T[] map(S[] original, Function<S, T> mapper, T[] emptyArray) {
     ArrayList<T> results = null;
     for (int i = 0; i < original.length; i++) {
-      T oldOne = original[i];
+      S oldOne = original[i];
       T newOne = mapper.apply(oldOne);
       if (newOne == oldOne) {
         if (results != null) {
-          results.add(oldOne);
+          results.add((T) oldOne);
         }
       } else {
         if (results == null) {
           results = new ArrayList<>(original.length);
           for (int j = 0; j < i; j++) {
-            results.add(original[j]);
+            results.add((T) original[j]);
           }
         }
         if (newOne != null) {
@@ -96,7 +98,7 @@ public class ArrayUtils {
         }
       }
     }
-    return results != null ? results.toArray(emptyArray) : original;
+    return results != null ? results.toArray(emptyArray) : (T[]) original;
   }
 
   /** Rewrites the input array to the output array unconditionally. */
@@ -137,7 +139,7 @@ public class ArrayUtils {
 
   public static <T> boolean contains(T[] elements, T elementToLookFor) {
     for (Object element : elements) {
-      if (element.equals(elementToLookFor)) {
+      if (Objects.equals(element, elementToLookFor)) {
         return true;
       }
     }
