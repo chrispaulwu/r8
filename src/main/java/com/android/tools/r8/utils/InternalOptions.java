@@ -74,7 +74,6 @@ import com.android.tools.r8.ir.optimize.enums.EnumDataMap;
 import com.android.tools.r8.naming.ClassNameMapper;
 import com.android.tools.r8.naming.MapVersion;
 import com.android.tools.r8.optimize.argumentpropagation.ArgumentPropagatorEventConsumer;
-import com.android.tools.r8.optimize.redundantbridgeremoval.RedundantBridgeRemovalOptions;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.position.Position;
 import com.android.tools.r8.profile.art.ArtProfileOptions;
@@ -890,8 +889,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   private final OpenClosedInterfacesOptions openClosedInterfacesOptions =
       new OpenClosedInterfacesOptions();
   private final ProtoShrinkingOptions protoShrinking = new ProtoShrinkingOptions();
-  private final RedundantBridgeRemovalOptions redundantBridgeRemovalOptions =
-      new RedundantBridgeRemovalOptions(this);
   private final KotlinOptimizationOptions kotlinOptimizationOptions =
       new KotlinOptimizationOptions();
   private final ApiModelTestingOptions apiModelTestingOptions = new ApiModelTestingOptions();
@@ -958,10 +955,6 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
   public CfCodeAnalysisOptions getCfCodeAnalysisOptions() {
     return cfCodeAnalysisOptions;
-  }
-
-  public RedundantBridgeRemovalOptions getRedundantBridgeRemovalOptions() {
-    return redundantBridgeRemovalOptions;
   }
 
   public DumpInputFlags getDumpInputFlags() {
@@ -1677,6 +1670,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
     private boolean enable =
         !Version.isDevelopmentVersion()
             || System.getProperty("com.android.tools.r8.disableHorizontalClassMerging") == null;
+    private boolean enableInitial = true;
     // TODO(b/205611444): Enable by default.
     private boolean enableClassInitializerDeadlockDetection = true;
     private boolean enableInterfaceMerging =
@@ -1690,6 +1684,10 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
 
     public void disable() {
       enable = false;
+    }
+
+    public void disableInitialRoundOfClassMerging() {
+      enableInitial = false;
     }
 
     public void disableSyntheticMerging() {
@@ -1729,7 +1727,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
         return false;
       }
       if (mode.isInitial()) {
-        return inlinerOptions.enableInlining && isShrinking();
+        return enableInitial && inlinerOptions.enableInlining && isShrinking();
       }
       assert mode.isFinal();
       return true;
@@ -2064,7 +2062,7 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
       }
     }
 
-    public static int NO_LIMIT = -1;
+    public static final int NO_LIMIT = -1;
 
     public ArgumentPropagatorEventConsumer argumentPropagatorEventConsumer =
         ArgumentPropagatorEventConsumer.emptyConsumer();
@@ -2919,7 +2917,8 @@ public class InternalOptions implements GlobalKeepInfoConfiguration {
   }
 
   public boolean canHaveNonReboundConstructorInvoke() {
-    return isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
+    // TODO(b/246679983): Turned off while diagnosing b/246679983.
+    return false && isGeneratingDex() && minApiLevel.isGreaterThanOrEqualTo(AndroidApiLevel.L);
   }
 
   // b/238399429 Some art 6 vms have issues with multiple monitors in the same method
