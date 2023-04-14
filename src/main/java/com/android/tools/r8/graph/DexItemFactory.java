@@ -602,6 +602,9 @@ public class DexItemFactory {
   public final DexType javaUtilSetType = createStaticallyKnownType("Ljava/util/Set;");
 
   public final DexType androidAppActivity = createStaticallyKnownType("Landroid/app/Activity;");
+  public final DexType androidAppFragment = createStaticallyKnownType("Landroid/app/Fragment;");
+  public final DexType androidAppZygotePreload =
+      createStaticallyKnownType("Landroid/app/ZygotePreload;");
   public final DexType androidOsBuildType = createStaticallyKnownType("Landroid/os/Build;");
   public final DexType androidOsBuildVersionType =
       createStaticallyKnownType("Landroid/os/Build$VERSION;");
@@ -1182,7 +1185,7 @@ public class DexItemFactory {
   // android.content.ContentProviderClient
   public class AndroidContentContentProviderClientMembers extends LibraryMembers {
     public final DexMethod release =
-        createMethod(androidContentContentProviderClientType, createProto(voidType), "release");
+        createMethod(androidContentContentProviderClientType, createProto(booleanType), "release");
     public final DexMethod close =
         createMethod(androidContentContentProviderClientType, createProto(voidType), "close");
   }

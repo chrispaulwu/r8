@@ -10,9 +10,10 @@ import com.android.tools.r8.NeverClassInline;
 import com.android.tools.r8.NeverInline;
 import com.android.tools.r8.TestBase;
 import com.android.tools.r8.TestParameters;
-import com.android.tools.r8.TestParametersCollection;
 import com.android.tools.r8.utils.AndroidApiLevel;
-import org.junit.Assume;
+import com.android.tools.r8.utils.BooleanUtils;
+import com.android.tools.r8.utils.codeinspector.HorizontallyMergedClassesInspector;
+import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -23,36 +24,43 @@ import org.junit.runners.Parameterized.Parameters;
 public class HorizontalClassMergingAfterConstructorShrinkingTest extends TestBase {
 
   @Parameter(0)
+  public boolean enableRetargetingOfConstructorBridgeCalls;
+
+  @Parameter(1)
   public TestParameters parameters;
 
-  @Parameters(name = "{0}")
-  public static TestParametersCollection data() {
-    return getTestParameters()
-        .withDexRuntimes()
-        .withApiLevelsStartingAtIncluding(AndroidApiLevel.L)
-        .build();
+  @Parameters(name = "{1}, retarget: {0}")
+  public static List<Object[]> data() {
+    return buildParameters(
+        BooleanUtils.values(),
+        getTestParameters()
+            .withDexRuntimes()
+            .withApiLevelsStartingAtIncluding(AndroidApiLevel.L)
+            .build());
   }
 
   @Test
   public void test() throws Exception {
-    // TODO(b/276385221): Disabled constructor shrinking for now
-    Assume.assumeTrue(parameters.canHaveNonReboundConstructorInvoke());
     assertTrue(parameters.canHaveNonReboundConstructorInvoke());
     testForR8(parameters.getBackend())
         .addInnerClasses(getClass())
         .addKeepMainRule(Main.class)
         .addOptionsModification(
+            options ->
+                options
+                    .getRedundantBridgeRemovalOptions()
+                    .setEnableRetargetingOfConstructorBridgeCalls(
+                        enableRetargetingOfConstructorBridgeCalls))
+        .addOptionsModification(
             options -> options.horizontalClassMergerOptions().disableInitialRoundOfClassMerging())
         .addHorizontallyMergedClassesInspector(
-            inspector ->
-                inspector.assertIsCompleteMergeGroup(A.class, B.class).assertNoOtherClassesMerged())
+            HorizontallyMergedClassesInspector::assertNoClassesMerged)
         .enableInliningAnnotations()
         .enableNeverClassInliningAnnotations()
         .setMinApi(parameters)
         .compile()
         .run(parameters.getRuntime(), Main.class)
-        // TODO(b/276385221): Should not trigger A.<init>.
-        .assertSuccessWithOutputLines("Ouch!", "B");
+        .assertSuccessWithOutputLines("B");
   }
 
   static class Main {
