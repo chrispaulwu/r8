@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Consumer;
@@ -479,5 +480,9 @@ public class StringUtils {
     if (i1 == -1) return i2;
     if (i2 == -1) return i1;
     return Math.min(i1, i2);
+  }
+
+  public static String toLowerCase(String s) {
+    return s.toLowerCase(Locale.ROOT);
   }
 }
