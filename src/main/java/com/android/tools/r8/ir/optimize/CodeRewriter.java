@@ -2333,7 +2333,7 @@ public class CodeRewriter {
     if (clazz == null) {
       return false;
     }
-    return clazz.isInterface() || valueType.isClassType(elementType);
+    return valueType.isClassType(elementType);
   }
 
   private boolean canUseFilledNewArray(DexType arrayType, int size, RewriteArrayOptions options) {
