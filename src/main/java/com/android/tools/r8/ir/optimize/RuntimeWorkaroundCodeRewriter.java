@@ -16,6 +16,7 @@ import com.android.tools.r8.ir.code.AlwaysMaterializingNop;
 import com.android.tools.r8.ir.code.AlwaysMaterializingUser;
 import com.android.tools.r8.ir.code.BasicBlock;
 import com.android.tools.r8.ir.code.IRCode;
+import com.android.tools.r8.ir.code.InstanceOf;
 import com.android.tools.r8.ir.code.Instruction;
 import com.android.tools.r8.ir.code.InstructionListIterator;
 import com.android.tools.r8.ir.code.IntSwitch;
@@ -66,6 +67,19 @@ public class RuntimeWorkaroundCodeRewriter {
       // Add catch handler to the block containing the last recursive call.
       newBlock.appendCatchHandler(rethrowBlock, guard);
     }
+  }
+
+  public static void workaroundInstanceOfTypeWeakeningInVerifier(AppView<?> appView, IRCode code) {
+    for (BasicBlock block : code.getBlocks()) {
+      InstructionListIterator instructionIterator = block.listIterator(code);
+      while (instructionIterator.hasNext()) {
+        InstanceOf instanceOf = instructionIterator.nextUntil(Instruction::isInstanceOf);
+        if (instanceOf != null && instanceOf.value().getType().isNullType()) {
+          instructionIterator.replaceCurrentInstructionWithConstFalse(code);
+        }
+      }
+    }
+    assert code.isConsistentSSA(appView);
   }
 
   /**
