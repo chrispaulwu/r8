@@ -6,12 +6,16 @@ package com.android.tools.r8.desugar.records;
 
 import static com.android.tools.r8.TestRuntime.getCheckedInJdk8;
 import static com.android.tools.r8.utils.codeinspector.Matchers.isAbsent;
+import static com.android.tools.r8.utils.codeinspector.Matchers.isPresent;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tools.r8.JavaCompilerTool;
 import com.android.tools.r8.ToolHelper;
 import com.android.tools.r8.utils.StringUtils;
+import com.android.tools.r8.utils.codeinspector.ClassSubject;
 import com.android.tools.r8.utils.codeinspector.CodeInspector;
 import com.android.tools.r8.utils.codeinspector.FoundClassSubject;
 import com.google.common.io.ByteStreams;
@@ -107,5 +111,15 @@ public class RecordTestUtils {
 
   public static void assertNoJavaLangRecord(CodeInspector inspector) {
     assertThat(inspector.clazz("java.lang.Record"), isAbsent());
+  }
+
+  public static void assertJavaLangRecordTagPresent(CodeInspector inspector, boolean minify) {
+    ClassSubject classSubject = inspector.clazz("java.lang.Record");
+    assertThat(classSubject, isPresent());
+    if (minify) {
+      assertNotEquals("java.lang.Record", classSubject.getFinalName());
+    } else {
+      assertEquals("com.android.tools.r8.RecordTag", classSubject.getFinalName());
+    }
   }
 }

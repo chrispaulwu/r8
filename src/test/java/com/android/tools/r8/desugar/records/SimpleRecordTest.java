@@ -147,7 +147,7 @@ public class SimpleRecordTest extends TestBase {
     builder
         .compile()
         .inspectWithOptions(
-            RecordTestUtils::assertNoJavaLangRecord,
+            inspector -> RecordTestUtils.assertJavaLangRecordTagPresent(inspector, true),
             options -> options.testing.disableRecordApplicationReaderMap = true)
         .run(parameters.getRuntime(), MAIN_TYPE)
         .assertSuccessWithOutput(EXPECTED_RESULT);
@@ -175,7 +175,7 @@ public class SimpleRecordTest extends TestBase {
     builder
         .compile()
         .inspectWithOptions(
-            RecordTestUtils::assertNoJavaLangRecord,
+            inspector -> RecordTestUtils.assertJavaLangRecordTagPresent(inspector, false),
             options -> options.testing.disableRecordApplicationReaderMap = true)
         .run(parameters.getRuntime(), MAIN_TYPE)
         .assertSuccessWithOutput(EXPECTED_RESULT);
