@@ -218,6 +218,11 @@ public class Minifier {
     public boolean isRenamedByApplyMapping(DexType type) {
       return false;
     }
+
+    @Override
+    public boolean isKeepByProguardRules(DexType type) {
+      return false;
+    }
   }
 
   public static class MinificationPackageNamingStrategy extends BaseMinificationNamingStrategy {
