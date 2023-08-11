@@ -457,6 +457,21 @@ public class ProguardMapMinifier {
     public boolean isRenamedByApplyMapping(DexType type) {
       return mappings.containsKey(type);
     }
+
+    @Override
+    public boolean isKeepByProguardRules(DexType type) {
+      DexClass clazz = appView.appInfo().definitionForWithoutExistenceAssert(type);
+      if (clazz == null) {
+        return false;
+      }
+      if (clazz.isNotProgramClass() && mappings.containsKey(type)) {
+        return false;
+      }
+      if (clazz.isProgramClass()) {
+        return !appView.appInfo().isMinificationAllowed(type);
+      }
+      return false;
+    }
   }
 
   static class ApplyMappingMemberNamingStrategy extends MinifierMemberNamingStrategy {

@@ -9,10 +9,25 @@ import static com.android.tools.r8.utils.DescriptorUtils.computeInnerClassSepara
 import static com.android.tools.r8.utils.DescriptorUtils.getClassBinaryNameFromDescriptor;
 import static com.android.tools.r8.utils.DescriptorUtils.getPackageBinaryNameFromJavaType;
 
+import com.android.tools.r8.code.Format35c;
+import com.android.tools.r8.code.Format3rc;
+import com.android.tools.r8.code.Instruction;
+import com.android.tools.r8.code.InvokeDirect;
+import com.android.tools.r8.code.InvokeDirectRange;
+import com.android.tools.r8.code.InvokeInterface;
+import com.android.tools.r8.code.InvokeInterfaceRange;
+import com.android.tools.r8.code.InvokeStatic;
+import com.android.tools.r8.code.InvokeStaticRange;
+import com.android.tools.r8.code.InvokeSuper;
+import com.android.tools.r8.code.InvokeSuperRange;
+import com.android.tools.r8.code.InvokeVirtual;
+import com.android.tools.r8.code.InvokeVirtualRange;
 import com.android.tools.r8.graph.AppView;
+import com.android.tools.r8.graph.Code;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndField;
 import com.android.tools.r8.graph.DexClassAndMethod;
+import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexProto;
 import com.android.tools.r8.graph.DexString;
@@ -49,6 +64,10 @@ class ClassNameMinifier {
   private final boolean allowMixedCaseNaming;
   private final Predicate<String> isUsed;
 
+  private final Map<String, Set<DexType>> fixClassRenaming = Maps.newHashMap(); // outerClassName -> fixClass dexType
+  private final Map<String, DexType> keepClassRenaming = Maps.newHashMap(); // outerClassName -> keepClass dexType
+
+
   ClassNameMinifier(
       AppView<AppInfoWithLiveness> appView,
       ClassNamingStrategy classNamingStrategy,
@@ -74,6 +93,10 @@ class ClassNameMinifier {
 
   private void setUsedTypeName(String typeName) {
     usedTypeNames.add(allowMixedCaseNaming ? typeName : typeName.toLowerCase());
+  }
+
+  private void removeUsedTypeName(String typeName) {
+    usedTypeNames.remove(allowMixedCaseNaming ? typeName : typeName.toLowerCase());
   }
 
   static class ClassRenaming {
@@ -113,6 +136,11 @@ class ClassNameMinifier {
     }
     timing.end();
 
+    timing.begin("rename-keep-classes");
+    verifyRenamingOfKeepClasses();
+    timing.end();
+
+
     timing.begin("rename-dangling-types");
     for (ProgramOrClasspathClass clazz : classes) {
       renameDanglingTypes(clazz);
@@ -120,6 +148,138 @@ class ClassNameMinifier {
     timing.end();
 
     return new ClassRenaming(Collections.unmodifiableMap(renaming), getPackageRenaming());
+  }
+
+  private void verifyRenamingOfKeepClasses() {
+    System.out.printf("\n");
+    for (String outerClassName: keepClassRenaming.keySet()) {
+      DexType keepDexType = keepClassRenaming.get(outerClassName);
+      DexString keepDescriptor = renaming.get(keepDexType);
+      Set<DexType> fixDexTypes = fixClassRenaming.get(outerClassName);
+      if (fixDexTypes != null && keepDescriptor != null) {
+        String keepPackageName = DescriptorUtils.getPackageNameFromDescriptor(keepDescriptor.toSourceString());
+        for(DexType fixDexType: fixDexTypes) {
+          verifyKeepClassType(fixDexType, keepDescriptor, keepPackageName);
+        }
+      }
+    }
+  }
+
+  private void verifyKeepClassType(DexType fixDexType, DexString keepDescriptor, String keepPackageName) {
+    DexString descriptor = renaming.get(fixDexType);
+    if (descriptor != null && !(keepPackageName.equals(DescriptorUtils.getPackageNameFromDescriptor(descriptor.toSourceString())))) {
+      renaming.replace(fixDexType, fixDexType.descriptor);
+      removeUsedTypeName(descriptor.toString());
+      setUsedTypeName(fixDexType.descriptor.toString());
+
+      System.out.printf("1. Found Class[%s] descriptor[%s] and keep class descriptor[%s] not same, we must keep innerClass\n", fixDexType.toSourceString(), descriptor.toSourceString(),
+              keepDescriptor.toSourceString());
+    }
+  }
+
+//  private v
+
+  private boolean isInvokeInstruction(Instruction instruction) {
+    try {
+      int opcode = instruction.getOpcode();
+      return opcode == InvokeVirtual.OPCODE
+              || opcode == InvokeSuper.OPCODE
+              || opcode == InvokeDirect.OPCODE
+              || opcode == InvokeStatic.OPCODE
+              || opcode == InvokeInterface.OPCODE;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private boolean isInvokeRangeInstruction(Instruction instruction) {
+    try {
+      int opcode = instruction.getOpcode();
+      return opcode == InvokeVirtualRange.OPCODE
+              || opcode == InvokeSuperRange.OPCODE
+              || opcode == InvokeDirectRange.OPCODE
+              || opcode == InvokeStaticRange.OPCODE
+              || opcode == InvokeInterfaceRange.OPCODE;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private void processInvokeRangeInstruction(DexType holderType, Instruction instruction) {
+    assert isInvokeRangeInstruction(instruction);
+
+    Format3rc ins3rc = (Format3rc) instruction;
+    DexMethod method = (DexMethod) ins3rc.BBBB;
+
+    DexClass clazz = appView.definitionFor(method.holder);
+    if (classNamingStrategy.isKeepByProguardRules(method.holder) && clazz != null
+            && (clazz.accessFlags.isPackagePrivate() || clazz.accessFlags.isPrivate())) {
+      DexString keepDescriptor = renaming.get(method.holder);
+      if (keepDescriptor != null) {
+        String keepPackageName = DescriptorUtils.getPackageNameFromDescriptor(keepDescriptor.toSourceString());
+        verifyKeepClassType(holderType, keepDescriptor, keepPackageName);
+      }
+    }
+  }
+
+  private void processInvokeInstruction(DexType holderType, Instruction instruction) {
+    assert isInvokeInstruction(instruction);
+
+    Format35c ins35c = (Format35c) instruction;
+    DexMethod method = (DexMethod) ins35c.BBBB;
+
+    DexClass clazz = appView.definitionFor(method.holder);
+    if (classNamingStrategy.isKeepByProguardRules(method.holder) && clazz != null
+            && (clazz.accessFlags.isPackagePrivate() || clazz.accessFlags.isPrivate())) {
+      DexString keepDescriptor = renaming.get(method.holder);
+      if (keepDescriptor != null) {
+        String keepPackageName = DescriptorUtils.getPackageNameFromDescriptor(keepDescriptor.toSourceString());
+        verifyKeepClassType(holderType, keepDescriptor, keepPackageName);
+      }
+    }
+  }
+
+  private void verifyMethodRefRenamingOfField(DexClassAndField field) {
+    if (field.isProgramField()) {
+      DexClass clazz = appView.definitionFor(field.getReference().type);
+      if (classNamingStrategy.isKeepByProguardRules(field.getReference().type) && clazz != null
+              && (clazz.accessFlags.isPackagePrivate() || clazz.accessFlags.isPrivate())) {
+        DexString keepDescriptor = renaming.get(field.getReference().type);
+        if (keepDescriptor != null) {
+          String keepPackageName = DescriptorUtils.getPackageNameFromDescriptor(keepDescriptor.toSourceString());
+          verifyKeepClassType(field.getHolderType(), keepDescriptor, keepPackageName);
+        }
+      }
+    }
+  }
+
+  private void verifyMethodRefRenamingOfMethod(DexClassAndMethod method) {
+    if (method.getName().toString().equals("access$safeCheck") && "FinderFeedSafeCheckUIC".equals(method.getHolder().getSimpleName())) {
+      System.out.print("1. Found method");
+    }
+    if (method.isProgramMethod()) {
+      DexType dexType = method.getHolderType();
+      Code code = method.getDefinition().getCode();
+      if (code != null && code.isDexCode()) {
+        Instruction[] instructions = code.asDexCode().instructions;
+        for (Instruction instruction : instructions) {
+          if (isInvokeInstruction(instruction)) {
+            processInvokeInstruction(dexType, instruction);
+          } else if (isInvokeRangeInstruction(instruction)) {
+            processInvokeRangeInstruction(dexType, instruction);
+          }
+        }
+      } else if (code != null && code.isCfCode()) {
+        Instruction[] instructions = code.asDexCode().instructions;
+        for (Instruction instruction : instructions) {
+          if (isInvokeInstruction(instruction)) {
+            processInvokeInstruction(dexType, instruction);
+          } else if (isInvokeRangeInstruction(instruction)) {
+            processInvokeRangeInstruction(dexType, instruction);
+          }
+        }
+      }
+    }
   }
 
   private boolean verifyMemberRenamingOfInnerClasses(DexClass clazz, DexString renamed) {
@@ -152,10 +312,12 @@ class ClassNameMinifier {
   }
 
   private void renameDanglingTypesInField(DexClassAndField field) {
+    verifyMethodRefRenamingOfField(field);
     renameDanglingType(field.getReference().type);
   }
 
   private void renameDanglingTypesInMethod(DexClassAndMethod method) {
+    verifyMethodRefRenamingOfMethod(method);
     DexProto proto = method.getReference().proto;
     renameDanglingType(proto.returnType);
     for (DexType type : proto.parameters.values) {
@@ -174,18 +336,58 @@ class ClassNameMinifier {
     }
   }
 
+  private void registerClassAsKeep(DexType type) {
+    DexType outerClassType = getOutClassForType(type);
+    String outerClassSourceName = outerClassType != null ? outerClassType.toSourceString() : type.toSourceString();
+    if (outerClassSourceName != null) {
+      Set<DexType> dexTypes = fixClassRenaming.get(outerClassSourceName);
+      if (dexTypes == null) {
+        dexTypes = Sets.newHashSet();
+      }
+      dexTypes.add(type);
+      fixClassRenaming.put(outerClassSourceName, dexTypes);
+      DexClass clazz = appView.definitionFor(type);
+      if (clazz != null && (clazz.accessFlags.isPackagePrivate() || clazz.accessFlags.isPrivate())) {
+        if (classNamingStrategy.isKeepByProguardRules(type)) {
+          keepClassRenaming.put(outerClassSourceName, type);
+        }
+      }
+    }
+  }
+
   private void registerClassAsUsed(DexType type, DexString descriptor) {
     renaming.put(type, descriptor);
     setUsedTypeName(descriptor.toString());
     if (keepInnerClassStructure) {
       DexType outerClass = getOutClassForType(type);
       if (outerClass != null) {
+        if (type.getInternalName().contains(String.valueOf(INNER_CLASS_SEPARATOR))) {
+          registerClassAsKeep(type);
+          registerClassAsKeep(outerClass);
+        }
         if (!renaming.containsKey(outerClass)
             && classNamingStrategy.reservedDescriptor(outerClass) == null) {
           // The outer class was not previously kept and will not be kept.
           // We have to force keep the outer class now.
           registerClassAsUsed(outerClass, outerClass.descriptor);
-        }
+        } /*else if (!renaming.containsKey(outerClass) &&
+                classNamingStrategy.isKeepByProguardRules(outerClass) &&
+                !(DescriptorUtils.getPackageNameFromDescriptor(descriptor.toSourceString()).equals(
+                        DescriptorUtils.getPackageNameFromDescriptor(outerClass.descriptor.toSourceString())))) {
+          renaming.replace(type, type.descriptor);
+          removeUsedTypeName(descriptor.toString());
+          setUsedTypeName(type.descriptor.toString());
+          System.out.printf("1. Found innerClass[%s] descriptor[%s] and outerClass descriptor[%s] not same, we must keep innerClass\n", type.toSourceString(), descriptor.toSourceString(), outerClass.descriptor.toSourceString());
+        }*//* else if (renaming.containsKey(outerClass) &&
+                !outerClass.descriptor.equals(renaming.get(outerClass)) &&
+                classNamingStrategy.isKeepByProguardRules(type)) {
+          DexString oldDescriptor = renaming.get(outerClass);
+          if (oldDescriptor != null) {
+            removeUsedTypeName(oldDescriptor.toString());
+          }
+          registerClassAsUsed(outerClass, outerClass.descriptor);
+          System.out.printf("2. Found innerClass[%s] descriptor[%s] and outerClass descriptor[%s] not same, we must keep innerClass\n", type.toSourceString(), descriptor.toSourceString(), outerClass.descriptor.toSourceString());
+        }*/
       }
     }
   }
@@ -333,6 +535,8 @@ class ClassNameMinifier {
     DexString reservedDescriptor(DexType type);
 
     boolean isRenamedByApplyMapping(DexType type);
+
+    boolean isKeepByProguardRules(DexType type);
   }
 
   /**
