@@ -112,6 +112,9 @@ def ParseOptions():
       help='Use a custom directory for the test artifacts instead of a'
           ' temporary (which is automatically removed after the test).'
           ' Note that the directory will not be cleared before the test.')
+  result.add_option('--command-cache-dir', '--command_cache_dir',
+      help='Ignored below 8.2',
+      default='')
   result.add_option('--java-home', '--java_home',
       help='Use a custom java version to run tests.')
   result.add_option('--java-max-memory-size', '--java_max_memory_size',
