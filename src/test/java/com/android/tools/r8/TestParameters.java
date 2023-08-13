@@ -109,7 +109,7 @@ public class TestParameters {
   }
 
   public boolean canUseSubTypesInFilledNewArray() {
-    return isDexRuntime() && getApiLevel().isGreaterThanOrEqualTo(AndroidApiLevel.U);
+    return isDexRuntime() && getApiLevel().isGreaterThan(AndroidApiLevel.U);
   }
 
   public boolean runtimeWithClassValue() {
