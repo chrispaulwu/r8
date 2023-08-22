@@ -37,7 +37,6 @@ import com.android.tools.r8.ir.code.InvokeDirect;
 import com.android.tools.r8.ir.code.InvokeStatic;
 import com.android.tools.r8.ir.code.MemberType;
 import com.android.tools.r8.ir.code.NewInstance;
-import com.android.tools.r8.ir.code.Phi;
 import com.android.tools.r8.ir.code.StaticGet;
 import com.android.tools.r8.ir.code.StaticPut;
 import com.android.tools.r8.ir.code.Value;
@@ -130,7 +129,6 @@ public class RedundantFieldLoadAndStoreElimination {
       affectedValues.addAll(redundant.outValue().affectedValues());
       redundant.outValue().replaceUsers(value);
       it.removeOrReplaceByDebugLocalRead();
-      value.uniquePhiUsers().forEach(Phi::removeTrivialPhi);
     }
 
     @Override
@@ -443,6 +441,12 @@ public class RedundantFieldLoadAndStoreElimination {
       activeStates.recordActiveStateOnBlockExit(end, activeState);
     }
     processInstructionsToRemove();
+    affectedValues.forEach(
+        value -> {
+          if (value.isPhi()) {
+            value.asPhi().removeTrivialPhi();
+          }
+        });
     assumeRemover.removeMarkedInstructions().finish();
     assert code.isConsistentSSA(appView);
   }
