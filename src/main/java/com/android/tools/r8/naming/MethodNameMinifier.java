@@ -8,6 +8,7 @@ import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndMethod;
 import com.android.tools.r8.graph.DexEncodedMethod;
 import com.android.tools.r8.graph.DexMethod;
+import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.MethodAccessInfoCollection;
@@ -17,6 +18,7 @@ import com.android.tools.r8.graph.TopDownClassHierarchyTraversal;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.utils.ConsumerUtils;
 import com.android.tools.r8.utils.InternalOptions;
+import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.ThreadUtils;
 import com.android.tools.r8.utils.Timing;
 import com.google.common.collect.BiMap;
@@ -285,10 +287,12 @@ class MethodNameMinifier {
         System.out.printf("Found no same assigned and reserved name, method: %s, reservedName: %s, assignedName:%s\n", method.getReference().toSourceString(), newName, assignedName);
         newName = assignedName;
       } else {
+        boolean isAvailableForInterface = false;
         Set<DexString> reservedNamesFor = state.getReservedNamesFor(method.getReference());
         if (holder != null && reservedNamesFor != null && reservedNamesFor.size() > 1) {
           for (DexString candidate : reservedNamesFor) {
             if (state.isAvailableForInterface(candidate, holder, method, minifierState) && state.isAvailable(candidate, method.getReference())) {
+              isAvailableForInterface = true;
               System.out.printf("Found multi reservedNames and match interface's candidate: %s, reservedName: %s, method holder: %s, method: %s\n", candidate.toString(), newName, holder.getSimpleName(), method.getReference().toSourceString());
               newName = candidate;
               if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method.getReference())) { //假设interface的method被keep，这时newName=method.getName()， 导致renaming无法被更新，
@@ -303,6 +307,14 @@ class MethodNameMinifier {
               }
               break;
             }
+          }
+        }
+        if (!isAvailableForInterface && holder instanceof DexProgramClass) {
+          DexClassAndMethod superTarget = appView.appInfo().lookupSuperTarget(method.getReference(), (DexProgramClass) holder);
+          if (superTarget != null && superTarget.getHolder() instanceof DexProgramClass && assignedName != null && !newName.equals(assignedName) && assignedName.equals(renaming.get(superTarget.getReference()))) {
+            System.out.printf("Found assignedName match superClass's assignedName: %s, newName: %s, method holder: %s, method: %s, superMethod: %s\n",
+                    assignedName, newName, holder.getSimpleName(), method.getReference().toSourceString(), superTarget.getReference().toSourceString());
+            newName = assignedName;
           }
         }
       }
