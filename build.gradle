@@ -286,8 +286,8 @@ dependencies {
     kotlinR8TestResourcesCompileOnly "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
     errorprone("com.google.errorprone:error_prone_core:$errorproneVersion")
 
-    keepannoCompile group: 'org.ow2.asm', name: 'asm', version: asmVersion
-    keepannoCompile "com.google.guava:guava:$guavaVersion"
+    keepannoImplementation group: 'org.ow2.asm', name: 'asm', version: asmVersion
+    keepannoImplementation "com.google.guava:guava:$guavaVersion"
 }
 
 def r8LibPath = "$buildDir/libs/r8lib.jar"

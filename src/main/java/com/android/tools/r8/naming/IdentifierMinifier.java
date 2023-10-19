@@ -16,7 +16,6 @@ import com.android.tools.r8.graph.Code;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexEncodedField;
 import com.android.tools.r8.graph.DexEncodedMethod;
-import com.android.tools.r8.graph.DexReference;
 import com.android.tools.r8.graph.DexString;
 import com.android.tools.r8.graph.DexType;
 import com.android.tools.r8.graph.DexValue;
@@ -30,11 +29,6 @@ import com.android.tools.r8.utils.DescriptorUtils;
 import com.android.tools.r8.utils.ListUtils;
 import com.android.tools.r8.utils.ThreadUtils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -170,38 +164,38 @@ class IdentifierMinifier {
     }
   }
 
-  private void printAllMethodRefs(Instruction[] instructions) throws FileNotFoundException {
-    PrintStream ps = null;
-    try {
-      File outputFile = new File("/Users/wuzhengshan/Desktop/amm/toolkit-box/toolkit-box-samples/testproguard/dex_test/error.txt");
-      if (!outputFile.exists()) {
-        outputFile.getParentFile().mkdirs();
-        outputFile.createNewFile();
-      }
-      ps = new PrintStream(new FileOutputStream(outputFile));
-      ps.println(lens.toString());
-      ps.println("===========================================");
-
-      if (instructions != null) {
-        for (int i = 0; i < instructions.length; ++i) {
-          Instruction instruction = instructions[i];
-          if (instruction.isDexItemBasedConstString()) {
-            DexItemBasedConstString cnst = instruction.asDexItemBasedConstString();
-            DexReference rewritten = appView.graphLens().lookupReference( cnst.getItem());
-            if (rewritten != null) {
-              ps.println(rewritten.toSourceString());
-            }
-          }
-        }
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (ps != null) {
-        ps.close();
-      }
-    }
-  }
+//  private void printAllMethodRefs(DexInstruction[] instructions) throws FileNotFoundException {
+//    PrintStream ps = null;
+//    try {
+//      File outputFile = new File("/Users/wuzhengshan/Desktop/amm/toolkit-box/toolkit-box-samples/testproguard/dex_test/error.txt");
+//      if (!outputFile.exists()) {
+//        outputFile.getParentFile().mkdirs();
+//        outputFile.createNewFile();
+//      }
+//      ps = new PrintStream(new FileOutputStream(outputFile));
+//      ps.println(lens.toString());
+//      ps.println("===========================================");
+//
+//      if (instructions != null) {
+//        for (int i = 0; i < instructions.length; ++i) {
+//          DexInstruction instruction = instructions[i];
+//          if (instruction.isDexItemBasedConstString()) {
+//            DexItemBasedConstString cnst = instruction.asDexItemBasedConstString();
+//            DexReference rewritten = appView.graphLens().lookupReference( cnst.getItem());
+//            if (rewritten != null) {
+//              ps.println(rewritten.toSourceString());
+//            }
+//          }
+//        }
+//      }
+//    } catch (IOException e) {
+//      e.printStackTrace();
+//    } finally {
+//      if (ps != null) {
+//        ps.close();
+//      }
+//    }
+//  }
 
   private void replaceDexItemBasedConstStringInMethod(ProgramMethod programMethod) {
     Code code = programMethod.getDefinition().getCode();

@@ -151,4 +151,9 @@ public class VarHandleDesugaringRewritingNamingLens extends NonIdentityNamingLen
   public boolean verifyRenamingConsistentWithResolution(DexMethod item) {
     return namingLens.verifyRenamingConsistentWithResolution(item);
   }
+
+  @Override
+  public void recordName(DexMethod method, DexString renamedName) {
+
+  }
 }

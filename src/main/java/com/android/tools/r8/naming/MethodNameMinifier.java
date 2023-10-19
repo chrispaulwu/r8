@@ -18,7 +18,6 @@ import com.android.tools.r8.graph.TopDownClassHierarchyTraversal;
 import com.android.tools.r8.shaking.AppInfoWithLiveness;
 import com.android.tools.r8.utils.ConsumerUtils;
 import com.android.tools.r8.utils.InternalOptions;
-import com.android.tools.r8.utils.StringUtils;
 import com.android.tools.r8.utils.ThreadUtils;
 import com.android.tools.r8.utils.Timing;
 import com.google.common.collect.BiMap;
@@ -295,11 +294,11 @@ class MethodNameMinifier {
               isAvailableForInterface = true;
               System.out.printf("Found multi reservedNames and match interface's candidate: %s, reservedName: %s, method holder: %s, method: %s\n", candidate.toString(), newName, holder.getSimpleName(), method.getReference().toSourceString());
               newName = candidate;
-              if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method.getReference())) { //假设interface的method被keep，这时newName=method.getName()， 导致renaming无法被更新，
+              if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method)) { //假设interface的method被keep，这时newName=method.getName()， 导致renaming无法被更新，
                 DexClassAndMethod interfaceResult = appView.appInfo().lookupMaximallySpecificMethod(holder, method.getReference());
                 if (interfaceResult != null) {
                   DexMethod dexMethod = interfaceResult.getReference();
-                  if (dexMethod != null && !appView.appInfo().isMinificationAllowed(dexMethod)) {
+                  if (dexMethod != null && !appView.appInfo().isMinificationAllowed(interfaceResult.getDefinition())) {
                     System.out.printf("Found interface's method candidate: %s, method: %s\n", candidate, dexMethod.toSourceString());
                     keepRenaming.put(method.getReference(), newName);
                   }
@@ -310,7 +309,7 @@ class MethodNameMinifier {
           }
         }
         if (!isAvailableForInterface && holder instanceof DexProgramClass) {
-          DexClassAndMethod superTarget = appView.appInfo().lookupSuperTarget(method.getReference(), (DexProgramClass) holder);
+          DexClassAndMethod superTarget = appView.appInfo().lookupSuperTarget(method.getReference(), (DexProgramClass) holder, appView);
           if (superTarget != null && superTarget.getHolder() instanceof DexProgramClass && assignedName != null && !newName.equals(assignedName) && assignedName.equals(renaming.get(superTarget.getReference()))) {
             System.out.printf("Found assignedName match superClass's assignedName: %s, newName: %s, method holder: %s, method: %s, superMethod: %s\n",
                     assignedName, newName, holder.getSimpleName(), method.getReference().toSourceString(), superTarget.getReference().toSourceString());
@@ -321,7 +320,7 @@ class MethodNameMinifier {
     }
     if (method.getName() != newName) {
       renaming.put(method.getReference(), newName);
-    } else if (!appView.appInfo().isMinificationAllowed(method.getReference())) {
+    } else if (!appView.appInfo().isMinificationAllowed(method)) {
       keepRenaming.put(method.getReference(), newName);
     }
     state.addRenaming(newName, method);

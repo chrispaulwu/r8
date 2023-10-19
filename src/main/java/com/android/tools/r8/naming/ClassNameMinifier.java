@@ -9,19 +9,19 @@ import static com.android.tools.r8.utils.DescriptorUtils.computeInnerClassSepara
 import static com.android.tools.r8.utils.DescriptorUtils.getClassBinaryNameFromDescriptor;
 import static com.android.tools.r8.utils.DescriptorUtils.getPackageBinaryNameFromJavaType;
 
-import com.android.tools.r8.code.Format35c;
-import com.android.tools.r8.code.Format3rc;
-import com.android.tools.r8.code.Instruction;
-import com.android.tools.r8.code.InvokeDirect;
-import com.android.tools.r8.code.InvokeDirectRange;
-import com.android.tools.r8.code.InvokeInterface;
-import com.android.tools.r8.code.InvokeInterfaceRange;
-import com.android.tools.r8.code.InvokeStatic;
-import com.android.tools.r8.code.InvokeStaticRange;
-import com.android.tools.r8.code.InvokeSuper;
-import com.android.tools.r8.code.InvokeSuperRange;
-import com.android.tools.r8.code.InvokeVirtual;
-import com.android.tools.r8.code.InvokeVirtualRange;
+import com.android.tools.r8.dex.code.DexFormat35c;
+import com.android.tools.r8.dex.code.DexFormat3rc;
+import com.android.tools.r8.dex.code.DexInstruction;
+import com.android.tools.r8.dex.code.DexInvokeDirect;
+import com.android.tools.r8.dex.code.DexInvokeDirectRange;
+import com.android.tools.r8.dex.code.DexInvokeInterface;
+import com.android.tools.r8.dex.code.DexInvokeInterfaceRange;
+import com.android.tools.r8.dex.code.DexInvokeStatic;
+import com.android.tools.r8.dex.code.DexInvokeStaticRange;
+import com.android.tools.r8.dex.code.DexInvokeSuper;
+import com.android.tools.r8.dex.code.DexInvokeSuperRange;
+import com.android.tools.r8.dex.code.DexInvokeVirtual;
+import com.android.tools.r8.dex.code.DexInvokeVirtualRange;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.Code;
 import com.android.tools.r8.graph.DexClass;
@@ -180,36 +180,36 @@ class ClassNameMinifier {
 
 //  private v
 
-  private boolean isInvokeInstruction(Instruction instruction) {
+  private boolean isInvokeInstruction(DexInstruction instruction) {
     try {
       int opcode = instruction.getOpcode();
-      return opcode == InvokeVirtual.OPCODE
-              || opcode == InvokeSuper.OPCODE
-              || opcode == InvokeDirect.OPCODE
-              || opcode == InvokeStatic.OPCODE
-              || opcode == InvokeInterface.OPCODE;
+      return opcode == DexInvokeVirtual.OPCODE
+              || opcode == DexInvokeSuper.OPCODE
+              || opcode == DexInvokeDirect.OPCODE
+              || opcode == DexInvokeStatic.OPCODE
+              || opcode == DexInvokeInterface.OPCODE;
     } catch (Exception e) {
       return false;
     }
   }
 
-  private boolean isInvokeRangeInstruction(Instruction instruction) {
+  private boolean isInvokeRangeInstruction(DexInstruction instruction) {
     try {
       int opcode = instruction.getOpcode();
-      return opcode == InvokeVirtualRange.OPCODE
-              || opcode == InvokeSuperRange.OPCODE
-              || opcode == InvokeDirectRange.OPCODE
-              || opcode == InvokeStaticRange.OPCODE
-              || opcode == InvokeInterfaceRange.OPCODE;
+      return opcode == DexInvokeVirtualRange.OPCODE
+              || opcode == DexInvokeSuperRange.OPCODE
+              || opcode == DexInvokeDirectRange.OPCODE
+              || opcode == DexInvokeStaticRange.OPCODE
+              || opcode == DexInvokeInterfaceRange.OPCODE;
     } catch (Exception e) {
       return false;
     }
   }
 
-  private void processInvokeRangeInstruction(DexType holderType, Instruction instruction) {
+  private void processInvokeRangeInstruction(DexType holderType, DexInstruction instruction) {
     assert isInvokeRangeInstruction(instruction);
 
-    Format3rc ins3rc = (Format3rc) instruction;
+    DexFormat3rc ins3rc = (DexFormat3rc) instruction;
     DexMethod method = (DexMethod) ins3rc.BBBB;
 
     DexClass clazz = appView.definitionFor(method.holder);
@@ -223,10 +223,10 @@ class ClassNameMinifier {
     }
   }
 
-  private void processInvokeInstruction(DexType holderType, Instruction instruction) {
+  private void processInvokeInstruction(DexType holderType, DexInstruction instruction) {
     assert isInvokeInstruction(instruction);
 
-    Format35c ins35c = (Format35c) instruction;
+    DexFormat35c ins35c = (DexFormat35c) instruction;
     DexMethod method = (DexMethod) ins35c.BBBB;
 
     DexClass clazz = appView.definitionFor(method.holder);
@@ -262,8 +262,8 @@ class ClassNameMinifier {
       DexType dexType = method.getHolderType();
       Code code = method.getDefinition().getCode();
       if (code != null && code.isDexCode()) {
-        Instruction[] instructions = code.asDexCode().instructions;
-        for (Instruction instruction : instructions) {
+        DexInstruction[] instructions = code.asDexCode().instructions;
+        for (DexInstruction instruction : instructions) {
           if (isInvokeInstruction(instruction)) {
             processInvokeInstruction(dexType, instruction);
           } else if (isInvokeRangeInstruction(instruction)) {
@@ -271,8 +271,8 @@ class ClassNameMinifier {
           }
         }
       } else if (code != null && code.isCfCode()) {
-        Instruction[] instructions = code.asDexCode().instructions;
-        for (Instruction instruction : instructions) {
+        DexInstruction[] instructions = code.asDexCode().instructions;
+        for (DexInstruction instruction : instructions) {
           if (isInvokeInstruction(instruction)) {
             processInvokeInstruction(dexType, instruction);
           } else if (isInvokeRangeInstruction(instruction)) {
