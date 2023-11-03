@@ -459,7 +459,7 @@ public final class R8Command extends BaseCompilerCommand {
      */
     @Deprecated
     public Builder setEnableExperimentalMissingLibraryApiModeling(boolean enable) {
-      this.enableMissingLibraryApiModeling = enable;
+      this.enableMissingLibraryApiModeling = false;
       return self();
     }
 
