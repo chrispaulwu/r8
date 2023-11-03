@@ -406,7 +406,7 @@ public class SyntheticNaming {
   /** Method name when generating synthetic methods in a class. */
   static final String INTERNAL_SYNTHETIC_METHOD_NAME = "m";
 
-  static String getPrefixForExternalSyntheticType(SyntheticKind kind, DexType type) {
+  public static String getPrefixForExternalSyntheticType(SyntheticKind kind, DexType type) {
     String binaryName = type.toBinaryName();
     if (kind.isGlobal()) {
       return binaryName;
