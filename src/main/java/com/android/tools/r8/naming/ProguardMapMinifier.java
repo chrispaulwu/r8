@@ -137,7 +137,7 @@ public class ProguardMapMinifier {
         new MethodNameMinifier(appView, nameStrategy)
             .computeRenaming(interfaces, subtypingInfo, executorService, timing);
 
-    filterAdditionalMethodNamings(methodRenaming.keepRenaming);
+    filterAdditionalMethodNamings(methodRenaming.keepRenaming, methodRenaming.fixUsedRenaming);
 
     // Amend the method renamings with the default interface methods.
     methodRenaming.renaming.putAll(defaultInterfaceMethodImplementationNames);
@@ -164,8 +164,9 @@ public class ProguardMapMinifier {
     return lens;
   }
 
-  private void filterAdditionalMethodNamings(Map<DexMethod, DexString> keepRenaming) {
+  private void filterAdditionalMethodNamings(Map<DexMethod, DexString> keepRenaming, Map<DexMethod, DexString> fixUsedRenaming) {
     additionalMethodNamings.replaceAll(keepRenaming::getOrDefault);
+    additionalMethodNamings.replaceAll(fixUsedRenaming::getOrDefault);
   }
 
   private void computeMapping(
@@ -480,6 +481,18 @@ public class ProguardMapMinifier {
         assert appView.appInfo().isMinificationAllowed(method);
         nextName = super.next(method, internalState, isAvailable);
       }
+      assert nextName == reference.name || !method.isInitializer();
+      assert nextName == reference.name || !holder.isAnnotation();
+      return nextName;
+    }
+
+    @Override
+    public DexString nextNewName(DexEncodedMethod method, InternalNamingState internalState, BiPredicate<DexString, DexMethod> isAvailable) {
+      DexMethod reference = method.getReference();
+      DexClass holder = appView.definitionForHolder(reference);
+      assert holder != null;
+      assert appView.appInfo().isMinificationAllowed(method);
+      DexString nextName = super.next(method, internalState, isAvailable);
       assert nextName == reference.name || !method.isInitializer();
       assert nextName == reference.name || !holder.isAnnotation();
       return nextName;

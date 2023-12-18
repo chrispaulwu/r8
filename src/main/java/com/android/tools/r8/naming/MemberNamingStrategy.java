@@ -19,6 +19,11 @@ public interface MemberNamingStrategy {
       InternalNamingState internalState,
       BiPredicate<DexString, DexMethod> isAvailable);
 
+  DexString nextNewName(
+          DexEncodedMethod method,
+          InternalNamingState internalState,
+          BiPredicate<DexString, DexMethod> isAvailable);
+
   DexString next(
       ProgramField field,
       InternalNamingState internalState,

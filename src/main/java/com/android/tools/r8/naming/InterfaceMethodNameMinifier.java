@@ -22,6 +22,7 @@ import com.google.common.base.Equivalence;
 import com.google.common.base.Equivalence.Wrapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -141,6 +143,17 @@ class InterfaceMethodNameMinifier {
 
     void addReservationType(DexType type) {
       this.reservationTypes.add(type);
+    }
+
+    void removeReserveName(DexString reservedName, DexEncodedMethod method) {
+      forAll(
+              s -> {
+                s.reservationTypes.forEach(
+                        resType -> {
+                          MethodReservationState<?> state = minifierState.getReservationState(resType);
+                          state.removeReserveName(reservedName, method);
+                        });
+              });
     }
 
     void reserveName(DexString reservedName, DexEncodedMethod method) {
@@ -283,12 +296,18 @@ class InterfaceMethodNameMinifier {
       return reservedName;
     }
 
-    void reserveName(DexString reservedName) {
+    void reserveName(Map<String, Set<Wrapper<DexEncodedMethod>>> usedBy,
+                     InterfaceMethodGroupState groupState,
+                     Wrapper<DexEncodedMethod> interfaceMethodGroup,
+                     DexString reservedName) {
+      if (!verifyAllMethodsUniqueRepresentedIn(usedBy, groupState, interfaceMethodGroup, reservedName)) {
+        return;
+      }
       // The proposed reserved name is basically a suggestion. Try to reserve it in as many states
       // as possible.
       forEachState(
           (method, state) -> {
-              DexString stateReserved = state.getReservedName(method);
+            DexString stateReserved = state.getReservedName(method);
             if (stateReserved != null) {
               state.reserveName(stateReserved, method);
               minifierState.putRenaming(method, stateReserved);
@@ -297,6 +316,98 @@ class InterfaceMethodNameMinifier {
               minifierState.putRenaming(method, reservedName);
             }
           });
+    }
+
+    boolean verifyAllMethodsUniqueRepresentedIn(Map<String, Set<Wrapper<DexEncodedMethod>>> usedBy,
+                                                InterfaceMethodGroupState groupState,
+                                                Wrapper<DexEncodedMethod> interfaceMethodGroup,
+                                                DexString reservedName) {
+      AtomicBoolean satisfy = new AtomicBoolean(true);
+      if (appView.options().getProguardConfiguration().hasApplyMappingFile()) {
+        forEachState(
+                (iFaceMethod, state) -> {
+                  DexString stateReserved = state.getReservedName(iFaceMethod);
+                  DexString methodReservedName = stateReserved != null ? stateReserved: reservedName;
+                  Wrapper<DexEncodedMethod> wrappedIFaceMethod = definitionEquivalence.wrap(iFaceMethod);
+
+                  assert iFaceMethod != null;
+                  DexType iFaceType = iFaceMethod.getHolderType();
+
+                  subtypingInfo
+                          .subtypes(iFaceType)
+                          .forEach(
+                                  subType -> {
+                                    DexClass subClass = appView.contextIndependentDefinitionFor(subType);
+                                    if (subClass == null || subClass.isInterface()) {
+                                      return;
+                                    }
+                                    DexType frontierType = minifierState.getFrontier(subType);
+                                    if (minifierState.getReservationState(frontierType) == null) {
+                                      // The reservation state should already be added. If it does not exist
+                                      // it is because it is not reachable from the type hierarchy of program
+                                      // classes and we can therefore disregard this interface.
+                                      return;
+                                    }
+                                    subClass.methods().forEach( subMethod -> { // DexClassAndMethod interfaceResult = appView.appInfo().lookupMaximallySpecificMethod(subClass, subMethod.getReference());
+                                      if ((subMethod.getName() == iFaceMethod.getName() && subMethod.getProto() == iFaceMethod.getProto()) && groupState.containsReservation(wrappedIFaceMethod.get(), frontierType) ) {
+                                        Wrapper<DexEncodedMethod> wrappedMethod = definitionEquivalence.wrap(subMethod);
+
+                                        String key = methodReservedName + "_" + subType.getInternalName();
+                                        Set<Wrapper<DexEncodedMethod>> innerUsedBy = usedBy.get(key);
+                                        if (innerUsedBy != null) {
+                                          for (Wrapper<DexEncodedMethod> methodWrapper : innerUsedBy) {
+                                            DexEncodedMethod usedDexMethod = methodWrapper.get();
+                                            assert usedDexMethod != null;
+
+                                            if (subMethod.getProto().equals(usedDexMethod.getProto()) && !methodWrapper.equals(wrappedMethod)) {
+                                              System.out.printf("Find sub interface method: %s's reservedName: %s used by other method:%s\n", subMethod.toSourceString(), methodReservedName, usedDexMethod.toSourceString());
+                                              satisfy.set(false);
+                                              return;
+                                            }
+                                          }
+                                        }
+                                        usedBy.computeIfAbsent(key, ignore -> new HashSet<>()).add(wrappedMethod);
+                                      }
+                                    });
+                                  });
+
+
+                  if (wrappedIFaceMethod.get() != null && groupState.containsReservation(wrappedIFaceMethod.get(), iFaceType) ) {
+                    if (methodReservedName != null) {
+                      String key = methodReservedName + "_" + iFaceType.getInternalName();
+                      Set<Wrapper<DexEncodedMethod>> innerUsedBy = usedBy.get(key);
+                      if (innerUsedBy != null) {
+                        for (Wrapper<DexEncodedMethod> methodWrapper : innerUsedBy) {
+                          DexEncodedMethod usedDexMethod = methodWrapper.get();
+                          assert usedDexMethod != null;
+                          if (iFaceMethod.getProto().equals(usedDexMethod.getProto()) && !methodWrapper.equals(wrappedIFaceMethod)) {
+                            satisfy.set(false);
+                            System.out.printf("Find interface method: %s's reservedName: %s used by other method:%s\n", iFaceMethod.toSourceString(), methodReservedName, usedDexMethod.toSourceString());
+                            return;
+                          }
+                        }
+                      }
+                      usedBy.computeIfAbsent(key, ignore -> new HashSet<>()).add(wrappedIFaceMethod);
+                    }
+                  }
+                });
+      }
+      if (!satisfy.get()) {
+        forEachState(
+                (method, state) -> {
+                  DexString stateReserved = state.getReservedName(method);
+                  if (stateReserved != null) {
+                    state.removeReserveName(stateReserved, method);
+                  } else {
+                    state.removeReserveName(reservedName, method);
+                  }
+                  state.reserveName(method.getName(), method);
+//                  state.addRenaming(method.getName(), method);
+                  minifierState.forcePutRenaming(method, method.getName());
+                });
+        return false;
+      }
+      return true;
     }
 
     boolean isAvailable(DexString candidate) {
@@ -548,19 +659,22 @@ class InterfaceMethodNameMinifier {
     // It is important that this entire phase is run before given new names, to ensure all
     // reservations are propagated to all naming states.
     List<Wrapper<DexEncodedMethod>> nonReservedMethodGroups = new ArrayList<>();
+    Map<String, Set<Wrapper<DexEncodedMethod>>> usedBy = new HashMap<>();
+
     for (Wrapper<DexEncodedMethod> interfaceMethodGroup : interfaceMethodGroups) {
       InterfaceMethodGroupState groupState = globalStateMap.get(interfaceMethodGroup);
       assert groupState != null;
       DexString reservedName = groupState.getReservedName();
       if (reservedName == null) {
         nonReservedMethodGroups.add(interfaceMethodGroup);
-      } else {
+      } else {  // 如果存在某个方法在applymapping中
         // Propagate reserved name to all states.
-        groupState.reserveName(reservedName);
+        groupState.reserveName(usedBy, groupState, interfaceMethodGroup, reservedName);
       }
     }
+    usedBy.clear();
     timing.end();
-//    globalStateMap.values().stream().filter(it -> it.methodStates.keySet().stream().filter(it1 -> it1.toSourceString().contains("FinderWebViewHelper")).collect(Collectors.toList()).size() > 0).collect(Collectors.toList())
+
     timing.begin("Rename in groups"); //对于无法保留的interface Name(比如新增的interface method， 但是子类存在该Name)， 则需要重新进行rename
     for (Wrapper<DexEncodedMethod> interfaceMethodGroup : nonReservedMethodGroups) {
       InterfaceMethodGroupState groupState = globalStateMap.get(interfaceMethodGroup);
@@ -638,27 +752,29 @@ class InterfaceMethodNameMinifier {
 
   private void computeReservationFrontiersForAllImplementingClasses(Iterable<DexClass> interfaces) {
     interfaces.forEach(
-        iface ->
-            subtypingInfo
-                .subtypes(iface.getType())
-                .forEach(
-                    subType -> {
-                      DexClass subClass = appView.contextIndependentDefinitionFor(subType);
-                      if (subClass == null || subClass.isInterface()) {
-                        return;
-                      }
-                      DexType frontierType = minifierState.getFrontier(subType);
-                      if (minifierState.getReservationState(frontierType) == null) {
-                        // The reservation state should already be added. If it does not exist
-                        // it is because it is not reachable from the type hierarchy of program
-                        // classes and we can therefore disregard this interface.
-                        return;
-                      }
-                      InterfaceReservationState iState = interfaceStateMap.get(iface.getType());
-                      if (iState != null) {
-                        iState.addReservationType(frontierType);
-                      }
-                    }));
+        iface -> {
+          subtypingInfo
+                  .subtypes(iface.getType())
+                  .forEach(
+                          subType -> {
+                            DexClass subClass = appView.contextIndependentDefinitionFor(subType);
+                            if (subClass == null || subClass.isInterface()) {
+                              return;
+                            }
+                            DexType frontierType = minifierState.getFrontier(subType);
+                            if (minifierState.getReservationState(frontierType) == null) {
+                              // The reservation state should already be added. If it does not exist
+                              // it is because it is not reachable from the type hierarchy of program
+                              // classes and we can therefore disregard this interface.
+                              return;
+                            }
+                            InterfaceReservationState iState = interfaceStateMap.get(iface.getType());
+                            if (iState != null) {
+                              iState.addReservationType(frontierType);
+                            }
+                          });
+        });
+
   }
 
   private boolean verifyAllCallSitesAreRepresentedIn(List<Wrapper<DexEncodedMethod>> groups) {
@@ -702,7 +818,6 @@ class InterfaceMethodNameMinifier {
 
   void addInnerRenaming(DexType resType, DexString newName, DexEncodedMethod method) {
     minifierState.getNamingState(resType).addRenaming(newName, method); //这里获取所有同类型的interface NameState进行remaping校正
-//         minifierState.getReservationState(resType).fixRenaming(newName, method); //这里获取所有同类型的subType NameState进行remaping校正
   }
 
   private void print(DexMethod method, Set<DexEncodedMethod> sourceMethods, PrintStream out) {

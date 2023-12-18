@@ -296,6 +296,16 @@ public class Minifier {
     }
 
     @Override
+    public DexString nextNewName(DexEncodedMethod method, InternalNamingState internalState, BiPredicate<DexString, DexMethod> isAvailable) {
+      assert checkAllowMemberRenaming(method.getHolderType());
+      DexString candidate;
+      do {
+        candidate = getNextName(internalState);
+      } while (!isAvailable.test(candidate, method.getReference()));
+      return candidate;
+    }
+
+    @Override
     public DexString next(
         ProgramField field,
         InternalNamingState internalState,

@@ -13,7 +13,7 @@ import com.android.tools.r8.ir.conversion.LensCodeRewriterUtils;
 import com.android.tools.r8.utils.structural.StructuralSpecification;
 import java.nio.ShortBuffer;
 
-abstract class DexSgetOrSput extends DexFormat21c<DexField> {
+public abstract class DexSgetOrSput extends DexFormat21c<DexField> {
 
   DexSgetOrSput(int high, BytecodeStream stream, DexField[] map) {
     super(high, stream, map);

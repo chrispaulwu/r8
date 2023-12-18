@@ -48,6 +48,10 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
         this, this.keyTransform, this.namingStrategy, frontierReservationState);
   }
 
+  DexString newNameFor(DexEncodedMethod method) {
+    return nextNewName(method, this::isAvailable);
+  }
+
   DexString newOrReservedNameFor(DexEncodedMethod method, MethodNameMinifier.State minifierState, DexClass holder) {
     return newOrReservedNameFor(method, minifierState, this::isAvailable, holder);
   }
@@ -85,7 +89,7 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
       }
     } else if (holder != null && reservedNamesFor != null && reservedNamesFor.size() > 1) {
       for (DexString candidate : reservedNamesFor) {
-        if (isAvailableForInterface(candidate, holder, method, minifierState) && isAvailable(candidate, method.getReference())) {
+        if (isReservedAvailableForInterface(candidate, holder, method, minifierState) && isAvailable(candidate, method.getReference())) {
            System.out.printf("Found multi reservedNames and match interface's candidate: %s, method holder: %s, method: %s\n", candidate.toString(), holder.getSimpleName(), method.getReference().toSourceString());
            return candidate;
         }
@@ -94,17 +98,24 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
     return nextName(method, isAvailable);
   }
 
-  boolean isAvailableForInterface(DexString candidate, DexClass holder, DexEncodedMethod method, MethodNameMinifier.State minifierState) {
-    return holder.getInterfaces().stream().anyMatch(iface -> isMatched(iface, candidate, method, minifierState));
+  boolean isReservedAvailableForInterface(DexString candidate, DexClass holder, DexEncodedMethod method, MethodNameMinifier.State minifierState) {
+    return holder.getInterfaces().stream().anyMatch(iface -> isReservedMatched(iface, candidate, method, minifierState));
   }
 
-  private boolean isMatched(DexType iface, DexString candidate, DexEncodedMethod method, MethodNameMinifier.State minifierState) {
+  private boolean isReservedMatched(DexType iface, DexString candidate, DexEncodedMethod method, MethodNameMinifier.State minifierState) {
     MethodReservationState<?> state = minifierState.getReservationState(iface);
     if (state != null) {
       Set<DexString> candidates = state.getReservedNamesFor(method.getReference());
       return candidates != null && candidates.contains(candidate);
     }
     return false;
+  }
+
+  DexString nextNewName(DexEncodedMethod method, BiPredicate<DexString, DexMethod> isAvailable) {
+    InternalNewNameState internalState = getOrCreateInternalState(method.getReference());
+    DexString newName = namingStrategy.nextNewName(method, internalState, isAvailable);
+    assert newName != null;
+    return newName;
   }
 
   DexString nextName(DexEncodedMethod method, BiPredicate<DexString, DexMethod> isAvailable) {
@@ -170,7 +181,7 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
     return containsReserved;
   }
 
-  private Set<Wrapper<DexMethod>> getUsedBy(DexString name, DexMethod method) {
+  public Set<Wrapper<DexMethod>> getUsedBy(DexString name, DexMethod method) {
     InternalNewNameState internalState = getInternalState(method);
     Set<Wrapper<DexMethod>> nameUsedBy = null;
     if (internalState != null) {

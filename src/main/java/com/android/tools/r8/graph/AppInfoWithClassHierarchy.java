@@ -680,6 +680,25 @@ public class AppInfoWithClassHierarchy extends AppInfo {
     return lookupSuperTarget(method, context.getHolder(), appView, appInfo);
   }
 
+  public DexClassAndMethod lookupInterfaceTarget(
+          DexMethod method,
+          DexProgramClass context,
+          AppView<? extends AppInfoWithClassHierarchy> appView) {
+    for (DexType iface : context.getInterfaces()) {
+      MethodResolutionResult.SingleResolutionResult<?> singleIfaceResult =
+              appView
+                      .appInfo()
+                      .resolveMethodOn(iface, method, true)
+                      .asSingleResolution();
+      if (singleIfaceResult != null && singleIfaceResult
+              .getResolvedMethod()
+              .isAtLeastAsVisibleAsOtherInSameHierarchy(method.lookupOnClass(context), appView)) {
+          return singleIfaceResult.getResolutionPair();
+      }
+    }
+    return null;
+  }
+
   /**
    * Lookup direct method following the super chain from the holder of {@code method}.
    *

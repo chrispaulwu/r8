@@ -11,6 +11,8 @@ import static com.android.tools.r8.utils.DescriptorUtils.getPackageBinaryNameFro
 
 import com.android.tools.r8.dex.code.DexFormat35c;
 import com.android.tools.r8.dex.code.DexFormat3rc;
+import com.android.tools.r8.dex.code.DexIgetObject;
+import com.android.tools.r8.dex.code.DexIgetOrIput;
 import com.android.tools.r8.dex.code.DexInstruction;
 import com.android.tools.r8.dex.code.DexInvokeDirect;
 import com.android.tools.r8.dex.code.DexInvokeDirectRange;
@@ -22,11 +24,16 @@ import com.android.tools.r8.dex.code.DexInvokeSuper;
 import com.android.tools.r8.dex.code.DexInvokeSuperRange;
 import com.android.tools.r8.dex.code.DexInvokeVirtual;
 import com.android.tools.r8.dex.code.DexInvokeVirtualRange;
+import com.android.tools.r8.dex.code.DexIputObject;
+import com.android.tools.r8.dex.code.DexSgetObject;
+import com.android.tools.r8.dex.code.DexSgetOrSput;
+import com.android.tools.r8.dex.code.DexSputObject;
 import com.android.tools.r8.graph.AppView;
 import com.android.tools.r8.graph.Code;
 import com.android.tools.r8.graph.DexClass;
 import com.android.tools.r8.graph.DexClassAndField;
 import com.android.tools.r8.graph.DexClassAndMethod;
+import com.android.tools.r8.graph.DexField;
 import com.android.tools.r8.graph.DexMethod;
 import com.android.tools.r8.graph.DexProgramClass;
 import com.android.tools.r8.graph.DexProto;
@@ -144,6 +151,9 @@ class ClassNameMinifier {
 
     timing.begin("rename-dangling-types");
     for (ProgramOrClasspathClass clazz : classes) {
+//      if (clazz.getType().getName().contains("SnsInfoStorage")) {
+//         System.out.print("1. Found method");
+//      }
       renameDanglingTypes(clazz);
     }
     timing.end();
@@ -206,6 +216,26 @@ class ClassNameMinifier {
     }
   }
 
+  public boolean isInstanceIGetOrPutObjectInstruction(DexInstruction instruction) {
+    try {
+      int opcode = instruction.getOpcode();
+      return opcode == DexIgetObject.OPCODE
+              || opcode == DexIputObject.OPCODE;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public boolean isInstanceSGetOrPutObjectInstruction(DexInstruction instruction) {
+    try {
+      int opcode = instruction.getOpcode();
+      return opcode == DexSgetObject.OPCODE
+              || opcode == DexSputObject.OPCODE;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
   private void processInvokeRangeInstruction(DexType holderType, DexInstruction instruction) {
     assert isInvokeRangeInstruction(instruction);
 
@@ -240,6 +270,40 @@ class ClassNameMinifier {
     }
   }
 
+  private void processInstanceIGetOrPutObject(DexType holderType, DexInstruction instruction) {
+    assert isInstanceIGetOrPutObjectInstruction(instruction);
+    DexIgetOrIput igetOrIput = (DexIgetOrIput) instruction;
+    DexField field = (DexField) igetOrIput.getField();
+
+    DexClassAndField classAndField = appView.appInfo().resolveField(field).getResolutionPair();
+    if (classNamingStrategy.isKeepByProguardRules(field.holder) && classAndField != null
+            && (classAndField.getAccessFlags().isPackagePrivate() || classAndField.getAccessFlags().isPrivate() ||
+            (classAndField.getAccessFlags().isProtected() && appView.isSubtype(holderType, field.holder).isFalse()))) {
+      DexString keepDescriptor = renaming.get(field.holder);
+      if (keepDescriptor != null) {
+        String keepPackageName = DescriptorUtils.getPackageNameFromDescriptor(keepDescriptor.toSourceString());
+        verifyKeepClassType(holderType, keepDescriptor, keepPackageName);
+      }
+    }
+  }
+
+  private void processInstanceSGetOrPutObject(DexType holderType, DexInstruction instruction) {
+    assert isInstanceSGetOrPutObjectInstruction(instruction);
+    DexSgetOrSput sgetOrIput = (DexSgetOrSput) instruction;
+    DexField field = (DexField) sgetOrIput.getField();
+
+    DexClassAndField classAndField = appView.appInfo().resolveField(field).getResolutionPair();
+    if (classNamingStrategy.isKeepByProguardRules(field.holder) && classAndField != null
+            && (classAndField.getAccessFlags().isPackagePrivate() || classAndField.getAccessFlags().isPrivate() ||
+            classAndField.getAccessFlags().isProtected())) {
+      DexString keepDescriptor = renaming.get(field.holder);
+      if (keepDescriptor != null) {
+        String keepPackageName = DescriptorUtils.getPackageNameFromDescriptor(keepDescriptor.toSourceString());
+        verifyKeepClassType(holderType, keepDescriptor, keepPackageName);
+      }
+    }
+  }
+
   private void verifyMethodRefRenamingOfField(DexClassAndField field) {
     if (field.isProgramField()) {
       DexClass clazz = appView.definitionFor(field.getReference().type);
@@ -255,9 +319,9 @@ class ClassNameMinifier {
   }
 
   private void verifyMethodRefRenamingOfMethod(DexClassAndMethod method) {
-    if (method.getName().toString().equals("access$safeCheck") && "FinderFeedSafeCheckUIC".equals(method.getHolder().getSimpleName())) {
-      System.out.print("1. Found method");
-    }
+//    if (method.getName().toString().equals("access$safeCheck") && "FinderFeedSafeCheckUIC".equals(method.getHolder().getSimpleName())) {
+//      System.out.print("1. Found method");
+//    }
     if (method.isProgramMethod()) {
       DexType dexType = method.getHolderType();
       Code code = method.getDefinition().getCode();
@@ -268,6 +332,10 @@ class ClassNameMinifier {
             processInvokeInstruction(dexType, instruction);
           } else if (isInvokeRangeInstruction(instruction)) {
             processInvokeRangeInstruction(dexType, instruction);
+          } else if (isInstanceIGetOrPutObjectInstruction(instruction)) {
+            processInstanceIGetOrPutObject(dexType, instruction);
+          } else if (isInstanceSGetOrPutObjectInstruction(instruction)) {
+            processInstanceSGetOrPutObject(dexType, instruction);
           }
         }
       } else if (code != null && code.isCfCode()) {
@@ -277,6 +345,10 @@ class ClassNameMinifier {
             processInvokeInstruction(dexType, instruction);
           } else if (isInvokeRangeInstruction(instruction)) {
             processInvokeRangeInstruction(dexType, instruction);
+          } else if (isInstanceIGetOrPutObjectInstruction(instruction)) {
+            processInstanceIGetOrPutObject(dexType, instruction);
+          } else if (isInstanceSGetOrPutObjectInstruction(instruction)) {
+            processInstanceSGetOrPutObject(dexType, instruction);
           }
         }
       }
