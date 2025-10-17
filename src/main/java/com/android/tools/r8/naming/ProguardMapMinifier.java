@@ -131,7 +131,7 @@ public class ProguardMapMinifier {
     timing.end();
 
     ApplyMappingMemberNamingStrategy nameStrategy =
-        new ApplyMappingMemberNamingStrategy(appView, memberNames);
+        new ApplyMappingMemberNamingStrategy(appView, memberNames, additionalMethodNamings, additionalFieldNamings);
     timing.begin("MinifyMethods");
     MethodRenaming methodRenaming =
         new MethodNameMinifier(appView, nameStrategy)
@@ -450,13 +450,17 @@ public class ProguardMapMinifier {
   static class ApplyMappingMemberNamingStrategy extends MinifierMemberNamingStrategy {
 
     private final Map<DexReference, MemberNaming> mappedNames;
+    private final Map<DexMethod, DexString> additionalMethodNamings;
+    private final Map<DexField, DexString> additionalFieldNamings;
     private final DexItemFactory factory;
     private final Reporter reporter;
 
     public ApplyMappingMemberNamingStrategy(
-        AppView<AppInfoWithLiveness> appView, Map<DexReference, MemberNaming> mappedNames) {
+        AppView<AppInfoWithLiveness> appView, Map<DexReference, MemberNaming> mappedNames, Map<DexMethod, DexString> additionalMethodNamings, Map<DexField, DexString> additionalFieldNamings) {
       super(appView);
       this.mappedNames = mappedNames;
+      this.additionalMethodNamings = additionalMethodNamings;
+      this.additionalFieldNamings = additionalFieldNamings;
       this.factory = appView.dexItemFactory();
       this.reporter = appView.options().reporter;
     }
@@ -527,6 +531,18 @@ public class ProguardMapMinifier {
       return getReservedName(field, field.getReference().name, holder);
     }
 
+    @Override
+    public DexString getAdditionalRenamingName(DexEncodedMethod method, DexClass holder) {
+      assert method.isDexEncodedMethod();
+      return additionalMethodNamings.get(method.getReference());
+    }
+
+    @Override
+    public DexString getAdditionalRenamingName(DexEncodedField field, DexClass holder) {
+      assert field.isDexEncodedField();
+      return additionalFieldNamings.get(field.getReference());
+    }
+
     private DexString getReservedName(DexDefinition definition, DexString name, DexClass holder) {
       assert definition.isDexEncodedMethod() || definition.isDexEncodedField();
       // Always consult the mapping for renamed members that are not on program path.
@@ -556,7 +572,7 @@ public class ProguardMapMinifier {
 //                holder.toSourceString().contains("FinderLiveAnchorGameTogetherWidget")) {
 //          System.out.print("Find mappedNames: \n");
 //          System.out.printf("------- method: %s\n", reference.toSourceString());
-//          System.out.printf("------- new reservedName: %s\n", factory.createString(mappedNames.get(reference).getRenamedName()));
+//          System.out.printf("------- new reservedName: %s\n", factory.createString(mappedNames.get(reference).getRenamedName()));  //mappedNames.get(((IdentityHashMap) mappedNames).keySet().stream().filter(it -> it.toString().contains("IWxQBarAIDecoder")).toArray()[36])
 //        }
         return factory.createString(mappedNames.get(reference).getRenamedName());
       }

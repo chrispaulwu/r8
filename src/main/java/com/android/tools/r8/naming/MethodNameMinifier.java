@@ -308,10 +308,17 @@ class MethodNameMinifier {
               if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method)) { //假设interface的method被keep，这时newName=method.getName()， 导致renaming无法被更新，
                 DexClassAndMethod interfaceResult = appView.appInfo().lookupMaximallySpecificMethod(holder, method.getReference());
                 if (interfaceResult != null) {
-                  DexMethod dexMethod = interfaceResult.getReference();
-                  if (dexMethod != null && !appView.appInfo().isMinificationAllowed(interfaceResult.getDefinition())) {
-                    System.out.printf("Found interface's method candidate: %s, method: %s\n", candidate, dexMethod.toSourceString());
+                  DexMethod iFaceTarget = interfaceResult.getReference();
+                  if (iFaceTarget != null && !appView.appInfo().isMinificationAllowed(interfaceResult.getDefinition())) {
+                    System.out.printf("Found interface's method. assignedName: %s, method: %s\n", candidate, iFaceTarget.toSourceString());
                     keepRenaming.put(method.getReference(), newName);
+                  } else {
+                    DexString additionalMappingName = strategy.getAdditionalRenamingName(method, holder);
+                    DexString iFaceNewName = iFaceTarget != null ? renaming.get(iFaceTarget) : null;
+                    if (iFaceTarget != null && additionalMappingName != null && additionalMappingName != newName && additionalMappingName != iFaceNewName) {
+                      fixUsedRenaming.put(method.getReference(), newName);
+                      System.out.printf("Found interface's method. assignedName: %s, method: %s\n", candidate, iFaceTarget.toSourceString());
+                    }
                   }
                 }
               }
@@ -328,7 +335,12 @@ class MethodNameMinifier {
             System.out.printf("Found assignedName match superClass's assignedName: %s, newName: %s, method holder: %s, method: %s, superMethod: %s\n",
                     assignedName, newName, holder.getSimpleName(), method.getReference().toSourceString(), superTarget.getReference().toSourceString());
             newName = assignedName;
-
+            DexString additionalMappingName = strategy.getAdditionalRenamingName(method, holder);
+            if (additionalMappingName != null && additionalMappingName != newName) {
+              fixUsedRenaming.put(method.getReference(), newName);
+              System.out.printf("Found assignedName match superClass's assignedName: %s, newName: %s, additionalMappingName: %s, method holder: %s, method: %s, superMethod: %s\n",
+                      assignedName, newName, additionalMappingName, holder.getSimpleName(), method.getReference().toSourceString(), superTarget.getReference().toSourceString());
+            }
           } else {
             iFaceTarget = appView.appInfo().lookupInterfaceTarget(method.getReference(), (DexProgramClass) holder, appView);
             DexString iFaceNewName = iFaceTarget != null ? renaming.get(iFaceTarget.getReference()) : null;
@@ -354,15 +366,15 @@ class MethodNameMinifier {
                 newName = method.getName();
                 renaming.put(method.getReference(), newName);
                 fixUsedRenaming.put(method.getReference(), newName);
-                System.out.printf("Found newName match same other methods assignedName, maybe cause Out-of-order error. oldNewName: %s, newName: %s, method holder: %s, method: %s\n",
+                System.out.printf("Found newName match same other methods assignedName, maybe cause Out-of-order error. oldNewName: %s, assignedName: %s, method holder: %s, method: %s\n",
                         oldNewName, newName, holder.getSimpleName(), method.getReference().toSourceString());
               }
             }
           } else if (newName == method.getName() && appView.appInfo().isMinificationAllowed(method)) {
             renaming.put(method.getReference(), newName);
             fixUsedRenaming.put(method.getReference(), newName);
-            System.out.printf("Found newName match same method name. method holder: %s, method: %s\n",
-                     holder.getSimpleName(), method.getReference().toSourceString());
+            System.out.printf("Found newName match same method name. assignedName: %s, method holder: %s, method: %s\n",
+                    newName, holder.getSimpleName(), method.getReference().toSourceString());
           }
         }
       }

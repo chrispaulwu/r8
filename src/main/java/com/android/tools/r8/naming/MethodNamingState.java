@@ -216,8 +216,8 @@ class MethodNamingState<KeyType> extends MethodNamingStateBase<KeyType, Internal
       parentInternalState = parentNamingState.getOrCreateInternalState(method);
     }
     return new InternalNewNameState(parentInternalState);
-  }
 
+  }
   static class InternalNewNameState implements InternalNamingState {
 
     private final InternalNewNameState parentInternalState;

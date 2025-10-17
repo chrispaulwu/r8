@@ -349,6 +349,16 @@ public class Minifier {
     }
 
     @Override
+    public DexString getAdditionalRenamingName(DexEncodedMethod method, DexClass holder) {
+      return null;
+    }
+
+    @Override
+    public DexString getAdditionalRenamingName(DexEncodedField field, DexClass holder) {
+      return null;
+    }
+
+    @Override
     public boolean allowMemberRenaming(DexClass holder) {
       return holder.isProgramClass();
     }

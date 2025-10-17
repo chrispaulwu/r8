@@ -33,5 +33,10 @@ public interface MemberNamingStrategy {
 
   DexString getReservedName(DexEncodedField field, DexClass holder);
 
+  DexString getAdditionalRenamingName(DexEncodedMethod method, DexClass holder);
+
+  DexString getAdditionalRenamingName(DexEncodedField field, DexClass holder);
+
+
   boolean allowMemberRenaming(DexClass holder);
 }
